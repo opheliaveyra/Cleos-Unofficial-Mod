@@ -103,7 +103,13 @@ internal object LoreSearch {
                 if (pair !in COMMON) out += pair
             }
         }
-        return out.take(MAX_WORDS)
+        // 长句子拆出来的双字词可能超出上限。只留前面几个的话，句子后半截的词就查不到了
+        // ——「帮我查一下星历和旧历之间的换算规则」这种，恰恰是"换算""规则"在最后。
+        // 所以头尾都留：一句话的重点常常在后半截。
+        if (out.size <= MAX_WORDS) return out.toList()
+        val head = out.take(MAX_WORDS / 2)
+        val tail = out.toList().takeLast(MAX_WORDS - head.size)
+        return (head + tail).distinct()
     }
 
     /** How much [entry] has to do with those words: a keyword first, the text after it. */

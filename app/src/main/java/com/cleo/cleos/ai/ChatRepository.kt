@@ -872,6 +872,12 @@ class ChatRepository(
      * way it is their turn in the conversation, so the model answers it.
      */
     fun answerSecretRequest(conversationId: Long, requestMessageId: Long, grant: Boolean) {
+        // 会话正忙时 start 返回 false 且什么都不做 —— 卡片停在原地、聊天里也没有一句话，
+        // 点的人只会以为没点上，然后就一直点。给一句话，别让它变成"点了没反应"。
+        if (busy(conversationId)) {
+            scope.launch { note(conversationId, "正在回复或通话，等 TA 说完再点这张卡片") }
+            return
+        }
         start(conversationId) answer@{
             val row = db.messages().get(requestMessageId) ?: return@answer
             val request = SecretRequests.decode(row.content)?.takeIf { it.status == SecretRequest.PENDING } ?: return@answer

@@ -32,7 +32,13 @@ class FeedAiTest {
 
     @Test fun sourceMustBeFromTheProvidedList() {
         assertEquals(source, FeedAiRules.decode("""{"content":"我的想法","sourceIndex":0}""", listOf(source)).second)
-        for (index in listOf("null", "-1", "12")) {
+        // 越界是错的；但 null 不是 —— 提示词里写着"资讯的 sourceIndex 为所选编号，
+        // 日常或回复时为 null"，模型选一条不带资讯的日常是**合法**的。
+        // 原来这里把 null 也当错，TA 一旦想写日常，整次发帖就失败，
+        // 人看到的是"TA 没有选到有效资讯"。
+        assertNull(FeedAiRules.decode("""{"content":"今天想说点别的","sourceIndex":null}""", listOf(source)).second)
+        assertNull(FeedAiRules.decode("""{"content":"今天想说点别的"}""", listOf(source)).second)
+        for (index in listOf("-1", "12")) {
             assertTrue(runCatching { FeedAiRules.decode("""{"content":"观点","sourceIndex":$index}""", listOf(source)) }.isFailure)
         }
     }

@@ -44,8 +44,11 @@ object FeedAiRules {
         val draft = json.decodeFromString<FeedAiDraft>(text)
         val content = FeedComments.text(draft.content)
         require(content.length <= 1200) { "TA 写得太长了，请重试" }
-        val source = if (sources.isEmpty()) null else {
-            sources.getOrNull(draft.sourceIndex ?: -1) ?: error("TA 没有选到有效资讯，未发布，请重试")
+        // sourceIndex 为 null 是**合法的**：提示词里写着"资讯的 sourceIndex 为所选编号，
+        // 日常或回复时为 null"。原来把它当成错，TA 想写一条不带资讯的日常时，
+        // 整次发帖就失败，人看到的是"TA 没有选到有效资讯"。
+        val source = if (sources.isEmpty() || draft.sourceIndex == null) null else {
+            sources.getOrNull(draft.sourceIndex) ?: error("TA 选的资讯编号不对，未发布，请重试")
         }
         return content to source
     }

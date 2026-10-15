@@ -42,4 +42,14 @@ class LoreTest {
         val e = entry("学校", listOf("宿舍"), content = "学校在海边")
         assertEquals(0, LoreSearch.score(e, LoreSearch.words("星历")))
     }
+
+    @Test
+    fun aLongSentenceKeepsTheWordsAtItsEndToo() {
+        // 双字词超出上限时，只留前面几个的话，句子后半截的词就查不到了 ——
+        // 而这句的重点（"换算""规则"）恰恰在最后。
+        val words = LoreSearch.words("帮我查一下星历和旧历之间的换算规则")
+        assertTrue(words.toString(), words.contains("换算"))
+        assertTrue(words.toString(), words.contains("规则"))
+        assertTrue("不能无限扩", words.size <= 12)
+    }
 }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
@@ -386,7 +387,12 @@ class ChatClient(
                     // Not JSON at all: a web page, which says nothing about what is wrong.
                     val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
                         ?: throw ChatException("地址能连上，但回的不是 JSON，多半不是聊天接口。", wrongEndpoint = true)
-                    if (root["choices"] == null) {
+                    // "A reply with no choices is a failure however cheerful the status code" ——
+                    // 但只判断键在不在是不够的：`{"choices":[]}`（内容被过滤、网关兜底、
+                    // 账号没权限时很常见）和 `{"choices":null}` 都不是 Kotlin 的 null，
+                    // 于是测试会显示"连上了，说得上话"，真发消息时却一个 delta 都没有。
+                    val choices = root["choices"]
+                    if (choices == null || choices is JsonNull || (choices is JsonArray && choices.isEmpty())) {
                         // JSON, but no reply in it: this is a service, and what it said about
                         // the model or the key ("no such model") is worth more than the page
                         // that answered at the address typed (see EndpointFailure.serviceSpoke).
