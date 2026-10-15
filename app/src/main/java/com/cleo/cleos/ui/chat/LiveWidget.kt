@@ -100,13 +100,13 @@ object LiveWidgets {
 internal fun MessageBody(text: String, color: Color, style: TextStyle, widgets: Boolean, modifier: Modifier = Modifier) {
     val parts = remember(text, widgets) { LiveWidgets.split(text, widgets) }
     if (parts.size == 1 && parts[0] is MessagePart.Words) {
-        MessageText((parts[0] as MessagePart.Words).text, color = color, style = style, modifier = modifier)
+        MarkdownText((parts[0] as MessagePart.Words).text, ink = color, style = style, modifier = modifier)
         return
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         parts.forEach { part ->
             when (part) {
-                is MessagePart.Words -> MessageText(part.text, color = color, style = style)
+                is MessagePart.Words -> MarkdownText(part.text, ink = color, style = style)
                 is MessagePart.Widget -> LiveWidget(part.html, color)
             }
         }

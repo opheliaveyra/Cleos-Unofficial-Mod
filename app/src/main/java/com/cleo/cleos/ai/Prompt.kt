@@ -31,9 +31,10 @@ import java.util.Locale
  * performed rather than lived in, and deciding what the relationship is, is not the
  * app's job.
  *
- * The app adds two things of its own. One line about format, because this is a chat
- * screen that shows plain text: markdown headings and bullet lists would arrive as raw
- * symbols. And, when tools are on, when to use them.
+ * The app adds two things of its own. One line about format: it **is** a chat screen, not a
+ * document, so the rule is about restraint rather than a ban — the bubble renders Markdown
+ * now (ui/chat/Markdown.kt), but a heading-heavy reply reads like a report on a phone.
+ * And, when tools are on, when to use them.
  *
  * The current time is not in the system prompt. Providers cache the longest unchanged
  * prefix of a request; a clock ticking in the first message would change the prefix on
@@ -41,7 +42,17 @@ import java.util.Locale
  * user message, after everything that stays the same.
  */
 object Prompt {
-    private const val FORMAT_RULE = "这是手机上的聊天。像平常发消息那样回复，不用 Markdown 标题、列表和加粗。"
+    /**
+     * 格式：**不是禁用**，是"别写成报告"。
+     *
+     * 气泡现在渲染 Markdown 了（ui/chat/Markdown.kt），所以列表、加粗、代码块都能正常显示 ——
+     * 以前这句是"不用 Markdown 标题、列表和加粗"，因为渲染不了，写了就是满屏星号。
+     * 现在改成讲分寸：该列的时候列，但手机上一堆 `#` 和 `##` 看着像文件不像聊天。
+     */
+    private const val FORMAT_RULE = "这是手机上的聊天，不是写文档，像平常发消息那样说话。" +
+        "Markdown 能用（列表、**加粗**、`行内代码`、代码块、引用、链接都会正常显示），" +
+        "但只在真有用的时候用：要说三条就列三条，要强调一个词就加粗。" +
+        "**不要用 # 标题**把聊天写成报告；也不要贴大段代码，除非对方就是要代码。"
 
     /**
      * When to note something down (ai/Later.kt). A tool's description only says how to use it;
