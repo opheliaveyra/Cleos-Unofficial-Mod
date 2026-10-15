@@ -956,7 +956,7 @@ fun ChatTab(
             }
             if (selecting) {
                 GlassSurface(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = inputBottom)
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = 28.dp, end = 28.dp, bottom = inputBottom)
                         .fillMaxWidth().onSizeChanged { inputHeight = it.height },
                     shape = GlassShape.Rounded(24.dp), contentPadding = PaddingValues(8.dp),
                 ) {
@@ -2508,7 +2508,10 @@ private fun ChatInputBar(
     Column(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
+            // 和底部导航栏同一个边距（MainScreen 那边是 28.dp）：输入框原来只缩进 12，
+            // 比导航栏宽出一大截，两样东西叠在一起看着就歪。引号、附件、分享卡都在这一层里面，
+            // 所以跟着一起对齐了。
+            .padding(horizontal = 28.dp)
             .heightIn(min = BarHeight)
             .liquidGlass(backdrop, palette.input, GlassShape.Rounded(BarHeight / 2)),
     ) {
