@@ -235,13 +235,23 @@ internal fun AbilitiesPage(vm: SettingsViewModel, onOpenVoice: () -> Unit) {
         ) { vm.setTool(ToolGroup.Workspace, it) }
         RowDivider(inset = 0.dp)
         ExplainedSwitch(
+            "对话里的卡片",
+            "让它做选择题、确认框、清单，直接显示在聊天里",
+            "打开后，TA 可以把话做成**卡片**：让人选一个、让人确认、让人填一句、或者列个清单。" +
+                "你点一下就当成你回了一句，省得打字。\n\n" +
+                "它只负责说清楚「要什么」，**样子是这个 App 画的** —— 所以每张卡片都跟这里一个长相，" +
+                "而且**没有代码在跑**，比下面那个小玩意儿安分得多。",
+            on(ToolGroup.Cards),
+        ) { vm.setTool(ToolGroup.Cards, it) }
+        RowDivider(inset = 0.dp)
+        ExplainedSwitch(
             "对话里的小玩意儿",
             "让它做能点、能玩的小东西，直接在聊天里跑",
             "打开后，TA 可以在回复里放一小段网页（HTML／JavaScript），**在聊天里直接跑起来** —— " +
-                "选择题、小计算器、倒计时、随机抽、小游戏这类，你能点、能填。\n\n" +
+                "小游戏、画图这类。\n\n" +
                 "它跑在一个关起来的小盒子里：**不能联网**（发不出请求、加载不了外面的图）、" +
                 "**碰不到这台手机上的文件**、也**跳不出去**，只能在那一小块地方里折腾。\n\n" +
-                "关掉的话，它写的东西会原样显示成文字（不会被跑起来）。",
+                "关掉的话，它写的东西会原样显示成文字（不会被跑起来）。想做卡片请用上面那个开关。",
             on(ToolGroup.Live),
         ) { vm.setTool(ToolGroup.Live, it) }
     }

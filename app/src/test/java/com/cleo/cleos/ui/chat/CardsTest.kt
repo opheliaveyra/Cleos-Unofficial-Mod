@@ -73,7 +73,7 @@ class CardsTest {
     @Test
     fun aCardInsideAMessageBecomesItsOwnPart() {
         val text = "你先挑：\n\n```card\n{\"type\":\"choice\",\"options\":[\"甲\",\"乙\"]}\n```\n\n挑完告诉我。"
-        val parts = LiveWidgets.split(text, enabled = true)
+        val parts = LiveWidgets.split(text, live = true, cards = true)
         assertEquals(3, parts.size)
         assertTrue(parts[0] is MessagePart.Words)
         assertTrue(parts[1] is MessagePart.Card)
@@ -82,7 +82,7 @@ class CardsTest {
 
     @Test
     fun aCardFenceThatNeverClosesIsNotDrawn() {
-        val parts = LiveWidgets.split("挑一个：\n```card\n{\"type\":\"choice\"", enabled = true)
+        val parts = LiveWidgets.split("挑一个：\n```card\n{\"type\":\"choice\"", live = true, cards = true)
         assertTrue(parts.all { it is MessagePart.Words })
     }
 }

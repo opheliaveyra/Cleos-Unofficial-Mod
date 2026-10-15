@@ -48,7 +48,7 @@ import java.util.Locale
  * writes a sticker's name into what it says, so it is told about apart from the tools, and a model
  * that takes no tools sends them too.
  */
-enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files, Workspace, Web, Search, Live }
+enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files, Workspace, Web, Search, Cards, Live }
 
 /**
  * A function offered to the model, when any of its [groups] is on. [parameters] is a

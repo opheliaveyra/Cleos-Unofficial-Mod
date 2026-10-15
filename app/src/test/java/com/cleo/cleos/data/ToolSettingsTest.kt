@@ -20,7 +20,7 @@ class ToolSettingsTest {
         assertEquals(
             chosen + ToolGroup.Secrets + ToolGroup.Avatar + ToolGroup.Messages + ToolGroup.Letters +
                 ToolGroup.Memory + ToolGroup.Lore + ToolGroup.Alarm + ToolGroup.Stickers + ToolGroup.Pat + ToolGroup.Feed + ToolGroup.FeedActions +
-                ToolGroup.Workspace + ToolGroup.Web,
+                ToolGroup.Workspace + ToolGroup.Web + ToolGroup.Cards,
             decodeTools("Todos:on,Diary:on,AiDiary:off,Weather:off"),
         )
     }
@@ -31,7 +31,7 @@ class ToolSettingsTest {
         val newer = setOf(
             ToolGroup.AiDiary, ToolGroup.Secrets, ToolGroup.Avatar, ToolGroup.Messages, ToolGroup.Letters,
             ToolGroup.Memory, ToolGroup.Lore, ToolGroup.Alarm, ToolGroup.Stickers, ToolGroup.Pat, ToolGroup.Feed, ToolGroup.FeedActions,
-            ToolGroup.Workspace, ToolGroup.Web,
+            ToolGroup.Workspace, ToolGroup.Web, ToolGroup.Cards,
         )
         assertEquals(setOf(ToolGroup.Todos, ToolGroup.Weather) + newer, decodeTools("Todos,Weather"))
         // Everything switched off then stays off; the newer groups still start on.

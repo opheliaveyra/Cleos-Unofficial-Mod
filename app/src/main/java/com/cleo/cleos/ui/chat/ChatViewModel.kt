@@ -73,8 +73,10 @@ data class ChatUiState(
     val speechReady: Boolean = false,
     /** Whether the TA may search the web; the switch for it sits in the input bar. */
     val webSearch: Boolean = false,
-    /** 对话里的小玩意儿：它写的 HTML 直接在气泡里跑起来（设置里的开关）。 */
+    /** 对话里的小玩意儿：它写的 HTML 直接在气泡里跑起来（设置里的开关，默认关）。 */
     val liveWidgets: Boolean = false,
+    /** 它写的卡片：只说"要什么"、样式由 App 画，没有代码在跑（默认开）。 */
+    val cards: Boolean = true,
     val loaded: Boolean = false,
 )
 
@@ -159,6 +161,7 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 speechReady = Speech.ready(s),
                 webSearch = ToolGroup.Search in s.tools,
                 liveWidgets = ToolGroup.Live in s.tools,
+                cards = ToolGroup.Cards in s.tools,
                 loaded = true,
             )
         }

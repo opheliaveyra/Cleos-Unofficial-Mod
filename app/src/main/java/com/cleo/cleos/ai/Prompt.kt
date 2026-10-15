@@ -165,7 +165,7 @@ object Prompt {
                 "**删东西只能用 delete_workspace，而且会弹一张卡片让对方决定同不同意 —— 对方不同意就是不同意，" +
                 "不要再试、也不要说已经删了。**删之前先说清楚要删什么、为什么。")
         }
-        if (ToolGroup.Live in tools) {
+        if (ToolGroup.Cards in tools) {
             add("你还能做**卡片**：用 ```card 围起来写一段 JSON，它会被画成一张卡片 —— " +
                 "**样式是这个 App 管的，不用你写**，你只要说清楚要什么。四种：\n" +
                 "· 让人选一个：{\"type\":\"choice\",\"title\":\"今晚吃什么\",\"options\":[\"火锅\",\"烧烤\",\"随便\"]}\n" +

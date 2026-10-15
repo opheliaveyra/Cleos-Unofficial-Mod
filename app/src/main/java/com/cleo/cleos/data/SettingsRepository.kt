@@ -75,6 +75,9 @@ data class AppSettings(
         // Reading a web page: on by default, since it does nothing unless the person or the TA
         // has an address to look at.
         ToolGroup.Web,
+        // 卡片：它只说"要什么"，样式由 App 画，没有代码在跑 —— 没有理由默认关着。
+        // （会跑的 ```html 小玩意儿是另一个组，那个默认关。）
+        ToolGroup.Cards,
     ),
     /** Where "今天天气怎么样" means, when the model isn't told a city. */
     val weatherCity: String = "",

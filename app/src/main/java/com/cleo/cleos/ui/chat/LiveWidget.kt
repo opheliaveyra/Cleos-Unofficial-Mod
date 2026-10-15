@@ -48,6 +48,9 @@ val LocalCardAnswer = androidx.compose.runtime.compositionLocalOf<(String) -> Un
  */
 val LocalLiveWidgets = androidx.compose.runtime.compositionLocalOf { false }
 
+/** 这一屏要不要把 TA 写的卡片画出来。另一个开关，**默认开** —— 画卡片不跑任何代码。 */
+val LocalCards = androidx.compose.runtime.compositionLocalOf { true }
+
 /**
  * 把一条消息切成该显示的样子。
  *
@@ -65,8 +68,8 @@ object LiveWidgets {
     /** 画出来的那种：里面是"要什么"的描述，不执行。 */
     const val CARD_LANG = "card"
 
-    fun split(text: String, enabled: Boolean): List<MessagePart> {
-        if (!enabled || !text.contains("```")) return listOf(MessagePart.Words(text))
+    fun split(text: String, live: Boolean, cards: Boolean): List<MessagePart> {
+        if ((!live && !cards) || !text.contains("```")) return listOf(MessagePart.Words(text))
         val out = mutableListOf<MessagePart>()
         val plain = StringBuilder()
         val body = StringBuilder()
@@ -84,7 +87,12 @@ object LiveWidgets {
             val trimmed = line.trim()
             if (open == null) {
                 val lang = if (trimmed.startsWith("```")) trimmed.removePrefix("```").trim().lowercase() else null
-                val known = lang != null && (lang in RAN || lang == CARD_LANG)
+                // 卡片归卡片那个开关管，会跑的归小玩意儿那个开关管 —— 两件事，别混。
+                val known = when {
+                    lang == CARD_LANG -> cards
+                    lang != null && lang in RAN -> live
+                    else -> false
+                }
                 if (known && widgets < MAX_PER_MESSAGE) {
                     open = lang
                     cardOpen = lang == CARD_LANG
@@ -111,8 +119,10 @@ object LiveWidgets {
 
 /** 一条消息的正文：该是文字的是文字，该跑起来的是小玩意儿，该画的是卡片。 */
 @Composable
-internal fun MessageBody(text: String, color: Color, style: TextStyle, widgets: Boolean, modifier: Modifier = Modifier) {
-    val parts = remember(text, widgets) { LiveWidgets.split(text, widgets) }
+internal fun MessageBody(text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
+    val live = LocalLiveWidgets.current
+    val cards = LocalCards.current
+    val parts = remember(text, live, cards) { LiveWidgets.split(text, live = live, cards = cards) }
     if (parts.size == 1 && parts[0] is MessagePart.Words) {
         MarkdownText((parts[0] as MessagePart.Words).text, ink = color, style = style, modifier = modifier)
         return
