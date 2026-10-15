@@ -126,6 +126,51 @@ class PdfTextTest {
     }
 
     @Test
+    fun separateTextBlocksOnTheSameLineStayTogether() {
+        // Word 导出的页眉是连着好几个 BT/ET，每块一个 Tm，y 都一样。
+        // 每块都算新行的话，「第 1 页」会散成三行。
+        val pdf = onePage(
+            "BT /F1 12 Tf 1 0 0 1 20 700 Tm (one) Tj ET " +
+                "BT /F1 12 Tf 1 0 0 1 60 700 Tm (two) Tj ET " +
+                "BT /F1 12 Tf 1 0 0 1 20 680 Tm (three) Tj ET",
+        )
+        assertEquals("one two\nthree", PdfText.read(pdf).text)
+    }
+
+    @Test
+    fun glyphsPutAtTheirOwnPositionsStayOnOneLine() {
+        // 真实的中文试卷（Word 导出的那种）就是这样：每个字用一次 Td 摆到自己的位置上。
+        // 把每一次定位都当成换行，一页会变成一个字符一行；反过来按间距插空格，
+        // 又会变成「试 卷」——中文之间本来就没有空格，所以两头都得管住。
+        val cmap = "begincmap\n1 beginbfchar\n<0001> <8BD5>\n<0002> <5377>\nendbfchar\nendcmap"
+        val content = "BT /F1 12 Tf 20 700 Td <0001> Tj 12 0 Td <0002> Tj ET"
+        val bytes = pdf(
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+            "<< /Type /Font /Subtype /Type0 /BaseFont /SimSun /Encoding /Identity-H /DescendantFonts [7 0 R] /ToUnicode 6 0 R >>",
+            stream("<< /Length ${content.length} >>", content.toByteArray(Charsets.ISO_8859_1)),
+            stream("<< /Length ${cmap.length} >>", cmap.toByteArray(Charsets.ISO_8859_1)),
+            "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /SimSun >>",
+        )
+        assertEquals("试卷", PdfText.read(bytes).text)
+    }
+
+    @Test
+    fun movingAlongTheLineIsNotMovingDownThePage() {
+        // 同一行里横向挪（dy = 0）不算换行，真的往下走（dy 大）才算。
+        val pdf = onePage("BT /F1 12 Tf 20 700 Td (same) Tj 40 0 Td (line) Tj 0 -18 Td (next) Tj ET")
+        assertEquals("same line\nnext", PdfText.read(pdf).text)
+    }
+
+    @Test
+    fun theTextMatrixSetsTheLineOutright() {
+        // Tm 的第五个操作数是绝对的 y：和上一次一样就不是新行，差得多就是。
+        val pdf = onePage("BT /F1 12 Tf 1 0 0 1 20 700 Tm (one) Tj 1 0 0 1 60 700 Tm (two) Tj 1 0 0 1 20 680 Tm (three) Tj ET")
+        assertEquals("one two\nthree", PdfText.read(pdf).text)
+    }
+
+    @Test
     fun linesAndWordSpacesSurviveTheOperatorsThatDrawThem() {
         val content = "BT /F1 12 Tf 20 700 Td (first line) Tj 0 -20 Td (second) Tj " +
             "[ (with) -300 (a) -300 (gap) ] TJ ET"

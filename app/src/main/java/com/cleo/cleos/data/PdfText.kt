@@ -762,9 +762,17 @@ internal object PdfText {
         private val out = StringBuilder()
         private val operands = ArrayList<Value>()
         private var font: Font? = null
+        /** The baseline the last text was drawn on; NaN until there has been one. */
         private var lineY = Double.NaN
+        /** Where the text about to be shown sits: moved by Td/TD, set outright by Tm. */
+        private var textY = 0.0
         private var leading = 0.0
         private var lastWasSpace = true
+        /** The font size in force, for telling a word gap from ordinary kerning. */
+        private var fontSize = 12.0
+        /** How far the last run was moved sideways, and where Tm last put it. */
+        private var pendingGap = 0.0
+        private var lastX = 0.0
 
         fun run(data: ByteArray): String {
             val lexer = Lexer(data)
@@ -789,30 +797,54 @@ internal object PdfText {
 
         private fun operate(name: String) {
             when (name) {
-                "BT" -> lineY = Double.NaN
-                "ET" -> breakLine()
-                "Tf" -> font = (operands.getOrNull(0) as? PName)?.let { fonts[it.name] }
+                // BT 重置文本矩阵，但不重置「上一次画在哪一行」：一页上的文字常常分成好几个
+                // BT/ET 块（Word 导出的页眉就是这样，"第"、"1"、"页"各是一个块），
+                // 行位置是跨块的 —— 每块都算新行的话，一行会散成好几行。
+                "BT" -> { textY = 0.0; lastX = 0.0; pendingGap = 0.0 }
+                // ET 只是结束文本对象：换不换行由位置说了算，不由它说了算 ——
+                // 同一行上的两个块之间（Word 的页眉就是这样）不该断开。
+                "ET" -> Unit
+                "Tf" -> {
+                    font = (operands.getOrNull(0) as? PName)?.let { fonts[it.name] }
+                    fontSize = number(0) ?: fontSize
+                }
                 "TL" -> number(0)?.let { leading = it }
                 "Tc", "Tw", "Tz", "Ts" -> {}
                 "Td", "TD" -> {
+                    val dx = number(0) ?: 0.0
                     val dy = number(1) ?: 0.0
                     if (name == "TD") leading = -dy
-                    moveLine(dy)
+                    // 同一行里横向挪得远，说明这儿是个词间距；往下走才是换行。
+                    pendingGap = if (abs(dy) <= 2.0) abs(dx) else 0.0
+                    textY += dy
+                    moveLine()
                 }
-                "Tm" -> moveLine(number(5) ?: return)
-                "T*" -> { moveLine(-leading) }
+                "Tm" -> {
+                    val e = number(4) ?: 0.0
+                    val f = number(5) ?: 0.0
+                    pendingGap = if (lineY.isNaN() || abs(f - lineY) <= 2.0) abs(e - lastX) else 0.0
+                    lastX = e
+                    textY = f
+                    moveLine()
+                }
+                "T*" -> { textY -= leading; moveLine() }
                 "Tj" -> show(operands.getOrNull(0))
-                "'" -> { moveLine(-leading); show(operands.getOrNull(0)) }
-                "\"" -> { moveLine(-leading); show(operands.getOrNull(2)) }
+                "'" -> { textY -= leading; moveLine(); show(operands.getOrNull(0)) }
+                "\"" -> { textY -= leading; moveLine(); show(operands.getOrNull(2)) }
                 "TJ" -> show(operands.getOrNull(0))
             }
         }
 
         private fun number(index: Int): Double? = (operands.getOrNull(index) as? PNum)?.value
 
-        /** A step down the page is a new line; a nudge of a fraction is the same one. */
-        private fun moveLine(dy: Double) {
-            if (lineY.isNaN() || abs(dy) > 0.5) breakLine()
+        /**
+         * A step down the page is a new line; the same baseline is the same line. A page that
+         * puts every glyph at its own position — which is what a Chinese exam paper exported
+         * from Word does — would otherwise come out one character per line.
+         */
+        private fun moveLine() {
+            if (lineY.isNaN() || abs(textY - lineY) > 2.0) breakLine()
+            lineY = textY
         }
 
         private fun breakLine() {
@@ -843,8 +875,22 @@ internal object PdfText {
             // A space already at the end of what was written is the same space.
             val word = if (lastWasSpace) text.trimStart() else text
             if (word.isEmpty()) return
+            // A run placed further along the line is a new word — unless both sides are Chinese,
+            // where every character has its own position and no space belongs between them.
+            if (!lastWasSpace && pendingGap > fontSize * 0.22 && out.isNotEmpty() && !bothCjk(out.last(), word.first())) {
+                out.append(' ')
+            }
             out.append(word)
             lastWasSpace = word.last() == ' '
+            pendingGap = 0.0
+        }
+
+        /** 中文和全角标点：它们之间不加空格。 */
+        private fun bothCjk(before: Char, after: Char): Boolean = isCjk(before) && isCjk(after)
+
+        private fun isCjk(c: Char): Boolean = c.code.let {
+            it in 0x3000..0x303F || it in 0x3400..0x4DBF || it in 0x4E00..0x9FFF ||
+                it in 0xF900..0xFAFF || it in 0xFF00..0xFFEF
         }
     }
 }
