@@ -137,6 +137,40 @@ class PdfTextTest {
     }
 
     @Test
+    fun aCatalogAndPageTreePackedInAnObjectStreamAreStillFound() {
+        // What Word and Chrome write: the catalog and the page tree are kept inside a compressed
+        // object stream rather than laid out as top-level objects. A reader that only walks the
+        // surface of the file finds no pages in it at all — which is the one thing it must not do,
+        // because these are the files people actually send.
+        val packed = listOf(
+            1 to "<< /Type /Catalog /Pages 2 0 R >>",
+            2 to "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        )
+        val header = StringBuilder()
+        val body = StringBuilder()
+        for ((number, text) in packed) {
+            header.append(number).append(' ').append(body.length).append(' ')
+            body.append(text).append(' ')
+        }
+        val compressed = deflated(header.toString() + body.toString())
+        val content = "BT /F1 12 Tf 20 700 Td (packed page) Tj ET"
+        fun objectAt(number: Int, text: String) = "$number 0 obj\n$text\nendobj\n"
+        val file = "%PDF-1.5\n" +
+            objectAt(
+                9,
+                "<< /Type /ObjStm /N ${packed.size} /First ${header.length} /Filter /FlateDecode /Length ${compressed.size} >>\n" +
+                    "stream\n" + String(compressed, Charsets.ISO_8859_1) + "\nendstream",
+            ) +
+            objectAt(3, "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 8 0 R >> >> /Contents 4 0 R >>") +
+            objectAt(4, "<< /Length ${content.length} >>\nstream\n$content\nendstream") +
+            objectAt(8, plainFont) +
+            "trailer\n<< /Root 1 0 R /Size 10 >>\n%%EOF\n"
+        val read = PdfText.read(file.toByteArray(Charsets.ISO_8859_1))
+        assertEquals("packed page", read.text)
+        assertEquals(1, read.pages)
+    }
+
+    @Test
     fun anEncryptedFileIsRefusedRatherThanHalfRead() {
         val bytes = pdf(
             "<< /Type /Catalog /Pages 2 0 R >>",

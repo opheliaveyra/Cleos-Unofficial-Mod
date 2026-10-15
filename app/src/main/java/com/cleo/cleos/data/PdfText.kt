@@ -328,7 +328,7 @@ internal object PdfText {
         }
     }
 
-    /** Every `N G obj … endobj` in the file, by object number. */
+    /** Every `N G obj … endobj` in the file, by object number, plus what is packed inside streams. */
     private fun scanObjects(data: ByteArray): Map<Int, Value> {
         val out = HashMap<Int, Value>()
         var i = 0
@@ -350,7 +350,46 @@ internal object PdfText {
             }
             i++
         }
+        expandObjectStreams(out)
         return out
+    }
+
+    /**
+     * Objects packed inside object streams (`/Type /ObjStm`, PDF 1.5 and later). A file written
+     * by Word or by Chrome's print dialog keeps its catalog and page tree in there rather than
+     * as top-level `N G obj` blocks, so a reader that only walks the surface of the file finds
+     * no pages at all — and those are exactly the files people send.
+     *
+     * A stream holds a header of `objectNumber offsetInBytes` pairs, then the objects
+     * themselves, the first one starting at `/First`.
+     */
+    private fun expandObjectStreams(objects: HashMap<Int, Value>) {
+        val packed = objects.values.filterIsInstance<PStream>().filter { it.dict.name("Type") == "ObjStm" }
+        for (stream in packed) {
+            val count = (stream.dict.map["N"] as? PNum)?.value?.toInt() ?: continue
+            val first = (stream.dict.map["First"] as? PNum)?.value?.toInt() ?: continue
+            if (count <= 0 || first < 0) continue
+            val data = decodeStream(stream, objects) ?: continue
+            if (first >= data.size) continue
+            val pairs = ArrayList<Pair<Int, Int>>(count)
+            val header = Lexer(data, 0)
+            var read = 0
+            while (read < count) {
+                val number = (header.parseValue() as? PNum)?.value?.toInt() ?: break
+                val offset = (header.parseValue() as? PNum)?.value?.toInt() ?: break
+                pairs.add(number to offset)
+                read++
+            }
+            for ((number, offset) in pairs) {
+                // A top-level object with the same number was written later and wins.
+                if (number in objects) continue
+                val at = first + offset
+                if (at < 0 || at >= data.size) continue
+                val value = Lexer(data, at).parseValue() ?: continue
+                if (value === PEnd) continue
+                objects[number] = value
+            }
+        }
     }
 
     /** The `N` of `N G obj`, read backwards from the `obj`. */
