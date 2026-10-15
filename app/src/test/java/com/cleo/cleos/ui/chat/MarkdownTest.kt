@@ -80,4 +80,63 @@ class MarkdownTest {
     fun aChineseQuoteMarkCountsToo() {
         assertTrue(Markdown.blocks("》这句是引用")[0] is MdBlock.Quote)
     }
+
+    @Test
+    fun aTableComesOutAsHeaderAndRows() {
+        val blocks = Markdown.blocks("| 甲 | 乙 |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |")
+        assertEquals(1, blocks.size)
+        val table = blocks[0] as MdBlock.Table
+        assertEquals(listOf("甲", "乙"), table.header)
+        assertEquals(listOf(listOf("1", "2"), listOf("3", "4")), table.rows)
+    }
+
+    @Test
+    fun aTableWithoutOuterPipesStillCounts() {
+        // 有的人（和有些模型）不写两头的竖线，那也是表格。
+        val blocks = Markdown.blocks("甲 | 乙\n--- | ---\n1 | 2")
+        assertTrue(blocks[0] is MdBlock.Table)
+        assertEquals(listOf("甲", "乙"), (blocks[0] as MdBlock.Table).header)
+    }
+
+    @Test
+    fun theSeparatorMayHaveColons() {
+        assertTrue(Markdown.blocks("| 甲 | 乙 |\n|:---|:---:|\n| 1 | 2 |")[0] is MdBlock.Table)
+    }
+
+    @Test
+    fun aSinglePipeIsNotATable() {
+        // 「甲|乙」只有一根竖线，是普通句子 —— 认成表格比不渲染更糟。
+        assertTrue(Markdown.blocks("甲|乙")[0] is MdBlock.Para)
+        assertTrue(Markdown.blocks("用 A|B 表示二者之一")[0] is MdBlock.Para)
+    }
+
+    @Test
+    fun aTableEndsWhereItsRowsEnd() {
+        val blocks = Markdown.blocks("| 甲 |\n| --- |\n| 1 |\n\n后面这段话")
+        assertEquals(2, blocks.size)
+        assertEquals(1, (blocks[0] as MdBlock.Table).rows.size)
+        assertTrue(blocks[1] is MdBlock.Para)
+    }
+
+    @Test
+    fun aRowWithFewerCellsIsKept() {
+        // 模型写表格经常最后一行少一根竖线，为这个把整张表丢掉不值得。
+        val table = Markdown.blocks("| 甲 | 乙 |\n| --- | --- |\n| 1 |")[0] as MdBlock.Table
+        assertEquals(1, table.rows.size)
+        assertEquals(listOf("1"), table.rows[0])
+    }
+
+    @Test
+    fun aHeadingRightAfterATableStillWorks() {
+        val blocks = Markdown.blocks("| 甲 |\n| --- |\n| 1 |\n# 标题")
+        assertEquals(2, blocks.size)
+        assertTrue(blocks[1] is MdBlock.Heading)
+    }
+
+    @Test
+    fun aPipeInsideACodeFenceIsNotATable() {
+        val blocks = Markdown.blocks("```\n| 甲 | 乙 |\n| --- | --- |\n```")
+        assertEquals(1, blocks.size)
+        assertTrue(blocks[0] is MdBlock.Code)
+    }
 }

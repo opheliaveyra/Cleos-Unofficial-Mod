@@ -41,10 +41,14 @@ import com.cleo.cleos.glass.LocalGlassPalette
  * Markdown 标题、列表和加粗"），因为**渲染不了，写了就是满屏星号**。既然对话框要开始
  * 渲染了，那就得真的认这些记号。
  *
- * 认：`#` 标题、`-`/`1.` 列表、`>` 引用、``` 代码块、`**粗**`、`*斜*`、`` `代码` ``、
- * `~~删除~~`、链接。
+ * 认：`#` 标题、`-`/`1.` 列表、`>` 引用、``` 代码块、`| a | b |` 表格、`**粗**`、
+ * `*斜*`、`` `代码` ``、`~~删除~~`、链接。
  *
- * **不认**：表格、嵌套列表、图片、脚注 —— 聊天里用不上，认多了反而容易把普通句子
+ * **表格是后来补的**：TA 特别爱用表格（"我这儿能感觉到的 / 是怎么知道的 / 怎么验"这种
+ * 三列的对照），而原来不认 —— 于是它写出来的表格**原样变成一堆竖线**，看着像乱码。
+ * 模型爱用的东西就得认，不然等于逼它别写。
+ *
+ * **不认**：嵌套列表、图片、脚注 —— 聊天里用不上，认多了反而容易把普通句子
  * 误当成语法（一个人真的想打 `*` 的时候，不该被吃掉）。
  */
 sealed interface MdBlock {
@@ -53,6 +57,9 @@ sealed interface MdBlock {
     data class Items(val ordered: Boolean, val items: List<String>) : MdBlock
     data class Quote(val text: String) : MdBlock
     data class Code(val lang: String, val body: String) : MdBlock
+
+    /** 一张表：[header] 是表头，[rows] 是数据行。列数不齐的会被补齐。 */
+    data class Table(val header: List<String>, val rows: List<List<String>>) : MdBlock
 }
 
 object Markdown {
@@ -69,6 +76,38 @@ object Markdown {
     private val NUMBER = Regex("^$SP(\\d+)[.)、．]\\s*(.+)$")
     private val HEADING = Regex("^$SP(#{1,4})\\s*(.+)$")
     private val QUOTE = Regex("^$SP[>》]\\s?(.*)$")
+
+    /** 分隔行的每一格：`---`、`:--`、`--:`、`:-:` 都算。表格靠它认出来。 */
+    private val SEP_CELL = Regex("^:?-{1,}:?$")
+
+    /**
+     * 一行表格拆成格子：`| a | b |` → ["a", "b"]。
+     *
+     * 什么算表格行，这里分两种情况，别搞混：
+     *
+     * · **两头都写了竖线**（`| 甲 |`）—— 一定是表格，**一列也算**；
+     * · **没写两头的竖线**（`甲 | 乙`）—— 要求竖线两边有空格。
+     *
+     * 第二条是防误伤：`甲|乙` 只有一根竖线、两边没空格，那是**普通句子**
+     * （"用 A|B 表示二者之一"这种），把它认成表格比不渲染更糟。
+     */
+    private fun cells(line: String): List<String>? {
+        val t = line.trim()
+        if (!t.contains('|')) return null
+        val bordered = t.length >= 2 && t.startsWith("|") && t.endsWith("|")
+        if (!bordered && !t.contains(" | ")) return null
+        val body = if (bordered) t.removePrefix("|").removeSuffix("|") else t
+        val parts = body.split('|').map { it.trim() }
+        if (parts.isEmpty()) return null
+        if (parts.size < 2 && !bordered) return null
+        return parts
+    }
+
+    /** 分隔行：`| --- | --- |` 这种。它是"上面那行是表头"的信号。 */
+    private fun isSeparator(line: String): Boolean {
+        val parts = cells(line) ?: return false
+        return parts.isNotEmpty() && parts.all { it.matches(SEP_CELL) }
+    }
 
     fun blocks(text: String): List<MdBlock> {
         val out = mutableListOf<MdBlock>()
@@ -97,7 +136,11 @@ object Markdown {
 
         fun flushAll() { flushPara(); flushItems(); flushQuote() }
 
-        for (line in text.split("\n")) {
+        val lines = text.split("\n")
+        // 表格要一次吃掉好几行，所以用 withIndex + 游标，不能纯 for-each。
+        var skipUntil = 0
+        for ((i, line) in lines.withIndex()) {
+            if (i < skipUntil) continue
             val trimmed = line.trim()
             if (fence != null) {
                 if (trimmed.startsWith("```")) {
@@ -111,6 +154,23 @@ object Markdown {
             }
             if (trimmed.startsWith("```")) { flushAll(); fence = trimmed.removePrefix("```").trim(); continue }
             if (trimmed.isEmpty()) { flushAll(); continue }
+
+            // 表格：这一行是 |…|，下一行是 |---|，那这两行就是表头 + 分隔，接着的都是数据行。
+            val headerCells = cells(line)
+            if (headerCells != null && i + 1 < lines.size && isSeparator(lines[i + 1])) {
+                flushAll()
+                val rows = mutableListOf<List<String>>()
+                var j = i + 2
+                while (j < lines.size) {
+                    val row = cells(lines[j]) ?: break
+                    if (row.all { it.isEmpty() }) break
+                    rows.add(row)
+                    j++
+                }
+                out += MdBlock.Table(headerCells, rows)
+                skipUntil = j
+                continue
+            }
 
             val heading = HEADING.find(line)
             if (heading != null) {
@@ -264,6 +324,68 @@ internal fun MarkdownText(text: String, ink: Color, style: TextStyle, modifier: 
                         .background(secondary.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
                         .padding(8.dp),
                 )
+
+                is MdBlock.Table -> TableView(block, ink, secondary, style, open)
+            }
+        }
+    }
+}
+
+/**
+ * 一张表。
+ *
+ * 两个刻意的地方：
+ *
+ * · **列宽按内容长短分**，不是平均分 —— 平均分的话"是/否"那种短列会白占一大块，
+ *   而写得多的那列被挤成一条缝。权重夹在 2～24 之间，免得一列长句子把别人挤没。
+ * · **列数不齐的行照样画**，缺的格子留空 —— 模型写表格经常最后一行少一根竖线，
+ *   为这个把整张表丢掉不值得。
+ */
+@Composable
+private fun TableView(table: MdBlock.Table, ink: Color, secondary: Color, style: TextStyle, open: (String) -> Unit) {
+    val columns = (listOf(table.header.size) + table.rows.map { it.size }).max()
+    if (columns == 0) return
+    val cellStyle = style.copy(fontSize = style.fontSize * 0.9f, lineHeight = style.lineHeight * 0.95f)
+    val weights = (0 until columns).map { c ->
+        val longest = (listOf(table.header.getOrNull(c).orEmpty()) + table.rows.map { it.getOrNull(c).orEmpty() })
+            .maxOfOrNull { it.length } ?: 1
+        longest.coerceIn(2, 24).toFloat()
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(secondary.copy(alpha = 0.16f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 3.dp, bottomEnd = 3.dp)),
+        ) {
+            (0 until columns).forEach { c ->
+                Text(
+                    Markdown.annotate(table.header.getOrNull(c).orEmpty(), ink, secondary, open),
+                    color = ink,
+                    style = cellStyle.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.weight(weights[c]).padding(horizontal = 7.dp, vertical = 6.dp),
+                )
+            }
+        }
+        table.rows.forEach { row ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(secondary.copy(alpha = 0.06f), RoundedCornerShape(3.dp)),
+            ) {
+                (0 until columns).forEach { c ->
+                    Text(
+                        Markdown.annotate(row.getOrNull(c).orEmpty(), ink, secondary, open),
+                        color = ink,
+                        style = cellStyle,
+                        modifier = Modifier.weight(weights[c]).padding(horizontal = 7.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
     }
