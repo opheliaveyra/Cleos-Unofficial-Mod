@@ -2020,12 +2020,23 @@ private fun AskCard(ask: ToolAsk, aiName: String, onAnswer: (ChatRepository.Answ
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 4.dp),
             ) {
-                Pill("允许", accent = true, enabled = true) { onAnswer(ChatRepository.Answer.Yes) }
-                if (ask.repeatable) Pill("以后都允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.Always) }
-                Pill("不允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.No) }
+                // 三个就够：这次行但下次还问、以后都行、以后都不行。
+                // 「不可挽回」的事（删工作区里的东西）不给后两个 —— repeatable 管的就是这个，
+                // 那类事你定过：每一次都要问。
+                Pill("每次询问", accent = true, enabled = true) { onAnswer(ChatRepository.Answer.Yes) }
+                if (ask.repeatable) {
+                    Pill("允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.Always) }
+                    Pill("禁用", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.Never) }
+                } else {
+                    Pill("不允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.No) }
+                }
             }
             Text(
-                if (ask.repeatable) "「以后都允许」只管这一个工具，在设置里能改回来。" else "这一次只算这一次，下次还会再问你。",
+                if (ask.repeatable) {
+                    "「每次询问」是只算这一次；「允许」和「禁用」只管这一个工具，在设置里能改回来。"
+                } else {
+                    "这一次只算这一次，下次还会再问你 —— 这种事每次都问。"
+                },
                 color = palette.contentSecondary,
                 fontSize = 12.sp,
             )

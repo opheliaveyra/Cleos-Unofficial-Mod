@@ -174,7 +174,7 @@ class ChatRepository(
     private val refusesThinking = ConcurrentHashMap.newKeySet<String>()
 
     /** The person's answer to a card asking whether the TA may use an outside service's tool. */
-    enum class Answer { Yes, Always, No }
+    enum class Answer { Yes, Always, Never, No }
 
     /** Calls waiting on the person, by conversation. */
     private val asks = ConcurrentHashMap<Long, CompletableDeferred<Answer>>()
@@ -1631,12 +1631,27 @@ class ChatRepository(
             ?: return ToolOutcome("这个服务在设置里关掉了，现在用不了。", "用${what}没成：设置里关掉了")
         val args = ToolArgs.parse(call.arguments)
             ?: return ToolOutcome("参数不是合法的 JSON 对象，按参数说明重新调用。", "用${what}没成：参数写错了")
+        // 说过"禁用"的工具直接拒，连问都不问 —— 那是最狠的一档，问第二次就是没听人说话。
+        if (tool.name in server.denied) {
+            return ToolOutcome(
+                "对方把这个工具禁用了，不要再用它，也不要换个说法再试。",
+                "没让${ai.ifBlank { "TA" }}用$what：对方禁用了",
+            )
+        }
         if (server.askFirst && !tool.readOnly && tool.name !in server.allowed) {
             when (ask(conversationId, live, ToolAsk("用${tool.serverName}的", tool.title, Mcp.preview(args)))) {
                 Answer.No -> return ToolOutcome(
                     "对方没有同意，这次没有调用。需要的话在聊天里问问对方。",
                     "没让${ai.ifBlank { "TA" }}用$what",
                 )
+                Answer.Never -> {
+                    mcp.servers.disallow(server.id, tool.name)
+                    return ToolOutcome(
+                        "对方说这个工具以后也别用了，已经记下，不会再问、也不会再调用。" +
+                            "不要换个说法再试；要改回设置里能改。",
+                        "没让${ai.ifBlank { "TA" }}用$what：对方禁用了",
+                    )
+                }
                 Answer.Always -> mcp.servers.allow(server.id, tool.name)
                 Answer.Yes -> Unit
             }

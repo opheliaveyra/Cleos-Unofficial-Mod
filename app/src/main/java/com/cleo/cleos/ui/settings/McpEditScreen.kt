@@ -80,6 +80,8 @@ class McpEditViewModel(private val c: AppContainer, startId: String) : ViewModel
     var askFirst by mutableStateOf(true)
     private var enabled = true
     val allowed = mutableStateListOf<String>()
+    /** 说过「禁用」的工具：直接拒，连问都不问。在设置里点一下能改回每次都问。 */
+    val denied = mutableStateListOf<String>()
     var loaded by mutableStateOf(false)
         private set
     var testing by mutableStateOf(false)
@@ -100,12 +102,13 @@ class McpEditViewModel(private val c: AppContainer, startId: String) : ViewModel
                 askFirst = s.askFirst
                 enabled = s.enabled
                 allowed.addAll(s.allowed)
+                denied.addAll(s.denied)
             }
             loaded = true
         }
     }
 
-    private fun server() = McpServer(id, name.trim(), url.trim(), token.trim(), header.trim(), enabled, askFirst, allowed.toSet())
+    private fun server() = McpServer(id, name.trim(), url.trim(), token.trim(), header.trim(), enabled, askFirst, allowed.toSet(), denied.toSet())
 
     fun test() {
         if (testing || url.isBlank()) return
@@ -233,6 +236,12 @@ fun McpEditScreen(id: String, onBack: () -> Unit) {
                     Text("说过「以后都允许」的工具，点一下改回每次都问：", color = palette.contentSecondary, fontSize = 12.sp)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (t in vm.allowed.toList()) Pill("$t ×", selected = false) { vm.allowed.remove(t) }
+                    }
+                }
+                if (vm.denied.isNotEmpty()) {
+                    Text("说过「禁用」的工具，点一下改回每次都问：", color = palette.contentSecondary, fontSize = 12.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (t in vm.denied.toList()) Pill("$t ×", selected = false) { vm.denied.remove(t) }
                     }
                 }
             }

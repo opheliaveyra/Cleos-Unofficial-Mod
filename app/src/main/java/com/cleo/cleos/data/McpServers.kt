@@ -30,6 +30,11 @@ data class McpServer(
     val askFirst: Boolean = true,
     /** Tools the person said to always allow, by the service's own names for them. */
     val allowed: Set<String> = emptySet(),
+    /**
+     * Tools the person said **never** to use: they are refused outright, without even asking.
+     * 三选一里最狠的那档 —— 问了两次都嫌烦的时候用得上。
+     */
+    val denied: Set<String> = emptySet(),
 ) {
     /** What the connection depends on: a change here means a new session and a new tool list. */
     val connection: String get() = listOf(url.trim(), token.trim(), header.trim()).joinToString("\n")
@@ -59,7 +64,14 @@ class McpServers(private val secrets: SecretStore) {
     suspend fun setEnabled(id: String, on: Boolean) = edit { list -> list.map { if (it.id == id) it.copy(enabled = on) else it } }
 
     /** The person said to always allow [tool] of service [id]: no more asking for it. */
-    suspend fun allow(id: String, tool: String) = edit { list -> list.map { if (it.id == id) it.copy(allowed = it.allowed + tool) else it } }
+    suspend fun allow(id: String, tool: String) = edit { list ->
+        list.map { if (it.id == id) it.copy(allowed = it.allowed + tool, denied = it.denied - tool) else it }
+    }
+
+    /** The person said never to use [tool] of service [id]: refuse it outright, don't ask again. */
+    suspend fun disallow(id: String, tool: String) = edit { list ->
+        list.map { if (it.id == id) it.copy(denied = it.denied + tool, allowed = it.allowed - tool) else it }
+    }
 
     private suspend fun edit(change: (List<McpServer>) -> List<McpServer>) = lock.withLock {
         secrets.setSecret(KEY, json.encodeToString(change(current())))
