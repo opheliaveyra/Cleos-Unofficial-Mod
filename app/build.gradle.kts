@@ -26,11 +26,10 @@ android {
         applicationId = "com.cleo.cleos"
         minSdk = 29
         targetSdk = 36
-        // The upstream author's line, continued: 165/0.41.88 was theirs, this is 166/0.41.89, and
-        // every build handed over goes up one from there. Bumping it is what makes installing
-        // this an update; without it the phone sees "the same version again" and asks twice.
-        versionCode = 170
-        versionName = "0.41.93"
+        // 这条线是我们自己的：从 1.0.0 起，后缀标着它是二改版 —— 跟原作者的 0.41.x 一眼分得开。
+        // versionCode 只能往上加（171 起），回头会让手机当成降级、装不上。
+        versionCode = 171
+        versionName = "1.0.0-mod"
     }
 
     signingConfigs {
