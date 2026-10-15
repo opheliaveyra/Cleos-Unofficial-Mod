@@ -85,7 +85,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
@@ -429,12 +428,6 @@ fun ChatTab(
     var recordedMs by remember { mutableLongStateOf(0L) }
     var loudness by remember { mutableFloatStateOf(0f) }
     var voiceHint by remember { mutableStateOf<String?>(null) }
-    /**
-     * Where the recording under way is headed. 按住说话 on the input box turns the words into
-     * text for the person to read and edit before sending; the microphone button beside it
-     * sends the recording itself, which is what it has always done.
-     */
-    var voiceTarget by remember { mutableStateOf(VoiceTarget.Message) }
     /** One of those recordings is being turned into text. */
     var transcribingVoice by remember { mutableStateOf(false) }
     /** What it said, waiting for the input box (declared further down) to be handed it. */
@@ -588,7 +581,13 @@ fun ChatTab(
         }
     }
 
-    fun startVoice(target: VoiceTarget = VoiceTarget.Message): Boolean {
+    /**
+     * 按住说话 on the input box, which is the only way a recording is made now. What it says comes
+     * back as words in the box, to be read over and mended before it goes — that was always the
+     * point of it. The microphone button that used to sit at the end of the bar (holding it sent
+     * the recording itself, as a voice message) has been taken out.
+     */
+    fun startVoice(): Boolean {
         when {
             !state.voiceReady -> askVoiceSetup = true
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ->
@@ -598,7 +597,6 @@ fun ChatTab(
                 stopPlaying()
                 recordedMs = 0
                 cancelling = false
-                voiceTarget = target
                 recording = true
                 // A small tap under the finger: without it the first moment of a recording is
                 // silent on screen, and there is no telling whether the press took at all.
@@ -611,7 +609,6 @@ fun ChatTab(
 
     fun endVoice(cancel: Boolean) {
         if (!recording) return
-        val target = voiceTarget
         recording = false
         cancelling = false
         if (cancel) {
@@ -621,24 +618,17 @@ fun ChatTab(
         // "Turning it into words" goes up before the recorder is stopped: stopping waits for the
         // recording thread to finish writing the file, and a wait with nothing on screen at all
         // reads as "it didn't hear me" rather than "it is working on it".
-        if (target == VoiceTarget.Text) transcribingVoice = true
+        transcribingVoice = true
         val clip = recorder.stop()
         if (clip == null) {
             transcribingVoice = false
             voiceHint = "说话时间太短了"
             return
         }
-        if (target == VoiceTarget.Text) {
-            // Heard, then read: the words go into the input box to be looked over, not sent.
-            vm.transcribeToInput(clip) { text, problem ->
-                transcribingVoice = false
-                if (text != null) voiceDraft = text else voiceHint = problem
-            }
-            return
-        }
-        when {
-            !vm.sendVoice(clip) -> voiceHint = "没发出去，再试一次"
-            else -> sentCount++
+        // Heard, then read: the words go into the input box to be looked over, not sent.
+        vm.transcribeToInput(clip) { text, problem ->
+            transcribingVoice = false
+            if (text != null) voiceDraft = text else voiceHint = problem
         }
     }
 
@@ -1054,11 +1044,7 @@ fun ChatTab(
                     }
                 },
                 onStop = vm::stop,
-                recording = recording,
-                onVoiceStart = { startVoice(VoiceTarget.Message) },
-                onVoiceMove = { cancelling = it },
-                onVoiceEnd = { endVoice(it) },
-                onHoldToTalk = { startVoice(VoiceTarget.Text) },
+                onHoldToTalk = { startVoice() },
                 onHoldMove = { cancelling = it },
                 onHoldEnd = { endVoice(it) },
                 transcribingVoice = transcribingVoice,
@@ -1102,7 +1088,6 @@ fun ChatTab(
                     level = loudness,
                     cancelling = cancelling,
                     hint = if (transcribingVoice) "正在转成文字…" else voiceHint,
-                    toText = voiceTarget == VoiceTarget.Text,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = inputBottom + with(density) { inputHeight.toDp() } + 10.dp),
@@ -1757,8 +1742,6 @@ private fun RecordingPill(
     level: Float,
     cancelling: Boolean,
     hint: String?,
-    /** 按住说话 on the input box: letting go gives words to edit, not a voice message. */
-    toText: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalGlassPalette.current
@@ -1780,54 +1763,7 @@ private fun RecordingPill(
         val s = ms / 1000
         Text("${s / 60}:%02d".format(s % 60), color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.width(12.dp))
-        Text(if (cancelling) "松开取消" else if (toText) "松手变文字，上滑取消" else "松开发送，上滑取消", color = if (cancelling) palette.error else palette.contentSecondary, fontSize = 14.sp)
-    }
-}
-
-/**
- * Where a recording is headed. 按住说话 on the input box is a way of typing: what was said comes
- * back as words in the box, to be read over and mended before it goes. The microphone button at
- * the end of the bar sends the recording itself, which is what a voice message is.
- */
-private enum class VoiceTarget { Message, Text }
-
-/**
- * Hold to talk: pressing starts a recording, letting go sends it, and sliding up first then
- * letting go throws it away. The pointer stays this button's until it is lifted, wherever it goes.
- */
-@Composable
-private fun MicButton(button: Modifier, recording: Boolean, onStart: () -> Boolean, onMove: (Boolean) -> Unit, onEnd: (Boolean) -> Unit) {
-    val palette = LocalGlassPalette.current
-    val start by rememberUpdatedState(onStart)
-    val move by rememberUpdatedState(onMove)
-    val end by rememberUpdatedState(onEnd)
-    Box(
-        button
-            .background(if (recording) palette.accent else palette.content.copy(alpha = 0.1f))
-            .semantics { contentDescription = "按住说话" }
-            .pointerInput(Unit) {
-                val away = 72.dp.toPx()
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    down.consume()
-                    if (!start()) return@awaitEachGesture
-                    var cancel = false
-                    while (true) {
-                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                        if (!change.pressed) break
-                        val up = down.position.y - change.position.y > away
-                        if (up != cancel) {
-                            cancel = up
-                            move(cancel)
-                        }
-                        change.consume()
-                    }
-                    end(cancel)
-                }
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Rounded.Mic, contentDescription = null, tint = if (recording) Color.White else palette.content, modifier = Modifier.size(22.dp))
+        Text(if (cancelling) "松开取消" else "松手变文字，上滑取消", color = if (cancelling) palette.error else palette.contentSecondary, fontSize = 14.sp)
     }
 }
 
@@ -2552,10 +2488,6 @@ private fun ChatInputBar(
     editHint: String = "",
     onCancelEdit: () -> Unit = {},
     sendEnabled: Boolean = true,
-    recording: Boolean = false,
-    onVoiceStart: () -> Boolean = { false },
-    onVoiceMove: (Boolean) -> Unit = {},
-    onVoiceEnd: (Boolean) -> Unit = {},
     /** 按住说话 on the input box itself: records, and puts the words in the box to be edited. */
     onHoldToTalk: () -> Boolean = { false },
     onHoldMove: (Boolean) -> Unit = {},
@@ -2781,9 +2713,6 @@ private fun ChatInputBar(
                     ) {
                         Icon(Icons.Rounded.Stop, contentDescription = "停止", tint = palette.content, modifier = Modifier.size(20.dp))
                     }
-                } else if (!canSend && !editing) {
-                    // Nothing typed: the button is for talking instead.
-                    MicButton(button, recording, onVoiceStart, onVoiceMove, onVoiceEnd)
                 } else {
                     Box(
                         button

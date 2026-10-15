@@ -179,8 +179,8 @@ internal fun VoiceInputPage(vm: SettingsViewModel) {
     val hasVoiceKey by vm.hasVoiceKey.collectAsStateWithLifecycle()
     Section("转文字的服务") {
         Text(
-            "在聊天里按住输入框右边的话筒说话，松开就发，往上滑再松开是取消。语音先转成文字再给 TA 看，" +
-                "所以要接一个转文字的服务，和聊天的模型分开选。",
+            "在聊天里按住输入框说话，松开就变成文字填进输入框，改好再发；往上滑再松开是取消。" +
+                "语音先转成文字再给 TA 看，所以要接一个转文字的服务，和聊天的模型分开选。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
