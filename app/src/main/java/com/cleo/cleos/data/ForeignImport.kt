@@ -463,7 +463,12 @@ object ForeignFile {
         // A world book's entries are the ones that say which words bring them up. Without that it is
         // some other app's memory file, and it is read as one.
         if (keys.isEmpty() && text(e["comment"]) == null && number(e["insertion_order"]) == null) return null
-        val title = text(e["comment"]).orEmpty().ifEmpty { keys.firstOrNull().orEmpty() }.ifEmpty { content.take(TITLE_FROM_CONTENT) }
+        // 文件没给 comment 的时候，标题从内容里取 —— 取**第一行**，不是前 20 个字。
+        // 很多世界书第一条就是「文件设定」这样的一行标题，下面才是正文；
+        // 按字数截会把正文的头一句话也塞进标题里，看起来像"标题和内容重复了一遍"。
+        val title = text(e["comment"]).orEmpty().ifEmpty { keys.firstOrNull().orEmpty() }
+            .ifEmpty { content.lineSequence().firstOrNull().orEmpty().trim().take(TITLE_FROM_CONTENT) }
+            .ifEmpty { content.take(TITLE_FROM_CONTENT) }
         return ImportedLore(
             book = book,
             title = title.take(TITLE_MAX),

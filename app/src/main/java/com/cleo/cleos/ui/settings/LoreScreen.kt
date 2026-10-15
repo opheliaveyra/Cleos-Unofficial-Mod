@@ -346,7 +346,9 @@ private fun LoreRow(e: LoreEntity, selecting: Boolean, selected: Boolean, busy: 
             if (selecting) Checkbox(checked = selected, onCheckedChange = null, enabled = !busy)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    e.title.ifBlank { "没起名字" },
+                    // 旧数据里有些标题是从正文按字数截的，带着换行：只显示第一行，
+                    // 不然标题看着像正文的复读。
+                    e.title.substringBefore('\n').trim().ifBlank { "没起名字" },
                     color = palette.content,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -354,7 +356,7 @@ private fun LoreRow(e: LoreEntity, selecting: Boolean, selected: Boolean, busy: 
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (keys.isEmpty()) "没有关键词，只有说到「${e.title.ifBlank { "它" }}」时才可能查到" else keys.joinToString("、"),
+                    if (keys.isEmpty()) "没有关键词，只有说到「${e.title.substringBefore('\n').trim().ifBlank { "它" }}」时才可能查到" else keys.joinToString("、"),
                     color = palette.contentSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
