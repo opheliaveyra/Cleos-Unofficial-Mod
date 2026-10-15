@@ -52,6 +52,7 @@ import com.cleo.cleos.data.ImportException
 import com.cleo.cleos.data.LoreKeys
 import com.cleo.cleos.data.LoreSelection
 import com.cleo.cleos.data.db.LoreEntity
+import com.cleo.cleos.data.db.MemoryEntity
 import com.cleo.cleos.glass.GlassIconButton
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
@@ -211,7 +212,7 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 item(key = "h-$title") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            (if (title.isEmpty()) "自己写的" else "《$title》") + " · ${list.size} 条",
+                            (if (title.isEmpty()) unbookedLabel(list) else "《$title》") + " · ${list.size} 条",
                             color = palette.contentSecondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
@@ -295,9 +296,18 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
     }
 }
 
+/**
+ * 没归到书里的那一堆，按来路分开叫：自己写的，和「导入时没带上书名的」。
+ *
+ * 后者是旧版本的产物：那时候书名只认世界书根对象里的 name，而酒馆导出的世界书没有那个字段，
+ * 所以不管导几本，条目全挤在这儿。看标签就能认出这一批，重新导一次就归位了。
+ */
+private fun unbookedLabel(list: List<LoreEntity>): String =
+    if (list.all { it.source == MemoryEntity.SOURCE_ME }) "自己写的" else "没归到书里"
+
 /** One entry: what it is called, the words that lead to it, and whether the TA may find it at all. */
 @Composable
-private fun LoreRow(e: LoreEntity, selecting: Boolean, selected: Boolean, busy: Boolean,
+private fun LoreRow(e: LoreEntity, selecting: Boolean, selected: Boolean, busy: Boolean, 
     onSelect: () -> Unit, onOpen: () -> Unit, onToggle: (Boolean) -> Unit) {
     val palette = LocalGlassPalette.current
     val keys = LoreKeys.decode(e.keys)
