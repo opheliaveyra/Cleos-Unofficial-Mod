@@ -170,6 +170,36 @@ class ToolBoxTest {
     }
 
     @Test
+    fun rewritingAFileThatIsAlreadyThereNeedsAYesToo() {
+        // Otherwise "deleting needs a yes" has a hole in it: writing over a file destroys what
+        // was in it just as surely, and would go through on the model's word alone.
+        val ws = space()
+        ws.write("笔记.md", "原来的内容")
+        var asked = 0
+        val box = boxWith(ws) { _, request ->
+            asked++
+            assertTrue(request.arguments, request.arguments.contains("原来 5 字"))
+            assertTrue(request.arguments, request.arguments.contains("清掉"))
+            assertTrue(request.warning.orEmpty().contains("找不回来"))
+            assertFalse(request.repeatable)
+            false
+        }
+        val out = call(box, ToolSpecs.writeWorkspace.name, """{"path":"笔记.md","content":""}""")
+        assertEquals(1, asked)
+        assertTrue(out.result, out.result.contains("没有同意改写"))
+        assertEquals("被拒绝之后原文必须一个字都没动", "原来的内容", ws.read("笔记.md", 0, 100))
+    }
+
+    @Test
+    fun aNewFileAndAnAppendNeedNoYesAtAll() {
+        val ws = space()
+        val box = boxWith(ws) { _, _ -> error("新建文件和追加都不该问用户") }
+        assertTrue(call(box, ToolSpecs.writeWorkspace.name, """{"path":"新的.md","content":"内容"}""").result.contains("写好了"))
+        assertTrue(call(box, ToolSpecs.appendWorkspace.name, """{"path":"新的.md","content":"更多"}""").result.contains("接上"))
+        assertEquals("内容更多", ws.read("新的.md", 0, 100))
+    }
+
+    @Test
     fun theWorkspaceToolsCannotReachOutsideTheirOwnFolder() {
         val ws = space()
         val box = boxWith(ws) { _, _ -> true }

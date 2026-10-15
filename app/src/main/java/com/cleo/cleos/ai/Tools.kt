@@ -579,9 +579,9 @@ object ToolSpecs {
         name = "write_workspace",
         groups = setOf(ToolGroup.Workspace),
         action = "写文件",
-        description = "把一个文件整个写进你的工作区（新建，或者覆盖同名文件）。覆盖会让原来的内容没了，" +
-            "想接着写就用 append_workspace，想改几个字就先 read_workspace 读出来再写回去。" +
-            "文件夹会自动建。单个文件最多 1 MB。",
+        description = "把一个文件整个写进你的工作区。新文件直接写；同名文件已经存在时会弹卡片问对方同不同意，" +
+            "**对方不同意就写不成 —— 别换个说法再写一遍**。想接着写用 append_workspace（那个不用问），" +
+            "想改几个字就先 read_workspace 读出来、再整个写回去（那时也要问）。文件夹会自动建。单个文件最多 1 MB。",
         parameters = schema(
             required = listOf("path", "content"),
             "path" to prop("string", "写到哪，相对路径，比如 草稿.md"),
@@ -832,7 +832,7 @@ class ToolBox(
                 ToolSpecs.readFile.name -> readFile(args, conversationId)
                 ToolSpecs.listWorkspace.name -> listWorkspace(args)
                 ToolSpecs.readWorkspace.name -> readWorkspace(args)
-                ToolSpecs.writeWorkspace.name -> writeWorkspace(args)
+                ToolSpecs.writeWorkspace.name -> writeWorkspace(args, conversationId)
                 ToolSpecs.appendWorkspace.name -> appendWorkspace(args)
                 ToolSpecs.makeWorkspaceDir.name -> makeWorkspaceDir(args)
                 ToolSpecs.moveWorkspace.name -> moveWorkspace(args)
@@ -947,11 +947,42 @@ class ToolBox(
         return ToolOutcome("【$path 第 $offset–$end 字，共 ${whole.length} 字】\n${whole.substring(offset, end)}\n（$more）", "读了《$path》")
     }
 
-    private suspend fun writeWorkspace(args: JsonObject): ToolOutcome {
+    /**
+     * Writing a file. A new file is the TA's own business; **replacing one that is already there
+     * is not** — writing over a file destroys what was in it just as surely as deleting does, and
+     * if that went through on the model's word alone then "deleting needs a yes" would be a rule
+     * with a hole in it the size of a file. So an overwrite goes to the person on the same card
+     * a deletion does. Appending never asks: it only ever adds.
+     */
+    private suspend fun writeWorkspace(args: JsonObject, conversationId: Long): ToolOutcome {
         val path = ToolArgs.text(args, "path").orEmpty().trim()
         val content = ToolArgs.text(args, "content").orEmpty()
         if (path.isEmpty()) throw ToolFailure("要填 path：写到哪个文件。", "没说写到哪")
-        val overwrote = space().exists(path)
+        val before = if (space().exists(path)) space().length(path) else -1
+        if (before >= 0) {
+            val after = content.length
+            val what = when {
+                after == 0 -> "这次是空的 —— 等于把里面的东西清掉。"
+                after < before -> "比原来的 ${before} 字短，少掉的那些换不回来。"
+                else -> "原来的 $before 字会被整个换掉。"
+            }
+            val yes = allow(
+                conversationId,
+                ToolAsk(
+                    service = "改写你工作区里的",
+                    tool = path,
+                    arguments = "原来 $before 字，这次写成 $after 字。$what",
+                    warning = "改写会把原来的内容换掉，换掉的那部分找不回来。想追加内容请改用 append_workspace。",
+                    repeatable = false,
+                ),
+            )
+            if (!yes) {
+                return ToolOutcome(
+                    "对方没有同意改写「$path」，它一个字都没动。想往后加内容可以用 append_workspace；对方不同意就不要换个说法再写一遍。",
+                    "没改《$path》",
+                )
+            }
+        }
         try {
             space().write(path, content)
         } catch (e: WorkspaceException) {
@@ -959,8 +990,8 @@ class ToolBox(
         }
         val size = content.toByteArray(Charsets.UTF_8).size
         return ToolOutcome(
-            if (overwrote) "已经把「$path」整个改写过了（${readableSize(size.toLong())}）。原来的内容被这次覆盖了。" else "写好了「$path」（${readableSize(size.toLong())}）。",
-            if (overwrote) "改了《$path》" else "写了《$path》",
+            if (before >= 0) "已经把「$path」整个改写过了（${readableSize(size.toLong())}）。" else "写好了「$path」（${readableSize(size.toLong())}）。",
+            if (before >= 0) "改了《$path》" else "写了《$path》",
         )
     }
 
