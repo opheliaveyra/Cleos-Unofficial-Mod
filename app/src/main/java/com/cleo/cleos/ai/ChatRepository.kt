@@ -561,6 +561,16 @@ class ChatRepository(
         }
     }
 
+    /** 编辑时要用到的一条历史消息；它的媒体已经在事务外面复制好了。 */
+    private data class PreparedEdit(
+        val row: MessageEntity,
+        val pictures: List<MessageImage>,
+        /** 原来的文件名 → 复制出来的那一份（分享卡里的图要照这个名字换）。 */
+        val byName: Map<String, MessageImage>,
+        val share: FeedShare?,
+        val audio: MessageAudio?,
+    )
+
     /** Continue a new branch through the edited message; keep the entire original conversation. */
     fun editMessage(original: MessageEntity, text: String, done: (Long?, String?) -> Unit) {
         val shared = FeedShares.decode(original.feedShare)?.copy(caption = text.trim())
@@ -570,6 +580,28 @@ class ChatRepository(
             val copied = mutableListOf<String>()
             var committed = false
             try {
+                // 先把这一段历史里的图片和语音复制出来。这是实打实的磁盘 IO（几十个文件、
+                // 几 MB 到几十 MB），以前整个跑在 db.withTransaction 里面：改一条消息，
+                // 这个聊天里别的写入都要排队，界面就卡一下；而且每编辑一次都永久多留一份副本。
+                // 现在复制在事务外面做完，事务里只剩写数据库。
+                val prefix = MessageEdits.prefix(db.messages().forFavorite(original.conversationId), original)
+                val copies = mutableMapOf<String, String>()
+                fun copyFile(name: String): String = copies.getOrPut(name) {
+                    MessageImageCopies.copyFile(images.dir, name).also { copied += it }
+                }
+                val prepared = prefix.map { row ->
+                    val originals = MessageImages.decode(row.images)
+                    val pictures = originals.map { it.copy(file = copyFile(it.file)) }
+                    val card = if (row.id == original.id) shared else FeedShares.decode(row.feedShare)
+                    card?.images?.forEach { copyFile(it.file) }
+                    PreparedEdit(
+                        row = row,
+                        pictures = pictures,
+                        byName = originals.map { it.file }.zip(pictures).toMap(),
+                        share = card,
+                        audio = MessageAudios.decode(row.audio)?.let { it.copy(file = copyFile(it.file)) },
+                    )
+                }
                 val result = db.withTransaction {
                     val current = db.messages().get(original.id)
                     val problem = MessageEdits.problem(current, original, content)
@@ -581,21 +613,16 @@ class ChatRepository(
                     val title = conversation.title.removePrefix("修改前 · ")
                     val branchId = db.conversations().insert(MessageEdits.branchConversation(conversation, at))
                     val ids = mutableMapOf<Long, Long>()
-                    val prefix = MessageEdits.prefix(db.messages().forFavorite(current.conversationId), current)
-                    fun copyFile(name: String) = MessageImageCopies.copyFile(images.dir, name).also { copied += it }
-                    for (row in prefix) {
-                        val originals = MessageImages.decode(row.images)
-                        val pictures = originals.map { it.copy(file = copyFile(it.file)) }
-                        val copiedByName = originals.map { it.file }.zip(pictures).toMap()
-                        val rowShare = (if (row.id == current.id) shared else FeedShares.decode(row.feedShare))?.let { card ->
-                            card.copy(images = card.images.mapNotNull { copiedByName[it.file] })
+                    for (item in prepared) {
+                        val row = item.row
+                        val rowShare = item.share?.let { card ->
+                            card.copy(images = card.images.mapNotNull { item.byName[it.file] })
                         }
-                        val audio = MessageAudios.decode(row.audio)?.let { it.copy(file = copyFile(it.file)) }
                         val quote = MessageQuotes.decode(row.quote)?.let { it.copy(id = ids[it.id] ?: it.id) }
                         ids[row.id] = db.messages().insert(row.copy(id = 0, conversationId = branchId,
                             content = if (row.id == current.id) content else row.content,
                             feedShare = rowShare?.let(FeedShares::encode),
-                            images = MessageImages.encode(pictures), audio = audio?.let(MessageAudios::encode),
+                            images = MessageImages.encode(item.pictures), audio = item.audio?.let(MessageAudios::encode),
                             quote = quote?.let(MessageQuotes::encode), call = row.call?.let { ids[it] },
                             error = if (row.id == current.id) null else row.error))
                     }
@@ -1637,12 +1664,16 @@ class ChatRepository(
     }
 
     /**
-     * Asks whether something that cannot be taken back may happen. True only for a plain yes:
-     * a deletion has no "always allow", so [Answer.Always] is not a thing this can return.
+     * Asks whether something that cannot be taken back may happen.
+     *
+     * [Consent.Yes] only for a plain yes: a deletion has no "always allow", so [Answer.Always]
+     * is not a thing this can return. **问不到人的时候返回 [Consent.Unavailable]，不是
+     * [Consent.No]** —— 主动唤醒和到点写信都没有流式气泡，卡片挂不上去；把那种情况说成
+     * "对方不同意"，就等于替人拒绝了一次，而它会把这件事记下来、下次说出来。
      */
-    suspend fun allow(conversationId: Long, request: ToolAsk): Boolean {
-        val live = _streaming.value[conversationId] ?: return false
-        return ask(conversationId, live, request) == Answer.Yes
+    suspend fun allow(conversationId: Long, request: ToolAsk): Consent {
+        val live = _streaming.value[conversationId] ?: return Consent.Unavailable
+        return if (ask(conversationId, live, request) == Answer.Yes) Consent.Yes else Consent.No
     }
 
     /** The person answered the card in [conversationId]. */

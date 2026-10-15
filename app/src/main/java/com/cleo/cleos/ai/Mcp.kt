@@ -70,6 +70,22 @@ data class ToolAsk(
     val repeatable: Boolean = true,
 )
 
+/**
+ * 问了一次之后的结果：明明白白的"行"、明明白白的"不行"，或者**根本没人在**。
+ *
+ * 后两者必须分开。TA 自己醒过来的时候（主动找人、到点写信），聊天里没有那条流式气泡
+ * 可以挂卡片，人也不在看手机 —— 这时什么都没发生。以前这里一并算成"不行"，
+ * 于是它在日记和下一次聊天里说"你不同意我改"：一件**从来没发生过**的拒绝，
+ * 就这么进了它的记忆。人被拒绝一次还能解释，被人替你拒绝一次是解释不了的。
+ */
+enum class Consent {
+    Yes,
+    No,
+
+    /** 问不到人：没人在看（TA 自己在后台醒着），什么都没发生。 */
+    Unavailable,
+}
+
 class McpException(message: String) : Exception(message)
 
 /** The parts of talking to an MCP service that don't touch the network. */

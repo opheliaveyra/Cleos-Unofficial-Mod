@@ -118,7 +118,7 @@ class ToolBoxTest {
 
     private fun space() = Workspace(File(temp.root, "ws"))
 
-    private fun boxWith(ws: Workspace, allow: suspend (Long, ToolAsk) -> Boolean) =
+    private fun boxWith(ws: Workspace, allow: suspend (Long, ToolAsk) -> Consent) =
         ToolBox(todos, diary, weather, workspace = { ws }, allow = allow, clock = { nowMillis }, zone = { zone })
 
     private fun call(box: ToolBox, name: String, args: String) =
@@ -145,7 +145,7 @@ class ToolBoxTest {
         val ws = space()
         ws.write("草稿.md", "还在")
         var asked = 0
-        val box = boxWith(ws) { _, _ -> asked++; false }
+        val box = boxWith(ws) { _, _ -> asked++; Consent.No }
         val out = call(box, ToolSpecs.deleteWorkspace.name, """{"path":"草稿.md","reason":"写错了"}""")
         assertEquals(1, asked)
         assertTrue(out.result, out.result.contains("没有同意"))
@@ -162,7 +162,7 @@ class ToolBoxTest {
             assertTrue(request.arguments.contains("理由：写错了"))
             assertTrue(request.warning.orEmpty().contains("找不回来"))
             assertFalse("删除不该给「以后都允许」", request.repeatable)
-            true
+            Consent.Yes
         }
         val out = call(box, ToolSpecs.deleteWorkspace.name, """{"path":"草稿.md","reason":"写错了"}""")
         assertFalse(ws.exists("草稿.md"))
@@ -182,12 +182,37 @@ class ToolBoxTest {
             assertTrue(request.arguments, request.arguments.contains("清掉"))
             assertTrue(request.warning.orEmpty().contains("找不回来"))
             assertFalse(request.repeatable)
-            false
+            Consent.No
         }
         val out = call(box, ToolSpecs.writeWorkspace.name, """{"path":"笔记.md","content":""}""")
         assertEquals(1, asked)
         assertTrue(out.result, out.result.contains("没有同意改写"))
         assertEquals("被拒绝之后原文必须一个字都没动", "原来的内容", ws.read("笔记.md", 0, 100))
+    }
+
+    @Test
+    fun whenNobodyIsThereToAskItIsNotReportedAsARefusal() {
+        // TA 自己在后台醒着的时候没人可问（主动找人、到点写信）：这时什么都没发生。
+        // 以前这种情况被当成"对方不同意"，于是它在日记里、下一次聊天里说出一个
+        // **从来没发生过的拒绝** —— 人根本没看见过那张卡片，却背了个"不同意"。
+        val ws = space()
+        ws.write("笔记.md", "原来的内容")
+        ws.write("草稿.md", "还在")
+        var asked = 0
+        val box = boxWith(ws) { _, _ -> asked++; Consent.Unavailable }
+
+        val rewrite = call(box, ToolSpecs.writeWorkspace.name, """{"path":"笔记.md","content":"新的"}""")
+        val delete = call(box, ToolSpecs.deleteWorkspace.name, """{"path":"草稿.md","reason":"写错了"}""")
+        assertEquals(2, asked)
+
+        for (out in listOf(rewrite, delete)) {
+            assertTrue(out.result, out.result.contains("问不到"))
+            // 「对方没有同意」是拒绝的措辞，不能用在没人可问的时候 ——
+            // TA 会把这句记下来，下次聊天里当成真事说出来。
+            assertFalse("不能说成被拒绝了：${out.result}", out.result.contains("对方没有同意"))
+        }
+        assertEquals("原文一个字都不能动", "原来的内容", ws.read("笔记.md", 0, 100))
+        assertTrue("文件必须原样还在", ws.exists("草稿.md"))
     }
 
     @Test
@@ -202,7 +227,7 @@ class ToolBoxTest {
     @Test
     fun theWorkspaceToolsCannotReachOutsideTheirOwnFolder() {
         val ws = space()
-        val box = boxWith(ws) { _, _ -> true }
+        val box = boxWith(ws) { _, _ -> Consent.Yes }
         val out = call(box, ToolSpecs.writeWorkspace.name, """{"path":"../../cleos.db","content":"x"}""")
         assertTrue(out.result, out.result.contains("只能在自己的工作区里"))
         assertFalse(File(temp.root.parentFile, "cleos.db").exists())

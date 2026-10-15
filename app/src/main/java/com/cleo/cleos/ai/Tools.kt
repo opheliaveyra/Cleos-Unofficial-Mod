@@ -826,7 +826,7 @@ class ToolBox(
      * whether they said yes. Asked for at the call, like the shelf above: the chat that shows
      * the card is made after this box.
      */
-    private val allow: suspend (conversationId: Long, request: ToolAsk) -> Boolean = { _, _ -> false },
+    private val allow: suspend (conversationId: Long, request: ToolAsk) -> Consent = { _, _ -> Consent.No },
     /** Reads web pages, for read_webpage; null when the app has no way out to the network. */
     private val web: WebReader? = null,
     /** Searches the web, for web_search; null when nothing is set up for it. */
@@ -1078,7 +1078,7 @@ class ToolBox(
                 after < before -> "比原来的 ${before} 字短，少掉的那些换不回来。"
                 else -> "原来的 $before 字会被整个换掉。"
             }
-            val yes = allow(
+            val consent = allow(
                 conversationId,
                 ToolAsk(
                     service = "改写你工作区里的",
@@ -1088,9 +1088,16 @@ class ToolBox(
                     repeatable = false,
                 ),
             )
-            if (!yes) {
-                return ToolOutcome(
+            when (consent) {
+                Consent.Yes -> Unit
+                Consent.No -> return ToolOutcome(
                     "对方没有同意改写「$path」，它一个字都没动。想往后加内容可以用 append_workspace；对方不同意就不要换个说法再写一遍。",
+                    "没改《$path》",
+                )
+                // TA 自己在后台醒着的时候问不到人。这不是被拒绝 —— 别把没发生过的事说成"对方不同意"。
+                Consent.Unavailable -> return ToolOutcome(
+                    "这会儿问不到对方（你是自己醒过来的，对方没在看手机），所以「$path」一个字都没动。" +
+                        "这不是对方不同意，是没人可问：等对方在的时候再改，或者现在用 append_workspace 往后加。",
                     "没改《$path》",
                 )
             }
@@ -1159,7 +1166,7 @@ class ToolBox(
         }
         val detail = runCatching { folder.describe(path) }.getOrDefault("")
         val why = ToolArgs.text(args, "reason").orEmpty().trim()
-        val yes = allow(
+        val consent = allow(
             conversationId,
             ToolAsk(
                 service = "删掉你工作区里的",
@@ -1169,8 +1176,15 @@ class ToolBox(
                 repeatable = false,
             ),
         )
-        if (!yes) {
-            return ToolOutcome("对方没有同意删「$path」，它原样还在。不要再试一次，也不要说已经删了；需要的话问问对方为什么。", "没删《$path》")
+        when (consent) {
+            Consent.Yes -> Unit
+            Consent.No -> return ToolOutcome("对方没有同意删「$path」，它原样还在。不要再试一次，也不要说已经删了；需要的话问问对方为什么。", "没删《$path》")
+            // 同上：后台醒来时没人可问，不是被拒。
+            Consent.Unavailable -> return ToolOutcome(
+                "这会儿问不到对方（你是自己醒过来的，对方没在看手机），所以没有删「$path」，它原样还在。" +
+                    "这不是对方不同意，是没人可问：等对方在的时候再删。",
+                "没删《$path》",
+            )
         }
         val count = try {
             folder.delete(path)
