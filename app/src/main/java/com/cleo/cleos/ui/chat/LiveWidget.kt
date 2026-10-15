@@ -5,18 +5,22 @@ import android.graphics.Color as AndroidColor
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -26,6 +30,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import com.cleo.cleos.glass.GlassShape
+import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
 
 /** 一条消息切开的样子：普通文字、跑起来的小玩意儿，或者一张画出来的卡片。 */
@@ -184,11 +191,48 @@ internal fun MessageBody(text: String, color: Color, style: TextStyle, modifier:
 @Composable
 internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
+    var expanded by remember(html) { mutableStateOf(false) }
+
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        WebBox(html, ink, Modifier.fillMaxWidth())
+        Text(
+            "点开放大",
+            color = palette.contentSecondary,
+            fontSize = 11.sp,
+            modifier = Modifier.clickable { expanded = true },
+        )
+    }
+
+    if (expanded) {
+        Dialog(onDismissRequest = { expanded = false }) {
+            GlassSurface(
+                modifier = Modifier.fillMaxWidth(),
+                style = palette.card,
+                shape = GlassShape.Rounded(24.dp),
+                contentPadding = PaddingValues(16.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
+                    WebBox(html, ink, Modifier.fillMaxWidth().height(420.dp))
+                    TextButton(onClick = { expanded = false }, modifier = Modifier.align(Alignment.End)) {
+                        Text("收起", color = palette.content)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 真正跑起来的那个框子。气泡里一个、放大后一个 —— 两个 WebView 各跑各的。 */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun WebBox(html: String, ink: Color, modifier: Modifier = Modifier) {
+    val palette = LocalGlassPalette.current
     val density = LocalDensity.current.density
     var heightPx by remember(html) { mutableIntStateOf(0) }
     var failure by remember(html) { mutableStateOf<String?>(null) }
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()

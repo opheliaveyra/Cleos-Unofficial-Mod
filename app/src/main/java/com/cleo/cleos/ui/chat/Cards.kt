@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
@@ -130,12 +132,56 @@ object Cards {
  *
  * [onAnswer] 只在人真的点了之后才调用：选的那个选项、是/不是、或者他填进去的那句，
  * 当成对方说的话走。所以卡片不是"另一种回答方式"，它就是**帮人少打几个字**。
+ *
+ * 另外留了一个**放大看**的出口：气泡那边窄，万一哪里显示不下（或者字太小不好点），
+ * 点一下就能弹成全屏。两条路都通着，不用赌哪一条一定行。
  */
 @Composable
 internal fun ChatCardView(card: ChatCard, onAnswer: (String) -> Unit, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
+    // 状态提到外面：气泡里那份和放大那份是同一张卡，回答过就是回答过了。
     var answered by remember(card) { mutableStateOf<String?>(null) }
     var typed by remember(card) { mutableStateOf("") }
+    var expanded by remember(card) { mutableStateOf(false) }
+    val reply: (String) -> Unit = { said ->
+        answered = said
+        onAnswer(said)
+    }
+
+    CardBody(card, answered, typed, { typed = it }, reply, modifier, onExpand = { expanded = true })
+
+    if (expanded) {
+        Dialog(onDismissRequest = { expanded = false }) {
+            GlassSurface(
+                modifier = Modifier.fillMaxWidth(),
+                style = palette.card,
+                shape = GlassShape.Rounded(24.dp),
+                contentPadding = PaddingValues(18.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
+                    CardBody(card, answered, typed, { typed = it }, reply, Modifier.fillMaxWidth(), onExpand = null)
+                    TextButton(onClick = { expanded = false }, modifier = Modifier.align(Alignment.End)) {
+                        Text("收起", color = palette.content)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 卡片的样子本身。气泡里和放大后用的是同一份，所以看着是同一张卡。 */
+@Composable
+private fun CardBody(
+    card: ChatCard,
+    answered: String?,
+    typed: String,
+    onTyped: (String) -> Unit,
+    onAnswer: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    onExpand: (() -> Unit)?,
+) {
+    val palette = LocalGlassPalette.current
 
     GlassSurface(
         modifier = modifier.fillMaxWidth(),
@@ -143,7 +189,14 @@ internal fun ChatCardView(card: ChatCard, onAnswer: (String) -> Unit, modifier: 
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            card.title?.let { Text(it, color = palette.content, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                card.title?.let {
+                    Text(it, color = palette.content, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                } ?: Spacer(Modifier.weight(1f))
+                onExpand?.let {
+                    Text("放大", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.clickable(onClick = it))
+                }
+            }
             when (card) {
                 is ChatCard.Choice -> card.body?.let { Text(it, color = palette.contentSecondary, fontSize = 13.sp, lineHeight = 19.sp) }
                 is ChatCard.Confirm -> card.body?.let { Text(it, color = palette.contentSecondary, fontSize = 13.sp, lineHeight = 19.sp) }
@@ -157,28 +210,19 @@ internal fun ChatCardView(card: ChatCard, onAnswer: (String) -> Unit, modifier: 
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     card.options.forEach { option ->
-                        CardAction(option, chosen = answered == option, enabled = answered == null) {
-                            answered = option
-                            onAnswer(option)
-                        }
+                        CardAction(option, chosen = answered == option, enabled = answered == null) { onAnswer(option) }
                     }
                 }
 
                 is ChatCard.Confirm -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CardAction(card.yes, chosen = answered == card.yes, enabled = answered == null, accent = true) {
-                        answered = card.yes
-                        onAnswer(card.yes)
-                    }
-                    CardAction(card.no, chosen = answered == card.no, enabled = answered == null) {
-                        answered = card.no
-                        onAnswer(card.no)
-                    }
+                    CardAction(card.yes, chosen = answered == card.yes, enabled = answered == null, accent = true) { onAnswer(card.yes) }
+                    CardAction(card.no, chosen = answered == card.no, enabled = answered == null) { onAnswer(card.no) }
                 }
 
                 is ChatCard.Ask -> {
                     OutlinedTextField(
                         value = typed,
-                        onValueChange = { typed = it.take(500) },
+                        onValueChange = { onTyped(it.take(500)) },
                         placeholder = { Text(card.placeholder) },
                         singleLine = true,
                         enabled = answered == null,
@@ -186,14 +230,7 @@ internal fun ChatCardView(card: ChatCard, onAnswer: (String) -> Unit, modifier: 
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (answered == null) {
-                        TextButton(
-                            enabled = typed.isNotBlank(),
-                            onClick = {
-                                val said = typed.trim()
-                                answered = said
-                                onAnswer(said)
-                            },
-                        ) { Text(card.send) }
+                        TextButton(enabled = typed.isNotBlank(), onClick = { onAnswer(typed.trim()) }) { Text(card.send) }
                     }
                 }
 
