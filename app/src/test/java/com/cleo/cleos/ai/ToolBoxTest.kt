@@ -5,6 +5,7 @@ import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.DiaryBlock
 import com.cleo.cleos.data.DiaryBlocks
 import com.cleo.cleos.data.MessageFile
+import com.cleo.cleos.data.Workspace
 import com.cleo.cleos.data.db.DiaryDao
 import com.cleo.cleos.data.db.DiaryEntryEntity
 import com.cleo.cleos.data.db.LetterEntity
@@ -17,7 +18,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -105,6 +109,76 @@ class ToolBoxTest {
         assertEquals(setOf(ToolGroup.Files), spec.groups)
         assertTrue(ToolSpecs.offered(setOf(ToolGroup.Files)).any { it.name == spec.name })
         assertFalse(ToolSpecs.offered(setOf(ToolGroup.Todos)).any { it.name == spec.name })
+    }
+
+    // ---- the TA's own folder ------------------------------------------------------------------
+
+    @get:Rule
+    val temp = TemporaryFolder()
+
+    private fun space() = Workspace(File(temp.root, "ws"))
+
+    private fun boxWith(ws: Workspace, allow: suspend (Long, ToolAsk) -> Boolean) =
+        ToolBox(todos, diary, weather, workspace = { ws }, allow = allow, clock = { nowMillis }, zone = { zone })
+
+    private fun call(box: ToolBox, name: String, args: String) =
+        runBlocking { box.run(ToolCall("w", name, args), all, conversationId = 7) }
+
+    @Test
+    fun writingAndReadingTheWorkspaceNeedsNoPermission() {
+        val ws = space()
+        val box = boxWith(ws) { _, _ -> error("写文件不该问用户要授权") }
+        assertTrue(call(box, ToolSpecs.writeWorkspace.name, """{"path":"笔记/想法.md","content":"第一条"}""").result.contains("写好了"))
+        assertTrue(call(box, ToolSpecs.readWorkspace.name, """{"path":"笔记/想法.md"}""").result.contains("第一条"))
+        assertTrue(call(box, ToolSpecs.appendWorkspace.name, """{"path":"笔记/想法.md","content":"\n第二条"}""").result.contains("接上"))
+        // The listing is one level at a time, like a folder: the root holds the folder,
+        // and the folder holds the file.
+        val root = call(box, ToolSpecs.listWorkspace.name, """{}""").result
+        assertTrue(root, root.contains("笔记"))
+        val inside = call(box, ToolSpecs.listWorkspace.name, """{"path":"笔记"}""").result
+        assertTrue(inside, inside.contains("笔记/想法.md"))
+        assertEquals("第一条\n第二条", ws.read("笔记/想法.md", 0, 100))
+    }
+
+    @Test
+    fun deletingWithoutThePersonsYesChangesNothing() {
+        val ws = space()
+        ws.write("草稿.md", "还在")
+        var asked = 0
+        val box = boxWith(ws) { _, _ -> asked++; false }
+        val out = call(box, ToolSpecs.deleteWorkspace.name, """{"path":"草稿.md","reason":"写错了"}""")
+        assertEquals(1, asked)
+        assertTrue(out.result, out.result.contains("没有同意"))
+        assertTrue("被拒绝之后文件必须原样还在", ws.exists("草稿.md"))
+        assertEquals("没删《草稿.md》", out.note)
+    }
+
+    @Test
+    fun deletingHappensOnlyAfterAPlainYes() {
+        val ws = space()
+        ws.write("草稿.md", "还在")
+        val box = boxWith(ws) { _, request ->
+            // The card has to say what is going and what cannot be undone.
+            assertTrue(request.arguments.contains("理由：写错了"))
+            assertTrue(request.warning.orEmpty().contains("找不回来"))
+            assertFalse("删除不该给「以后都允许」", request.repeatable)
+            true
+        }
+        val out = call(box, ToolSpecs.deleteWorkspace.name, """{"path":"草稿.md","reason":"写错了"}""")
+        assertFalse(ws.exists("草稿.md"))
+        assertTrue(out.result.contains("删掉"))
+    }
+
+    @Test
+    fun theWorkspaceToolsCannotReachOutsideTheirOwnFolder() {
+        val ws = space()
+        val box = boxWith(ws) { _, _ -> true }
+        val out = call(box, ToolSpecs.writeWorkspace.name, """{"path":"../../cleos.db","content":"x"}""")
+        assertTrue(out.result, out.result.contains("只能在自己的工作区里"))
+        assertFalse(File(temp.root.parentFile, "cleos.db").exists())
+        val climbing = call(box, ToolSpecs.deleteWorkspace.name, """{"path":".."}""")
+        assertTrue(climbing.result, climbing.result.contains("没有「..」"))
+        assertTrue(climbing.note, climbing.note.contains("没有这个文件"))
     }
 
     @Test

@@ -69,8 +69,8 @@ data class StreamingReply(
     val activity: String? = null,
     /** The reply is over; this is only the hand-over to the stored bubble. */
     val finished: Boolean = false,
-    /** A call to an outside service waiting for the person to allow it. */
-    val asking: McpAsk? = null,
+    /** Something the TA may not do without being asked first, waiting for the person to allow it. */
+    val asking: ToolAsk? = null,
     /** What the model has thought so far, before [text]. */
     val thought: String = "",
     /** How long it thought, once it is done thinking; null while it still is. */
@@ -1590,7 +1590,7 @@ class ChatRepository(
         val args = ToolArgs.parse(call.arguments)
             ?: return ToolOutcome("参数不是合法的 JSON 对象，按参数说明重新调用。", "用${what}没成：参数写错了")
         if (server.askFirst && !tool.readOnly && tool.name !in server.allowed) {
-            when (ask(conversationId, live, McpAsk(tool.serverName, tool.title, Mcp.preview(args)))) {
+            when (ask(conversationId, live, ToolAsk("用${tool.serverName}的", tool.title, Mcp.preview(args)))) {
                 Answer.No -> return ToolOutcome(
                     "对方没有同意，这次没有调用。需要的话在聊天里问问对方。",
                     "没让${ai.ifBlank { "TA" }}用$what",
@@ -1610,7 +1610,7 @@ class ChatRepository(
     }
 
     /** Shows the card and waits for the person. No answer in [ASK_WAIT] counts as no. */
-    private suspend fun ask(conversationId: Long, live: StreamingReply, question: McpAsk): Answer {
+    private suspend fun ask(conversationId: Long, live: StreamingReply, question: ToolAsk): Answer {
         val answer = CompletableDeferred<Answer>()
         asks[conversationId] = answer
         show(live.copy(activity = null, asking = question))
@@ -1619,6 +1619,15 @@ class ChatRepository(
         } finally {
             asks.remove(conversationId, answer)
         }
+    }
+
+    /**
+     * Asks whether something that cannot be taken back may happen. True only for a plain yes:
+     * a deletion has no "always allow", so [Answer.Always] is not a thing this can return.
+     */
+    suspend fun allow(conversationId: Long, request: ToolAsk): Boolean {
+        val live = _streaming.value[conversationId] ?: return false
+        return ask(conversationId, live, request) == Answer.Yes
     }
 
     /** The person answered the card in [conversationId]. */

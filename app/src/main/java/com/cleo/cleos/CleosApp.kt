@@ -38,6 +38,7 @@ import com.cleo.cleos.data.McpServers
 import com.cleo.cleos.data.SecretStore
 import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.Stickers
+import com.cleo.cleos.data.Workspace
 import com.cleo.cleos.data.db.AppDatabase
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +92,9 @@ class AppContainer(context: Context) {
     val images = ImageStore(context)
     /** Files sent in the chat, kept as they came; the text read out of them sits beside them. */
     val files = FileStore(context)
+
+    /** The TA's own folder: what it writes for itself, kept apart from the person's files. */
+    val workspace = Workspace(context)
     val feed = com.cleo.cleos.data.FeedRepository(db, images)
 
     private val http = OkHttpClient.Builder()
@@ -142,6 +146,9 @@ class AppContainer(context: Context) {
         photos = com.cleo.cleos.ai.PhotoBook(photoSource, diagnostic = { toolDiagnostics.record(it) }),
         // Read at the call: the chat that answers read_file is made just below.
         fileShelf = { chat },
+        workspace = { workspace },
+        // A deletion waits on a card in the chat, which is made just below as well.
+        allow = { conversationId, request -> chat.allow(conversationId, request) },
     )
     val recaps = Recaps(db, settings, secrets, chatClient, appScope)
     val mcp = McpHub(

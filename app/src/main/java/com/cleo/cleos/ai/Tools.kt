@@ -6,6 +6,9 @@ import com.cleo.cleos.data.DiaryBlock
 import com.cleo.cleos.data.DiaryBlocks
 import com.cleo.cleos.data.MessageFile
 import com.cleo.cleos.data.Pats
+import com.cleo.cleos.data.Workspace
+import com.cleo.cleos.data.WorkspaceException
+import com.cleo.cleos.data.readableSize
 import com.cleo.cleos.data.db.DiaryDao
 import com.cleo.cleos.data.db.DiaryEntryEntity
 import com.cleo.cleos.data.db.LetterEntity
@@ -45,7 +48,7 @@ import java.util.Locale
  * writes a sticker's name into what it says, so it is told about apart from the tools, and a model
  * that takes no tools sends them too.
  */
-enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files }
+enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files, Workspace }
 
 /**
  * A function offered to the model, when any of its [groups] is on. [parameters] is a
@@ -547,6 +550,90 @@ object ToolSpecs {
         ),
     )
 
+    // The TA's own folder (data/Workspace.kt). Unlike Files, this one is a switch in settings:
+    // writing files on someone's phone is a thing they should be able to turn off. Deleting is
+    // not part of that switch — it is asked for every single time, on a card, whatever the
+    // settings say (ChatRepository.allow).
+
+    val listWorkspace = ToolSpec(
+        name = "list_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "看工作区",
+        description = "列出你自己工作区里的文件和文件夹（那是你的地方，不是对方发来的文件）。写东西之前先看一眼，" +
+            "免得把同名文件覆盖掉。path 留空看根目录。",
+        parameters = schema("path" to prop("string", "可不填。看哪个子文件夹，留空看根目录")),
+    )
+    val readWorkspace = ToolSpec(
+        name = "read_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "读工作区",
+        description = "读你工作区里某个文件的内容。文件长就分段读：先不填 offset，返回里会写着下次从哪接着读。",
+        parameters = schema(
+            required = listOf("path"),
+            "path" to prop("string", "文件的相对路径，比如 笔记/想法.md"),
+            "offset" to prop("integer", "从第几个字开始读，默认 0；接着上次读就填上次返回的 next"),
+            "limit" to prop("integer", "这次读多少字，默认 3000，最多 6000"),
+        ),
+    )
+    val writeWorkspace = ToolSpec(
+        name = "write_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "写文件",
+        description = "把一个文件整个写进你的工作区（新建，或者覆盖同名文件）。覆盖会让原来的内容没了，" +
+            "想接着写就用 append_workspace，想改几个字就先 read_workspace 读出来再写回去。" +
+            "文件夹会自动建。单个文件最多 1 MB。",
+        parameters = schema(
+            required = listOf("path", "content"),
+            "path" to prop("string", "写到哪，相对路径，比如 草稿.md"),
+            "content" to prop("string", "文件内容，完整写出来"),
+        ),
+    )
+    val appendWorkspace = ToolSpec(
+        name = "append_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "接着写",
+        description = "在一个文件后面接着写，原来的内容保留。记流水账、往清单里加一条，用这个。",
+        parameters = schema(
+            required = listOf("path", "content"),
+            "path" to prop("string", "哪个文件，不存在就新建"),
+            "content" to prop("string", "接在后面的内容"),
+        ),
+    )
+    val makeWorkspaceDir = ToolSpec(
+        name = "make_workspace_dir",
+        groups = setOf(ToolGroup.Workspace),
+        action = "建文件夹",
+        description = "在你的工作区里建一个文件夹，用来分类放东西。已经有了不算错。",
+        parameters = schema(
+            required = listOf("path"),
+            "path" to prop("string", "文件夹的相对路径，比如 项目/小工具"),
+        ),
+    )
+    val moveWorkspace = ToolSpec(
+        name = "move_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "移动文件",
+        description = "把工作区里的文件或文件夹改名、挪到别的文件夹。目标位置已存在同名东西时会失败，那时换个名字或先删掉。",
+        parameters = schema(
+            required = listOf("from", "to"),
+            "from" to prop("string", "原来在哪，相对路径"),
+            "to" to prop("string", "移到哪，相对路径"),
+        ),
+    )
+    val deleteWorkspace = ToolSpec(
+        name = "delete_workspace",
+        groups = setOf(ToolGroup.Workspace),
+        action = "删文件",
+        description = "删掉工作区里的一个文件或文件夹（文件夹连同里面的东西一起删）。" +
+            "**这个动作会弹一张卡片问对方同不同意，对方点了同意才会真的删掉。**" +
+            "对方不同意就是不同意，不要再试一次，也不要说已经删了。删之前先看清楚要删的是什么。",
+        parameters = schema(
+            required = listOf("path"),
+            "path" to prop("string", "要删的文件或文件夹，相对路径"),
+            "reason" to prop("string", "为什么删，一句话。这句话会显示给对方看，帮他判断同不同意"),
+        ),
+    )
+
     val all = listOf(
         sendMessage,
         sendVoice,
@@ -582,6 +669,13 @@ object ToolSpecs {
         searchPhotos,
         sharePhoto,
         readFile,
+        listWorkspace,
+        readWorkspace,
+        writeWorkspace,
+        appendWorkspace,
+        makeWorkspaceDir,
+        moveWorkspace,
+        deleteWorkspace,
     )
     val byName = all.associateBy { it.name }
 
@@ -682,6 +776,14 @@ class ToolBox(
     private val photos: PhotoBook? = null,
     /** The files the person sent, for read_file; asked for at the call, since it is made after this. */
     private val fileShelf: () -> FileShelf? = { null },
+    /** The TA's own folder; likewise made after this. */
+    private val workspace: () -> com.cleo.cleos.data.Workspace? = { null },
+    /**
+     * Asks the person whether something that cannot be taken back may happen, and answers
+     * whether they said yes. Asked for at the call, like the shelf above: the chat that shows
+     * the card is made after this box.
+     */
+    private val allow: suspend (conversationId: Long, request: ToolAsk) -> Boolean = { _, _ -> false },
 ) {
     private val book = memories?.let { MemoryBook(it, clock) }
     private val loreBook = lore?.let { LoreBook(it) }
@@ -728,6 +830,13 @@ class ToolBox(
                 ToolSpecs.sendMessage.name, ToolSpecs.sendVoice.name -> ToolOutcome(ToolSpecs.SENT, "")
                 ToolSpecs.readLetters.name -> readLetters(args, today, companionId)
                 ToolSpecs.readFile.name -> readFile(args, conversationId)
+                ToolSpecs.listWorkspace.name -> listWorkspace(args)
+                ToolSpecs.readWorkspace.name -> readWorkspace(args)
+                ToolSpecs.writeWorkspace.name -> writeWorkspace(args)
+                ToolSpecs.appendWorkspace.name -> appendWorkspace(args)
+                ToolSpecs.makeWorkspaceDir.name -> makeWorkspaceDir(args)
+                ToolSpecs.moveWorkspace.name -> moveWorkspace(args)
+                ToolSpecs.deleteWorkspace.name -> deleteWorkspace(args, conversationId)
                 ToolSpecs.memory.name -> (book ?: throw ToolFailure("现在记不了。", "这里记不了")).act(args, companionId)
                 ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了设定。", "这里查不了")).act(args, companionId)
                 ToolSpecs.getLocation.name -> getLocation()
@@ -791,6 +900,144 @@ class ToolBox(
             "到这里就是全文的结尾。"
         }
         return ToolOutcome("【${file.name} 第 $offset–$end 字，共 $total 字】\n$body\n（$more）", "读了《${file.name}》")
+    }
+
+    // ---- the TA's own folder (data/Workspace.kt) ----------------------------------------------
+    //
+    // Writing and reading are the TA's own business. Deleting is not: it goes to the person on a
+    // card every single time, whatever the settings say, and a no is a no (ChatRepository.allow).
+
+    private fun space(): Workspace = workspace() ?: throw ToolFailure("工作区现在用不了。", "工作区用不了")
+
+    /** A refusal from the folder itself, told to the model in a way it can act on. */
+    private fun refused(e: WorkspaceException, note: String): Nothing = throw ToolFailure(e.message ?: "这个操作没成。", note)
+
+    private suspend fun listWorkspace(args: JsonObject): ToolOutcome {
+        val path = ToolArgs.text(args, "path").orEmpty().trim()
+        val entries = try {
+            space().list(path)
+        } catch (e: WorkspaceException) {
+            refused(e, "看工作区没成")
+        }
+        val where = path.ifBlank { "/" }
+        if (entries.isEmpty()) return ToolOutcome("「$where」里现在是空的。可以往这儿写点东西。", "看了工作区")
+        val lines = entries.joinToString("\n") { entry ->
+            if (entry.directory) "- ${entry.path}/（文件夹）" else "- ${entry.path}（${readableSize(entry.size)}）"
+        }
+        return ToolOutcome("「$where」里有：\n$lines", "看了工作区")
+    }
+
+    private suspend fun readWorkspace(args: JsonObject): ToolOutcome {
+        val path = ToolArgs.text(args, "path").orEmpty().trim()
+        if (path.isEmpty()) throw ToolFailure("要填 path：读哪个文件。", "没说读哪个文件")
+        val whole = try {
+            space().read(path, 0, Workspace.MAX_FILE)
+        } catch (e: WorkspaceException) {
+            refused(e, "读工作区没成")
+        }
+        if (whole.isEmpty()) return ToolOutcome("「$path」是个空文件。", "读了《$path》")
+        val offset = (ToolArgs.int(args["offset"]) ?: 0).coerceIn(0, whole.length - 1)
+        val limit = (ToolArgs.int(args["limit"]) ?: WORKSPACE_CHUNK).coerceIn(200, WORKSPACE_MAX_CHUNK)
+        val end = minOf(offset + limit, whole.length)
+        val more = if (end < whole.length) {
+            "还没完。接着读：read_workspace(path=\"$path\", offset=$end)"
+        } else {
+            "到这里就是全文的结尾。"
+        }
+        return ToolOutcome("【$path 第 $offset–$end 字，共 ${whole.length} 字】\n${whole.substring(offset, end)}\n（$more）", "读了《$path》")
+    }
+
+    private suspend fun writeWorkspace(args: JsonObject): ToolOutcome {
+        val path = ToolArgs.text(args, "path").orEmpty().trim()
+        val content = ToolArgs.text(args, "content").orEmpty()
+        if (path.isEmpty()) throw ToolFailure("要填 path：写到哪个文件。", "没说写到哪")
+        val overwrote = space().exists(path)
+        try {
+            space().write(path, content)
+        } catch (e: WorkspaceException) {
+            refused(e, "写文件没成")
+        }
+        val size = content.toByteArray(Charsets.UTF_8).size
+        return ToolOutcome(
+            if (overwrote) "已经把「$path」整个改写过了（${readableSize(size.toLong())}）。原来的内容被这次覆盖了。" else "写好了「$path」（${readableSize(size.toLong())}）。",
+            if (overwrote) "改了《$path》" else "写了《$path》",
+        )
+    }
+
+    private suspend fun appendWorkspace(args: JsonObject): ToolOutcome {
+        val path = ToolArgs.text(args, "path").orEmpty().trim()
+        val content = ToolArgs.text(args, "content").orEmpty()
+        if (path.isEmpty()) throw ToolFailure("要填 path：写到哪个文件。", "没说写到哪")
+        val fresh = !space().exists(path)
+        try {
+            space().append(path, content)
+        } catch (e: WorkspaceException) {
+            refused(e, "接着写没成")
+        }
+        return ToolOutcome(
+            if (fresh) "把「$path」写出来了（原来是空的）。" else "已经在「$path」后面接上了。",
+            if (fresh) "写了《$path》" else "续写了《$path》",
+        )
+    }
+
+    private suspend fun makeWorkspaceDir(args: JsonObject): ToolOutcome {
+        val path = ToolArgs.text(args, "path").orEmpty().trim()
+        if (path.isEmpty()) throw ToolFailure("要填 path：建哪个文件夹。", "没说建哪个")
+        try {
+            space().makeDir(path)
+        } catch (e: WorkspaceException) {
+            refused(e, "建文件夹没成")
+        }
+        return ToolOutcome("文件夹「$path」可以用了。", "建了文件夹《$path》")
+    }
+
+    private suspend fun moveWorkspace(args: JsonObject): ToolOutcome {
+        val from = ToolArgs.text(args, "from").orEmpty().trim()
+        val to = ToolArgs.text(args, "to").orEmpty().trim()
+        if (from.isEmpty() || to.isEmpty()) throw ToolFailure("要填 from 和 to：从哪挪到哪。", "没说挪到哪")
+        try {
+            space().move(from, to)
+        } catch (e: WorkspaceException) {
+            refused(e, "移动没成")
+        }
+        return ToolOutcome("「$from」已经挪到「$to」了。", "挪了《$from》")
+    }
+
+    /**
+     * Deleting in the TA's own folder. It never happens on the model's word alone: the card goes
+     * to the person with what is about to go and why, and only a plain yes deletes anything.
+     */
+    private suspend fun deleteWorkspace(args: JsonObject, conversationId: Long): ToolOutcome {
+        val space = space()
+        val path = ToolArgs.text(args, "path").orEmpty().trim().trim('/')
+        if (path.isEmpty()) throw ToolFailure("要填 path：删哪个文件。", "没说删哪个")
+        if (!space.exists(path)) {
+            throw ToolFailure("工作区里没有「$path」，先用 list_workspace 看一眼现在有什么。", "没有这个文件")
+        }
+        val detail = runCatching { space.describe(path) }.getOrDefault("")
+        val why = ToolArgs.text(args, "reason").orEmpty().trim()
+        val yes = allow(
+            conversationId,
+            ToolAsk(
+                service = "删掉你工作区里的",
+                tool = path,
+                arguments = listOfNotNull(detail.takeIf { it.isNotEmpty() }, why.takeIf { it.isNotEmpty() }?.let { "理由：$it" }).joinToString("\n"),
+                warning = "删掉就找不回来了，也没有回收站。确认这是你要删的。",
+                repeatable = false,
+            ),
+        )
+        if (!yes) {
+            return ToolOutcome("对方没有同意删「$path」，它原样还在。不要再试一次，也不要说已经删了；需要的话问问对方为什么。", "没删《$path》")
+        }
+        val count = try {
+            space.delete(path)
+        } catch (e: WorkspaceException) {
+            refused(e, "删文件没成")
+        }
+        return ToolOutcome(
+            if (count > 1) "已经把「$path」连同里面的 $count 个文件删掉了。" else "已经把「$path」删掉了。",
+            "删了《$path》",
+        )
     }
 
     private suspend fun musicControl(a: JsonObject): ToolOutcome {
@@ -1219,6 +1466,10 @@ class ToolBox(
         const val REASON_MAX = 120
         const val EMOJI_MAX = 8
         const val LETTER_MAX = 2000
+
+        /** How much of a workspace file one read gives back, by default and at most. */
+        const val WORKSPACE_CHUNK = 3000
+        const val WORKSPACE_MAX_CHUNK = 6000
         const val LATER_WHAT_MAX = 200
         const val LATER_WHY_MAX = 200
         const val ALARM_LABEL_MAX = 60

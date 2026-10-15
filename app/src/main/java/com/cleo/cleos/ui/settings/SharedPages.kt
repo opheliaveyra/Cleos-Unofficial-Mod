@@ -225,6 +225,14 @@ internal fun AbilitiesPage(vm: SettingsViewModel, onOpenVoice: () -> Unit) {
         if (on(ToolGroup.Letters)) {
             Under { LetterPace(settings, vm) }
         }
+        RowDivider(inset = 0.dp)
+        ExplainedSwitch(
+            "自己的工作区",
+            "有个自己的文件夹，写东西留着",
+            "TA 有个自己的文件夹，用来写笔记、草稿、清单，写下的东西下次还在。它只能在这个文件夹里读写；" +
+                "删东西一定会先弹卡片问你，你不点同意就删不掉，而且每一次都要问。",
+            on(ToolGroup.Workspace),
+        ) { vm.setTool(ToolGroup.Workspace, it) }
     }
 
     ListCard("用手机") {

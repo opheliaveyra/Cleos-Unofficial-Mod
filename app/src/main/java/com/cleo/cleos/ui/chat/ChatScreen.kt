@@ -88,6 +88,7 @@ import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import com.cleo.cleos.data.MessageEdits
 import androidx.compose.material3.DropdownMenu
@@ -159,7 +160,7 @@ import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ui.LocalPageShown
 import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.CallRecords
-import com.cleo.cleos.ai.McpAsk
+import com.cleo.cleos.ai.ToolAsk
 import com.cleo.cleos.ai.Prompt
 import com.cleo.cleos.ai.Recap
 import com.cleo.cleos.ai.SecretRequest
@@ -2023,11 +2024,16 @@ private fun thoughtFor(ms: Long): String {
 /** How much of a thought still coming in is laid out: more than the three lines shown. */
 private const val THOUGHT_TAIL = 400
 
-/** A TA's call to an outside service, waiting for the person to allow it. */
+/**
+ * Something the TA may not do on its own, waiting for the person: a call to an outside service,
+ * or a deletion in its own workspace. What cannot be taken back is said in red, and a request
+ * that is not repeatable is not offered a "always allow".
+ */
 @Composable
-private fun AskCard(ask: McpAsk, aiName: String, onAnswer: (ChatRepository.Answer) -> Unit) {
+private fun AskCard(ask: ToolAsk, aiName: String, onAnswer: (ChatRepository.Answer) -> Unit) {
     val palette = LocalGlassPalette.current
     val who = aiName.ifBlank { "TA" }
+    val dangerous = ask.warning != null
     GlassSurface(
         modifier = Modifier
             .padding(start = if (LocalFaces.current != null) AvatarSlot else 0.dp)
@@ -2038,21 +2044,31 @@ private fun AskCard(ask: McpAsk, aiName: String, onAnswer: (ChatRepository.Answe
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Extension, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
+                Icon(
+                    if (dangerous) Icons.Rounded.WarningAmber else Icons.Rounded.Extension,
+                    contentDescription = null,
+                    tint = if (dangerous) palette.error else palette.accentContent,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(Modifier.width(8.dp))
-                Text("${who}想用${ask.service}的「${ask.tool}」", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("${who}想${ask.service}「${ask.tool}」", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
             Text(ask.arguments, color = palette.contentSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+            ask.warning?.let { Text(it, color = palette.error, fontSize = 13.sp, lineHeight = 19.sp) }
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 4.dp),
             ) {
                 Pill("允许", accent = true, enabled = true) { onAnswer(ChatRepository.Answer.Yes) }
-                Pill("以后都允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.Always) }
+                if (ask.repeatable) Pill("以后都允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.Always) }
                 Pill("不允许", accent = false, enabled = true) { onAnswer(ChatRepository.Answer.No) }
             }
-            Text("「以后都允许」只管这一个工具，在设置里能改回来。", color = palette.contentSecondary, fontSize = 12.sp)
+            Text(
+                if (ask.repeatable) "「以后都允许」只管这一个工具，在设置里能改回来。" else "这一次只算这一次，下次还会再问你。",
+                color = palette.contentSecondary,
+                fontSize = 12.sp,
+            )
         }
     }
 }

@@ -69,6 +69,9 @@ data class AppSettings(
         ToolGroup.Pat,
         ToolGroup.Feed,
         ToolGroup.FeedActions,
+        // The TA's own folder. On by default: it writes only inside itself, and anything it
+        // wants to delete comes back as a card the person has to say yes to.
+        ToolGroup.Workspace,
     ),
     /** Where "今天天气怎么样" means, when the model isn't told a city. */
     val weatherCity: String = "",

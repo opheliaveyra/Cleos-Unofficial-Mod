@@ -53,8 +53,22 @@ data class McpTool(
         get() = ToolSpec(fnName, emptySet(), "用${serverName}的$title", "【$serverName】$description".trim(), inputSchema)
 }
 
-/** What the card in the chat asks the person: may the TA use this, with these arguments? */
-data class McpAsk(val service: String, val tool: String, val arguments: String)
+/**
+ * What the card in the chat asks the person: may the TA do this, here and now?
+ *
+ * Used for an outside service's tool, and for anything in the TA's own workspace that cannot be
+ * undone. A deletion is asked for every single time, whatever the settings say — that is what
+ * [repeatable] turns off, and why the card then offers no "always allow".
+ */
+data class ToolAsk(
+    val service: String,
+    val tool: String,
+    val arguments: String,
+    /** What cannot be taken back, written out for the person to read before they decide. */
+    val warning: String? = null,
+    /** Whether "always allow" is offered at all. A deletion never offers it. */
+    val repeatable: Boolean = true,
+)
 
 class McpException(message: String) : Exception(message)
 
