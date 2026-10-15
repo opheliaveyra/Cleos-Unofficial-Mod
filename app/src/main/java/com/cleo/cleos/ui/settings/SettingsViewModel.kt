@@ -622,9 +622,10 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun refreshWorkspace() {
+        val id = companionId
         viewModelScope.launch {
             val (entries, usage) = withContext(Dispatchers.IO) {
-                runCatching { c.workspace.list(workspacePath) to c.workspace.usage() }
+                runCatching { c.workspaceFor(id).list(workspacePath) to c.workspaceFor(id).usage() }
                     .getOrElse { emptyList<WorkspaceEntry>() to (0 to 0L) }
             }
             workspaceEntries = entries
@@ -633,9 +634,10 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun openWorkspaceFile(path: String) {
+        val id = companionId
         viewModelScope.launch {
             val text = withContext(Dispatchers.IO) {
-                runCatching { c.workspace.read(path, 0, WORKSPACE_VIEW) }
+                runCatching { c.workspaceFor(id).read(path, 0, WORKSPACE_VIEW) }
                     .onFailure { workspaceNote = it.message }
                     .getOrDefault("")
             }
@@ -648,12 +650,13 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     /** 导出时要的那段文字；调用的人自己在 IO 线程上拿。 */
-    fun workspaceText(path: String): String = c.workspace.read(path, 0, WORKSPACE_VIEW)
+    fun workspaceText(path: String): String = c.workspaceFor(companionId).read(path, 0, WORKSPACE_VIEW)
 
     fun deleteWorkspace(path: String) {
+        val id = companionId
         viewModelScope.launch {
             val message = withContext(Dispatchers.IO) {
-                runCatching { c.workspace.delete(path); null }.getOrElse { it.message ?: "没能删掉" }
+                runCatching { c.workspaceFor(id).delete(path); null }.getOrElse { it.message ?: "没能删掉" }
             }
             workspaceNote = message ?: "删掉了「$path」"
             refreshWorkspace()

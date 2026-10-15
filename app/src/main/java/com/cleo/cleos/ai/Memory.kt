@@ -272,7 +272,10 @@ class MemoryBook(private val dao: MemoryDao, private val clock: () -> Long) {
     private fun strings(e: kotlinx.serialization.json.JsonElement?): List<String> = when (e) {
         is JsonArray -> e.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim() }
         is JsonPrimitive -> e.contentOrNull?.trim()?.let { s ->
-            if (s.startsWith("[")) runCatching { MemoryDetails.decode(s) }.getOrDefault(listOf(s)) else listOf(s)
+            // MemoryDetails.decode 自己就把异常吞成空列表（它从不抛），所以外面套 runCatching
+            // 永远是"成功"、getOrDefault 永远不执行 —— 一个以 [ 开头但不是合法 JSON 的字符串
+            // （模型把细节塞进字符串时就这样）会变成**空的细节**，而 remember 照样回"记下了"。
+            if (s.startsWith("[")) MemoryDetails.decode(s).ifEmpty { listOf(s) } else listOf(s)
         }.orEmpty()
         else -> emptyList()
     }.filter { it.isNotEmpty() }.map { it.take(DETAIL_MAX) }

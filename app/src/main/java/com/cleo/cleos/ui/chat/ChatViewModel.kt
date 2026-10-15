@@ -94,9 +94,13 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
             }.collect { (remembered, ta) ->
                 val id = c.chat.resolveConversation(remembered, ta)
                 if (id != remembered) c.settings.setCurrentConversation(id)
-                // A quote belongs to the conversation it was picked in, and typing to the one it was typed in.
+                // A quote belongs to the conversation it was picked in, typing to the one it was
+                // typed in — and so do the pictures and files that were picked but not sent yet.
                 conversationId.value?.takeIf { it != id }?.let {
                     quoting = null
+                    // 没发出去的图片和文件也跟着前一个会话走。留着的话，切到另一个 TA 打一行字
+                    // 按发送，它们会连字一起发给**另一个人** —— 引用清了，附件忘了清。
+                    clearAttachments()
                     c.chat.typing(it, false)
                 }
                 conversationId.value = id
@@ -216,6 +220,17 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
     fun dropFile(file: MessageFile) {
         fileAttachments.removeAll { it.file == file.file }
         c.appScope.launch { c.files.delete(listOf(file.file)) }
+    }
+
+    /**
+     * 丢掉还没发出去的图片和文件，连它们的私有副本一起。
+     * 换会话、换 TA 的时候必须做这件事：带着走就等于发给另一个人。
+     */
+    private fun clearAttachments() {
+        val files = fileAttachments.map { it.file }
+        attachments.clear()
+        fileAttachments.clear()
+        if (files.isNotEmpty()) c.appScope.launch { c.files.delete(files) }
     }
 
     /** The switch in the input bar: may the TA search the web from here on. */

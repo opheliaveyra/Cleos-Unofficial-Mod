@@ -47,6 +47,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class CleosApp : Application() {
@@ -71,7 +72,7 @@ sealed interface Opening {
 }
 
 /** Hand-made dependency wiring; the app is small enough not to need a DI framework. */
-class AppContainer(context: Context) {
+class AppContainer(private val context: Context) {
     /**
      * Outlives any screen: saves and replies started here finish even if the user leaves.
      *
@@ -93,9 +94,26 @@ class AppContainer(context: Context) {
     /** Files sent in the chat, kept as they came; the text read out of them sits beside them. */
     val files = FileStore(context)
 
-    /** The TA's own folder: what it writes for itself, kept apart from the person's files. */
-    val workspace = Workspace(context)
+    /**
+     * 一个 TA 自己的工作区：**跟着角色走**。切到另一个 TA 就是另一个文件夹，
+     * 它写的笔记别的 TA 读不到、也覆盖不到。
+     */
+    fun workspaceFor(companionId: Long): Workspace = Workspace(context, companionId)
+
     val feed = com.cleo.cleos.data.FeedRepository(db, images)
+
+    init {
+        // 老版本的工作区是大家共用一个文件夹（filesDir/workspace 底下直接放文件）。
+        // 现在按 TA 分开，把那些直接躺在那儿的归给第一个 TA —— 只有一个 TA 时就是他的。
+        appScope.launch {
+            val root = Workspace.root(context)
+            val strays = runCatching { root.listFiles()?.filter { it.isFile }.orEmpty() }.getOrDefault(emptyList())
+            if (strays.isEmpty()) return@launch
+            val owner = runCatching { db.companions().all().firstOrNull()?.id }.getOrNull() ?: return@launch
+            val into = File(root, owner.toString()).apply { mkdirs() }
+            strays.forEach { runCatching { it.renameTo(File(into, it.name)) } }
+        }
+    }
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -151,11 +169,11 @@ class AppContainer(context: Context) {
         photos = com.cleo.cleos.ai.PhotoBook(photoSource, diagnostic = { toolDiagnostics.record(it) }),
         // Read at the call: the chat that answers read_file is made just below.
         fileShelf = { chat },
-        workspace = { workspace },
         // A deletion waits on a card in the chat, which is made just below as well.
         allow = { conversationId, request -> chat.allow(conversationId, request) },
         web = web,
         searcher = searcher,
+        workspace = ::workspaceFor,
     )
     val recaps = Recaps(db, settings, secrets, chatClient, appScope)
     val mcp = McpHub(

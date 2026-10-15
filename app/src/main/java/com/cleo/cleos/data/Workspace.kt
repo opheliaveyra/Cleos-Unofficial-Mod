@@ -20,8 +20,12 @@ class WorkspaceException(message: String) : Exception(message)
  * `../../databases/cleos.db` is either confused or repeating something it read inside a file.
  */
 class Workspace(val dir: File) {
-    /** The one the app makes: a folder of its own beside the pictures and the sent files. */
-    constructor(context: Context) : this(File(context.filesDir, "workspace"))
+    /**
+     * 一个 TA 自己的那一份。**工作区跟着角色走**：切到另一个 TA 就是另一个文件夹，
+     * 一个 TA 写的笔记，别的 TA 既读不到、也覆盖不到 —— 提示词里跟它说的是
+     * 「你自己的地方」，那就得真的是它自己的。
+     */
+    constructor(context: Context, companionId: Long) : this(File(root(context), companionId.toString()))
 
     init {
         dir.mkdirs()
@@ -151,6 +155,9 @@ class Workspace(val dir: File) {
     private fun room(adding: Long): Boolean = adding <= 0 || usage().second + adding <= MAX_TOTAL
 
     companion object {
+        /** 所有 TA 的工作区都在这底下，一个 TA 一个子文件夹。 */
+        fun root(context: Context): File = File(context.filesDir, "workspace")
+
         /** One file may not be bigger than this: the workspace is for writing, not for storing. */
         const val MAX_FILE = 1 shl 20
 
