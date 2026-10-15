@@ -124,6 +124,22 @@ class EndpointFields(private val c: AppContainer, private val scope: CoroutineSc
         savingProfile = false
     }
 
+    /**
+     * An address of one's own: a relay, a self-hosted service, an address someone handed over.
+     * The presets fill in an address and a model name; this clears those out of the way, but
+     * leaves an address alone if it was typed in by hand already.
+     */
+    fun useCustom() {
+        if (ApiPresets.at(baseUrl) != null) {
+            baseUrl = ""
+            model = ""
+        }
+        keyInput = ""
+        models = null
+        checkResult = null
+        profileMessage = "在下面填这家的接口地址；模型名按它给你的写。"
+    }
+
     fun applyPreset(p: ApiPreset) {
         baseUrl = p.baseUrl
         model = p.defaultModel

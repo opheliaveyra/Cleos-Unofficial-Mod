@@ -180,14 +180,26 @@ internal fun ModelPage(vm: SettingsViewModel) {
     }
 }
 
-/** The services there are presets for, the one in use marked. */
+/** The services there are presets for, the one in use marked; anything else is 自定义. */
 @Composable
 private fun ServiceChips(fields: EndpointFields) {
+    val palette = LocalGlassPalette.current
+    // An address that is not one of the presets is somebody's own: a relay, a self-hosted
+    // service, an address a friend handed over.
+    val custom = fields.baseUrl.isNotBlank() && ApiPresets.at(fields.baseUrl) == null
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ApiPresets.all.forEach { p ->
             Chip(p.name, selected = fields.baseUrl.trimEnd('/') == p.baseUrl) { fields.applyPreset(p) }
         }
+        Chip("自定义 / 中转站", selected = custom) { fields.useCustom() }
     }
+    Text(
+        "上面是常见的几家。用中转站、自建的服务、别人给你的地址，就点「自定义 / 中转站」，" +
+            "然后在下面把接口地址和模型名填上 —— 地址填到 /v1 或者不填都行。",
+        color = palette.contentSecondary,
+        fontSize = 12.sp,
+        lineHeight = 18.sp,
+    )
 }
 
 /** Address, key and model, and the test that lists the address's models to pick from. */
@@ -197,7 +209,13 @@ private fun ConnectionFields(fields: EndpointFields) {
     val hasKey by fields.hasKey.collectAsStateWithLifecycle()
     var pickingModel by remember { mutableStateOf(false) }
 
-    Field("接口地址", fields.baseUrl, { fields.baseUrl = it }, keyboardType = KeyboardType.Uri)
+    Field(
+        "接口地址",
+        fields.baseUrl,
+        { fields.baseUrl = it },
+        keyboardType = KeyboardType.Uri,
+        hint = "https://…　中转站填它给你的那个地址",
+    )
     OutlinedTextField(
         value = fields.keyInput,
         onValueChange = { fields.keyInput = it },

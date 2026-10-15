@@ -232,11 +232,14 @@ internal fun Field(
     value: String,
     onChange: (String) -> Unit,
     keyboardType: KeyboardType = KeyboardType.Text,
+    /** Shown while the field is empty, for a field whose shape is worth an example. */
+    hint: String? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
+        placeholder = hint?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
