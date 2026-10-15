@@ -57,4 +57,27 @@ class MarkdownTest {
         // 不能返回空列表：调用方按"至少有一块"来渲染。
         assertEquals(1, Markdown.blocks("   ").size)
     }
+
+    @Test
+    fun fullWidthSpacesAndSymbolsStillMakeAList() {
+        // 中文输入法下打出来的空格是全角（　）、项目符号是全角（•）——
+        // 只认半角的话，**中文里写的列表一个都认不出来**：加粗和引用看着正常，
+        // 列表却是一行行原文，人看到的就是"别的东西不显示"。
+        val blocks = Markdown.blocks("　•　第一条\n　•　第二条")
+        assertEquals(1, blocks.size)
+        assertEquals(listOf("第一条", "第二条"), (blocks[0] as MdBlock.Items).items)
+    }
+
+    @Test
+    fun aNumberedListWithAChineseCommaCounts() {
+        val blocks = Markdown.blocks("1、先做这个\n2、再做那个")
+        assertEquals(1, blocks.size)
+        assertEquals(listOf("先做这个", "再做那个"), (blocks[0] as MdBlock.Items).items)
+        assertTrue((blocks[0] as MdBlock.Items).ordered)
+    }
+
+    @Test
+    fun aChineseQuoteMarkCountsToo() {
+        assertTrue(Markdown.blocks("》这句是引用")[0] is MdBlock.Quote)
+    }
 }

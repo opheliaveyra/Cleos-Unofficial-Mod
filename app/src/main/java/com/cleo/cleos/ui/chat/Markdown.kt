@@ -56,10 +56,19 @@ sealed interface MdBlock {
 }
 
 object Markdown {
-    private val BULLET = Regex("^\\s*[-*+]\\s+(.*)$")
-    private val NUMBER = Regex("^\\s*\\d+[.)]\\s+(.*)$")
-    private val HEADING = Regex("^(#{1,4})\\s+(.*)$")
-    private val QUOTE = Regex("^\\s*>\\s?(.*)$")
+    /**
+     * 空白：半角空格、全角空格（中文输入法下的空格）、不换行空格都算。
+     *
+     * 这条是补出来的：原来只认半角空格，于是**中文里写出来的列表一个都认不出来** ——
+     * 加粗和引用看着正常，列表却是一行行原文，人看到的就是"别的不显示"。
+     */
+    private const val SP = "[\\s\\u3000\\u00a0]*"
+
+    /** 项目符号也认全角的：`•`、`·`、`‣`、`∙` 都是输入法会打出来的。 */
+    private val BULLET = Regex("^$SP[-*+•·‣∙]\\s*(.+)$")
+    private val NUMBER = Regex("^$SP(\\d+)[.)、．]\\s*(.+)$")
+    private val HEADING = Regex("^$SP(#{1,4})\\s*(.+)$")
+    private val QUOTE = Regex("^$SP[>》]\\s?(.*)$")
 
     fun blocks(text: String): List<MdBlock> {
         val out = mutableListOf<MdBlock>()
@@ -116,10 +125,11 @@ object Markdown {
                 items!!.add(bullet.groupValues[1].trim())
                 continue
             }
-            if (NUMBER.matches(line)) {
+            val number = NUMBER.find(line)
+            if (number != null) {
                 flushPara(); flushQuote()
                 if (items == null || !ordered) { flushItems(); ordered = true; items = mutableListOf() }
-                items!!.add(line.trim().replaceFirst(Regex("^\\d+[.)]\\s+"), ""))
+                items!!.add(number.groupValues[2].trim())
                 continue
             }
             val quoted = QUOTE.find(line)
