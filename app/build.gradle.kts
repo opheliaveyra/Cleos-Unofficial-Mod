@@ -26,10 +26,11 @@ android {
         applicationId = "com.cleo.cleos"
         minSdk = 29
         targetSdk = 36
-        // 这条线是我们自己的：从 1.0.0 起，后缀标着它是二改版 —— 跟原作者的 0.41.x 一眼分得开。
-        // versionCode 只能往上加（171 起），回头会让手机当成降级、装不上。
-        versionCode = 171
-        versionName = "1.0.0-mod"
+        // 这条线是我们自己的：0.x 表示还在改，等哪天能当正式版了再跳 1.0.0。
+        // 后缀 -mod 标着它是二改版，跟原作者的 0.41.x 一眼分得开。
+        // versionCode 只能往上加（172 起），回头会让手机当成降级、装不上。
+        versionCode = 172
+        versionName = "0.1.0-mod"
     }
 
     signingConfigs {
