@@ -32,6 +32,7 @@ import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.GlassMode
 import com.cleo.cleos.data.ImportException
 import com.cleo.cleos.data.Pats
+import com.cleo.cleos.data.WorkspaceEntry
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.LaterEntity
 import com.cleo.cleos.data.db.LoreEntity
@@ -61,6 +62,9 @@ const val PERSONA_LIMIT = Companions.PERSONA_LIMIT
  * the one just imported); the rest is the person's and the app's. The persona is shown here
  * but written on its own page (PersonaScreen), which saves it.
  */
+/** 打开看的时候一次读这么多字：工作区里的文件本来就小。 */
+private const val WORKSPACE_VIEW = 20000
+
 class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     var companionId by mutableLongStateOf(0L)
         private set
@@ -248,6 +252,8 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
             }
         }
         viewModelScope.launch { habits = c.later.habits() }
+        // 列表上那行「里面 N 个文件」要在进页面之前就是对的。
+        refreshWorkspace()
         viewModelScope.launch {
             val s = c.settings.current()
             load(c.companions.current())
@@ -592,6 +598,70 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
             }
             searchTesting = false
         }
+    }
+
+    // ---- 工作区：TA 写的文件。这里只负责看、导出、删；写是 TA 的事。 ----------------------
+
+    /** 正在看的文件夹，相对路径，空字符串是根。 */
+    var workspacePath by mutableStateOf("")
+    var workspaceEntries by mutableStateOf<List<WorkspaceEntry>>(emptyList())
+        private set
+    var workspaceUsage by mutableStateOf(0 to 0L)
+        private set
+    var workspaceNote by mutableStateOf<String?>(null)
+        private set
+    /** 正在打开的那个文件：路径 to 内容。 */
+    var workspaceOpen by mutableStateOf<Pair<String, String>?>(null)
+        private set
+
+    /** 进到一个文件夹（空字符串是根）。 */
+    fun openWorkspace(path: String) {
+        workspacePath = path
+        workspaceNote = null
+        refreshWorkspace()
+    }
+
+    fun refreshWorkspace() {
+        viewModelScope.launch {
+            val (entries, usage) = withContext(Dispatchers.IO) {
+                runCatching { c.workspace.list(workspacePath) to c.workspace.usage() }
+                    .getOrElse { emptyList<WorkspaceEntry>() to (0 to 0L) }
+            }
+            workspaceEntries = entries
+            workspaceUsage = usage
+        }
+    }
+
+    fun openWorkspaceFile(path: String) {
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching { c.workspace.read(path, 0, WORKSPACE_VIEW) }
+                    .onFailure { workspaceNote = it.message }
+                    .getOrDefault("")
+            }
+            workspaceOpen = path to text
+        }
+    }
+
+    fun closeWorkspaceFile() {
+        workspaceOpen = null
+    }
+
+    /** 导出时要的那段文字；调用的人自己在 IO 线程上拿。 */
+    fun workspaceText(path: String): String = c.workspace.read(path, 0, WORKSPACE_VIEW)
+
+    fun deleteWorkspace(path: String) {
+        viewModelScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                runCatching { c.workspace.delete(path); null }.getOrElse { it.message ?: "没能删掉" }
+            }
+            workspaceNote = message ?: "删掉了「$path」"
+            refreshWorkspace()
+        }
+    }
+
+    fun noteWorkspace(text: String) {
+        workspaceNote = text
     }
 
     fun setMcpEnabled(id: String, on: Boolean) {

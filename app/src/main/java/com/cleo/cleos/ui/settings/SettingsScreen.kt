@@ -127,6 +127,7 @@ fun SettingsScreen(
                     SettingsPage.Model -> ModelPage(vm)
                     SettingsPage.Behavior -> BehaviorPage(vm)
                     SettingsPage.Abilities -> AbilitiesPage(vm, onOpenVoice = { page = SettingsPage.Voice })
+                    SettingsPage.Workspace -> WorkspacePage(vm)
                     SettingsPage.Voice -> VoicePage(vm)
                     SettingsPage.Mcp -> McpPage(vm, onOpenMcp)
                     SettingsPage.Chat -> ChatPage(vm)

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Memory
@@ -82,6 +83,7 @@ enum class SettingsPage(val title: String) {
     Model("模型"),
     Behavior("说话方式"),
     Abilities("能做的事"),
+    Workspace("工作区"),
     Voice("TA 的声音"),
     Mcp("外部服务（MCP）"),
     Chat("聊天"),
@@ -169,6 +171,14 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
 
     ListCard("所有 TA 共用") {
         Entry(Icons.Rounded.Widgets, "能做的事", "开着 ${ABILITIES.count { it in settings.tools }} 项") { onOpen(SettingsPage.Abilities) }
+        RowDivider()
+        // 工作区是 TA 的能力，但这一页是给人看的：看它写了什么、导出、删。
+        val (files, bytes) = vm.workspaceUsage
+        Entry(
+            Icons.Rounded.Folder,
+            "TA 的工作区",
+            if (files == 0) "还空着 —— 让它记点东西，就会放到这儿" else "里面 $files 个文件，${sizeText(bytes)}",
+        ) { onOpen(SettingsPage.Workspace) }
         RowDivider()
         val voice = vm.voiceService
         when {

@@ -23,11 +23,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -35,6 +38,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +61,7 @@ import com.cleo.cleos.Releases
 import com.cleo.cleos.ai.SearchService
 import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ai.Voice
+import com.cleo.cleos.data.WorkspaceEntry
 import com.cleo.cleos.data.GlassMode
 import com.cleo.cleos.data.PatRecord
 import com.cleo.cleos.data.Pats
@@ -306,6 +311,167 @@ internal fun WebSearchPage(vm: SettingsViewModel) {
             lineHeight = 18.sp,
         )
         vm.searchResult?.let { Text(it, color = palette.content, fontSize = 13.sp, lineHeight = 19.sp) }
+    }
+}
+
+/**
+ * TA 的工作区：它写的笔记、草稿都在这儿。
+ *
+ * 这一页是给人看的那一半 —— 没有它，TA 写了什么就只能往回翻聊天记录、点开那一行小字。
+ * 这里只负责看、导出、删；写是 TA 自己的事，而且它写之前那边是有授权的。
+ */
+@Composable
+internal fun WorkspacePage(vm: SettingsViewModel) {
+    val palette = LocalGlassPalette.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val entries = vm.workspaceEntries
+    var exporting by remember { mutableStateOf<String?>(null) }
+    var deleting by remember { mutableStateOf<String?>(null) }
+
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val file = exporting
+        exporting = null
+        if (uri == null || file == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val text = vm.workspaceText(file)
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
+                        ?: error("写不进去")
+                }.isSuccess
+            }
+            vm.noteWorkspace(if (ok) "导出好了，看看手机的「下载」里" else "导出没成")
+        }
+    }
+
+    LaunchedEffect(Unit) { vm.refreshWorkspace() }
+
+    val (count, bytes) = vm.workspaceUsage
+    Section("TA 的工作区") {
+        Text(
+            "这是 TA 自己的一个文件夹：你让它记点什么、写份草稿，它就放在这儿。" +
+                "在这里你能看它写了什么、导出到手机，或者删掉。要不要让它有这个文件夹，在「能做的事」里那个开关。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        Text(
+            if (count == 0) "现在还是空的。" else "现在有 $count 个文件，共 ${sizeText(bytes)}。",
+            color = palette.content,
+            fontSize = 13.sp,
+        )
+    }
+
+    Section(if (vm.workspacePath.isEmpty()) "里面的东西" else "/${vm.workspacePath}") {
+        if (vm.workspacePath.isNotEmpty()) {
+            Chip("← 上一层", selected = false) { vm.openWorkspace(vm.workspacePath.substringBeforeLast('/', "")) }
+        }
+        if (entries.isEmpty()) {
+            Text("这里没有东西。", color = palette.contentSecondary, fontSize = 13.sp)
+        }
+        entries.forEachIndexed { index, entry ->
+            if (index > 0) RowDivider(inset = 0.dp)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (entry.directory) vm.openWorkspace(entry.path) else vm.openWorkspaceFile(entry.path)
+                    }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (entry.directory) Icons.Rounded.Folder else Icons.Rounded.Description,
+                    contentDescription = null,
+                    tint = palette.contentSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(entry.name, color = palette.content, fontSize = 15.sp)
+                    Text(
+                        if (entry.directory) "文件夹" else "${sizeText(entry.size)} · ${whenText(entry.modifiedAt)}",
+                        color = palette.contentSecondary,
+                        fontSize = 11.sp,
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = palette.contentSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        vm.workspaceNote?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
+    }
+
+    vm.workspaceOpen?.let { (path, text) ->
+        AlertDialog(
+            onDismissRequest = vm::closeWorkspaceFile,
+            title = { Text(path.substringAfterLast('/'), fontSize = 18.sp) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text.ifEmpty { "（这个文件是空的）" },
+                        color = palette.content,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
+                    )
+                    Text("${text.length} 字", color = palette.contentSecondary, fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    exporting = path
+                    save.launch(path.substringAfterLast('/'))
+                }) { Text("导出") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { deleting = path }) { Text("删除", color = palette.error) }
+                    TextButton(onClick = vm::closeWorkspaceFile) { Text("关闭") }
+                }
+            },
+        )
+    }
+
+    deleting?.let { path ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("删掉「${path.substringAfterLast('/')}」？") },
+            text = { Text("它会从工作区里消失，删了就找不回来了。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteWorkspace(path)
+                    deleting = null
+                    vm.closeWorkspaceFile()
+                }) { Text("删掉", color = palette.error) }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("算了") } },
+        )
+    }
+}
+
+/** 字节数说成人话。 */
+internal fun sizeText(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes 字节"
+    bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
+    else -> "%.1f MB".format(bytes / 1024.0 / 1024.0)
+}
+
+/** 改动时间说成「刚刚 / 3 小时前 / 10 月 16 日」。 */
+private fun whenText(at: Long): String {
+    val minutes = (System.currentTimeMillis() - at) / 60000
+    return when {
+        minutes < 1 -> "刚刚"
+        minutes < 60 -> "${minutes} 分钟前"
+        minutes < 60 * 24 -> "${minutes / 60} 小时前"
+        else -> java.text.SimpleDateFormat("M 月 d 日", java.util.Locale.CHINA).format(java.util.Date(at))
     }
 }
 
