@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cleo.cleos.AppContainer
+import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ai.ChatRepository
 import com.cleo.cleos.ai.Recap
 import com.cleo.cleos.data.MessageAudio
@@ -70,6 +71,8 @@ data class ChatUiState(
     val voiceReady: Boolean = false,
     /** The TA has a voice (TA 的声音), so it can talk on the phone. */
     val speechReady: Boolean = false,
+    /** Whether the TA may search the web; the switch for it sits in the input bar. */
+    val webSearch: Boolean = false,
     val loaded: Boolean = false,
 )
 
@@ -148,6 +151,7 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 transcribing = transcribing,
                 voiceReady = s.voiceBaseUrl.isNotBlank() && s.voiceModel.isNotBlank(),
                 speechReady = Speech.ready(s),
+                webSearch = ToolGroup.Search in s.tools,
                 loaded = true,
             )
         }
@@ -212,6 +216,15 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
     fun dropFile(file: MessageFile) {
         fileAttachments.removeAll { it.file == file.file }
         c.appScope.launch { c.files.delete(listOf(file.file)) }
+    }
+
+    /** The switch in the input bar: may the TA search the web from here on. */
+    fun setWebSearch(on: Boolean) {
+        viewModelScope.launch {
+            c.settings.update { s ->
+                s.copy(tools = if (on) s.tools + ToolGroup.Search else s.tools - ToolGroup.Search)
+            }
+        }
     }
 
     /** The problem has been shown; nothing left to say about it. */

@@ -65,8 +65,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.rounded.DynamicFeed
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -706,6 +708,8 @@ fun ChatTab(
     val stickers by remember { c.stickers.all }.collectAsStateWithLifecycle(emptyList())
     val stickerBook = remember(stickers) { StickerBook(stickers) }
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
+    // The + under the bar: 图片 or 文件.
+    var attachOpen by rememberSaveable { mutableStateOf(false) }
     var deletingSticker by remember { mutableStateOf<StickerEntity?>(null) }
     val stickerPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         pickingAttachment = false
@@ -985,11 +989,29 @@ fun ChatTab(
                     MessageImages.decode(m.images).filterNot { it.file in cardFiles }
                 } ?: vm.attachments,
                 attaching = editingMessage == null && vm.attaching,
-                onPick = { pickingAttachment = true; vm.typing(true, processingMedia = true); picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onPick = {
+                    attachOpen = false
+                    pickingAttachment = true
+                    vm.typing(true, processingMedia = true)
+                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
                 onRemove = vm::detach,
+                attachOpen = editingMessage == null && attachOpen,
+                onAttachToggle = {
+                    if (attachOpen) {
+                        attachOpen = false
+                    } else {
+                        attachOpen = true
+                        // The sticker drawer lives in the same glass; two panels at once is one too many.
+                        drawerOpen = false
+                    }
+                },
+                searching = state.webSearch,
+                onSearchToggle = { vm.setWebSearch(!state.webSearch) },
                 files = if (editingMessage == null) vm.fileAttachments else emptyList(),
                 readingFiles = editingMessage == null && vm.readingFiles,
                 onPickFiles = {
+                    attachOpen = false
                     pickingAttachment = true
                     vm.typing(true, processingMedia = true)
                     // Everything: some phones report a .md as octet-stream, and the app tells the
@@ -1043,6 +1065,8 @@ fun ChatTab(
                 drawerOpen = drawerOpen,
                 onDrawer = {
                     drawerOpen = !drawerOpen
+                    // The two panels share the same glass; only one is open at a time.
+                    if (drawerOpen) attachOpen = false
                     // The drawer takes the keyboard's place; typing again closes it (onFieldFocus).
                     if (drawerOpen) {
                         keyboard?.hide()
@@ -2503,6 +2527,12 @@ private fun ChatInputBar(
     attaching: Boolean,
     onPick: () -> Unit,
     onRemove: (MessageImage) -> Unit,
+    /** The + is open: the two ways of attaching something show under the bar. */
+    attachOpen: Boolean = false,
+    onAttachToggle: () -> Unit = {},
+    /** Whether the TA may search the web: the switch sits where the file button used to be. */
+    searching: Boolean = false,
+    onSearchToggle: () -> Unit = {},
     /** Files picked for this message, with whatever was read out of them already. */
     files: List<MessageFile> = emptyList(),
     /** A file is being copied in and read right now. */
@@ -2617,30 +2647,39 @@ private fun ChatInputBar(
         // the squares stay at the bottom. (Padding the buttons by hand left them 4dp from
         // the top and 8dp from the bottom: the text row was 48dp in a 50dp bar.)
         Row(verticalAlignment = Alignment.Bottom) {
+            // One + instead of two buttons: the two ways of attaching something appear under the
+            // bar when it is open, the way a chat app does it.
             Box(Modifier.size(BarHeight), contentAlignment = Alignment.Center) {
                 Box(
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .clickable(enabled = !editing && attachments.size < MAX_ATTACHMENTS, onClick = onPick),
+                        .background(if (attachOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent)
+                        .clickable(enabled = !editing, onClick = onAttachToggle),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = "发图片", tint = palette.contentSecondary, modifier = Modifier.size(24.dp))
+                    Icon(
+                        if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
+                        contentDescription = if (attachOpen) "收起" else "加号：发图片或文件",
+                        tint = palette.contentSecondary,
+                        modifier = Modifier.size(24.dp),
+                    )
                 }
             }
-            // Narrower than the picture button: the text keeps as much of the bar as it can.
+            // Where the file button used to be: whether the TA may search the web.
             Box(Modifier.size(width = 34.dp, height = BarHeight), contentAlignment = Alignment.Center) {
                 Box(
                     Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .clickable(enabled = !editing && files.size < Prompt.MAX_FILES && !readingFiles, onClick = onPickFiles),
+                        .background(if (searching) palette.accent.copy(alpha = 0.18f) else Color.Transparent)
+                        .clickable(enabled = !editing, onClick = onSearchToggle),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Rounded.AttachFile,
-                        contentDescription = "发文件（TXT、MD、PDF、DOCX）",
-                        tint = palette.contentSecondary.copy(alpha = if (!editing && files.size < Prompt.MAX_FILES) 1f else 0.4f),
+                        Icons.Rounded.TravelExplore,
+                        contentDescription = if (searching) "联网搜索开着，点一下关掉" else "联网搜索关着，点一下打开",
+                        tint = if (searching) palette.accentContent else palette.contentSecondary,
                         modifier = Modifier.size(21.dp),
                     )
                 }
@@ -2757,6 +2796,48 @@ private fun ChatInputBar(
                 }
             }
         }
+        // The + is open: the two ways of attaching something, under the bar.
+        if (attachOpen) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                AttachChip(
+                    Icons.Rounded.AddPhotoAlternate,
+                    "图片",
+                    enabled = !editing && attachments.size < MAX_ATTACHMENTS,
+                    onClick = onPick,
+                )
+                AttachChip(
+                    Icons.Rounded.AttachFile,
+                    "文件",
+                    enabled = !editing && files.size < Prompt.MAX_FILES && !readingFiles,
+                    onClick = onPickFiles,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One way of attaching something, in the row under the bar: 图片 or 文件.
+ */
+@Composable
+private fun AttachChip(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(palette.content.copy(alpha = if (enabled) 0.09f else 0.04f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = if (enabled) palette.content else palette.contentSecondary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = if (enabled) palette.content else palette.contentSecondary, fontSize = 14.sp)
     }
 }
 
