@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -134,8 +135,12 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 LoreKeys.decode(e.keys).any { it.contains(book, ignoreCase = true) }
         }
     } }
+    // 只看某一本：点书名进去，再点一次（或点「看全部」）出来。
+    // 900 条摊在一页上没法看，总得能一本一本翻。
+    var only by rememberSaveable { mutableStateOf<String?>(null) }
+    val listed = remember(shown, only) { if (only == null) shown else shown.filter { it.book.trim() == only } }
     // Already in the order the book keeps (book, position, id), so the groups come out in that order.
-    val grouped = remember(shown) { shown.groupBy { it.book.trim() } }
+    val grouped = remember(listed) { listed.groupBy { it.book.trim() } }
 
     GlassPage(
         overlay = { page ->
@@ -206,6 +211,19 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 item(key = "none") { Notice("世界书里没有和「${query.trim()}」有关的条目。") }
             }
             note?.let { text -> item(key = "note") { Notice(text) } }
+            if (only != null) {
+                item(key = "only") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "正在只看《$only》· ${listed.size} 条",
+                            color = palette.content,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { only = null }) { Text("看全部") }
+                    }
+                }
+            }
             // 搬进来的世界书一册一册排在前面，自己写的留在最后：这两样不是一回事，
             // 混在一堆里看不出哪条是从哪儿来的。
             for ((title, list) in grouped.filterKeys { it.isNotEmpty() } + grouped.filterKeys { it.isEmpty() }) {
@@ -216,7 +234,13 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                             color = palette.contentSecondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f).padding(start = 6.dp, top = 6.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 6.dp, top = 6.dp)
+                                // 点书名（或「没归到书里」）＝ 只看这一本；再点一次回来。
+                                .clickable(interactionSource = null, indication = null) {
+                                    only = if (only == title) null else title
+                                },
                         )
                         if (selecting) TextButton(onClick = { selected = LoreSelection.toggle(selected, list.map { it.id }) }, enabled = !deleting) {
                             Text(if (list.all { it.id in selected }) "取消选择" else if (book.isEmpty()) "选这本书" else "选当前条目")
