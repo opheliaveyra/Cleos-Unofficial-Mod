@@ -196,32 +196,57 @@ object ForeignMemory {
         )
     }
 
-    /** Plain text / Markdown: blank lines and bullets split topics, the rest joins into one. */
+    /**
+     * Plain text / Markdown: **a section is one memory, not one line**.
+     *
+     * 一整份人设文档常常是几十上百个短行 —— 标题、要点、冒号后面的半句。一行一条的话，
+     * 导进来就是几百条碎渣：列表翻不完，TA 查到了也看不出前后讲的是同一件事。
+     * 所以这里以「空行」和「标题」为界，一块里的几行合成一条；
+     * 一块超过 [BLOCK_CHARS] 就在行边界上断开，不做出几千字的巨条。
+     */
     private fun fromText(text: String): List<ImportedMemory> {
         val out = mutableListOf<ImportedMemory>()
-        val buffer = StringBuilder()
+        val block = StringBuilder()
         fun flush() {
-            val s = buffer.toString().trim()
-            buffer.setLength(0)
-            if (s.isNotEmpty()) out += plain(s)
+            val lines = block.toString().lines().map { it.trim() }.filter { it.isNotEmpty() }
+            block.setLength(0)
+            if (lines.isNotEmpty()) out += gather(lines)
         }
         for (raw in text.lines()) {
             val line = raw.trim()
             if (line.isEmpty()) { flush(); continue }
-            val bullet = BULLET.find(line)
-            if (bullet != null) {
-                flush()
-                val t = line.substring(bullet.value.length).trim()
-                if (t.isNotEmpty()) out += plain(t)
-            } else {
-                buffer.appendLine(line.removePrefix("#").trim())
-            }
+            // A heading starts a section, so it never shares a memory with what came before.
+            if (line.startsWith("#")) flush()
+            val bare = line.trimStart('#').trim()
+            val bullet = BULLET.find(bare)
+            block.appendLine(if (bullet != null) bare.substring(bullet.value.length).trim() else bare)
+            if (block.length >= BLOCK_CHARS) flush()
         }
         flush()
         return out
     }
 
+    /**
+     * 一块里的几行合成一条：第一行要是「名字：内容」，就拿它当名字，其余都进详情。
+     * 一份写成清单的人设文档因此出来是几条到几十条，而不是几百条。
+     */
+    private fun gather(lines: List<String>): ImportedMemory {
+        val head = lines.first()
+        val named = SPLIT.find(head)
+        val name = named?.groupValues?.get(1)?.trim().orEmpty()
+        val first = if (named != null) named.groupValues[2].trim() else head
+        return topic("profile", name, (listOf(first) + lines.drop(1)).joinToString("\n"))
+    }
+
     private const val NAME_FROM_SUMMARY = 12
+
+    /**
+     * 一条记忆最多长到多少字，导入纯文本时用来断块。
+     * 一条能装 120（摘要）+ 300×30（详情）字，所以这个数远在装得下的范围内，不会丢内容；
+     * 而它又大到足够装下一个小节 —— 粒度才是这里要管的东西。
+     */
+    private const val BLOCK_CHARS = 600
+
     private val SPLIT = Regex("^([^:：]{1,24})[:：]\\s*(.+)$")
     private val BULLET = Regex("^(?:[-*+•]|\\d+[.、)])\\s+")
 }

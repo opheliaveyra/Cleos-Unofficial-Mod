@@ -209,11 +209,16 @@ class ForeignFileTest {
 
     @Test
     fun plainNotesAreStillReadAsMemory() {
+        // 空行分节：一份笔记里的一个小节是一条记忆，不是一行一条 ——
+        // 一行一条的话，写成清单的人设文档导进来就是几百条碎渣。
         val out = ForeignFile.read("喜欢喝咖啡\n\n- 住在上海\n- 养了一只猫")
         assertNull(out.card)
         assertTrue(out.lore.isEmpty())
         assertTrue(out.chats.isEmpty())
-        assertEquals(listOf("喜欢喝咖啡", "住在上海", "养了一只猫"), out.memories.map { it.name })
+        assertEquals(2, out.memories.size)
+        assertEquals("喜欢喝咖啡", out.memories[0].name)
+        assertTrue(out.memories[1].name.startsWith("住在上海"))
+        assertTrue(out.memories[1].summary.contains("养了一只猫"))
     }
 
     @Test
