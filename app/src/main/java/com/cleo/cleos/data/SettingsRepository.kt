@@ -112,6 +112,11 @@ data class AppSettings(
     /** Where voice messages are turned into text (an OpenAI-shaped /audio/transcriptions), and with which model. */
     val voiceBaseUrl: String = "",
     val voiceModel: String = "",
+    /**
+     * Which search service web_search goes to (a SearchService name), empty until one is picked.
+     * The key itself is filed by endpoint in SecretStore, so switching services keeps both.
+     */
+    val searchService: String = "",
     /** The TA's voice messages: which service makes them (a VoiceService key; empty for none yet). */
     val speechEngine: String = "",
     /** The voice picked on each service that has a list (VoiceService key to voice id); none picked is its first. */
@@ -225,6 +230,7 @@ class SettingsRepository(private val context: Context) {
         val letterEveryDays = intPreferencesKey("letter_every_days")
         val voiceBaseUrl = stringPreferencesKey("voice_base_url")
         val voiceModel = stringPreferencesKey("voice_model")
+        val searchService = stringPreferencesKey("search_service")
         val speechEngine = stringPreferencesKey("speech_engine")
         val speechBaseUrl = stringPreferencesKey("speech_base_url")
         val speechModel = stringPreferencesKey("speech_model")
@@ -296,6 +302,7 @@ class SettingsRepository(private val context: Context) {
             letterEveryDays = this[Keys.letterEveryDays] ?: d.letterEveryDays,
             voiceBaseUrl = this[Keys.voiceBaseUrl] ?: d.voiceBaseUrl,
             voiceModel = this[Keys.voiceModel] ?: d.voiceModel,
+            searchService = this[Keys.searchService] ?: d.searchService,
             speechEngine = speechEngine,
             speechVoices = speechVoices,
             minimaxGlobal = this[Keys.minimaxGlobal] ?: d.minimaxGlobal,
@@ -353,6 +360,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.letterEveryDays] = next.letterEveryDays
             prefs[Keys.voiceBaseUrl] = next.voiceBaseUrl
             prefs[Keys.voiceModel] = next.voiceModel
+            prefs[Keys.searchService] = next.searchService
             prefs[Keys.speechEngine] = next.speechEngine
             prefs[Keys.speechVoices] = encodeVoices(next.speechVoices)
             prefs[Keys.minimaxGlobal] = next.minimaxGlobal

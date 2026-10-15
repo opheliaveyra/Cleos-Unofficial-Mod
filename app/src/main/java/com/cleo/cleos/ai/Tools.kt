@@ -655,6 +655,25 @@ object ToolSpecs {
         ),
     )
 
+    /**
+     * Searching the web. Which service answers is the person's choice, made in settings
+     * (SearchService); the tool is only offered once one is set up and a key is filled in.
+     */
+    val webSearch = ToolSpec(
+        name = "web_search",
+        groups = setOf(ToolGroup.Search),
+        action = "上网搜",
+        description = "在网上搜东西，返回几条结果的标题、网址和摘要。对方问起你不知道的事、最近的事、" +
+            "或者需要查资料时用它；搜完之后可以挑一条用 read_webpage 打开看全文，再回答。" +
+            "**不要把对方的私人信息（真名、电话、住址、单位、账号）写进搜索词**，用通用的说法搜。" +
+            "搜索词要短、具体，别把整段聊天贴进去。没搜到就说没搜到，不要凭空编。",
+        parameters = schema(
+            required = listOf("query"),
+            "query" to prop("string", "搜索词，几个词最好，像人在搜索框里打的那样"),
+            "count" to prop("integer", "要几条结果，默认 5，最多 10"),
+        ),
+    )
+
     val all = listOf(
         sendMessage,
         sendVoice,
@@ -698,6 +717,7 @@ object ToolSpecs {
         moveWorkspace,
         deleteWorkspace,
         readWebpage,
+        webSearch,
     )
     val byName = all.associateBy { it.name }
 
@@ -808,6 +828,8 @@ class ToolBox(
     private val allow: suspend (conversationId: Long, request: ToolAsk) -> Boolean = { _, _ -> false },
     /** Reads web pages, for read_webpage; null when the app has no way out to the network. */
     private val web: WebReader? = null,
+    /** Searches the web, for web_search; null when nothing is set up for it. */
+    private val searcher: WebSearcher? = null,
 ) {
     private val book = memories?.let { MemoryBook(it, clock) }
     private val loreBook = lore?.let { LoreBook(it) }
@@ -862,6 +884,7 @@ class ToolBox(
                 ToolSpecs.moveWorkspace.name -> moveWorkspace(args)
                 ToolSpecs.deleteWorkspace.name -> deleteWorkspace(args, conversationId)
                 ToolSpecs.readWebpage.name -> readWebpage(args)
+                ToolSpecs.webSearch.name -> searchWeb(args, settings)
                 ToolSpecs.memory.name -> (book ?: throw ToolFailure("现在记不了。", "这里记不了")).act(args, companionId)
                 ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了设定。", "这里查不了")).act(args, companionId)
                 ToolSpecs.getLocation.name -> getLocation()
@@ -957,6 +980,36 @@ class ToolBox(
         return ToolOutcome(
             "$title$url\n\n${page.text.substring(offset, end)}\n\n（$more）",
             "读了网页",
+        )
+    }
+
+    /**
+     * One search, through whichever service the person set up. The results come back as lines
+     * to choose from, not as answers: what the pages actually say is read with read_webpage.
+     */
+    private suspend fun searchWeb(args: JsonObject, settings: AppSettings): ToolOutcome {
+        val search = searcher ?: throw ToolFailure("现在搜不了。", "搜索用不了")
+        val query = ToolArgs.text(args, "query").orEmpty().trim()
+        if (query.isEmpty()) throw ToolFailure("要填 query：搜什么。", "没说搜什么")
+        val count = (ToolArgs.int(args["count"]) ?: SEARCH_HITS).coerceIn(1, SEARCH_MAX_HITS)
+        val hits = try {
+            search.search(settings, query.take(200), count)
+        } catch (e: WebException) {
+            throw ToolFailure("没有搜成：${e.message}。照实告诉对方没搜到，别编结果。", "搜索没成")
+        }
+        if (hits.isEmpty()) {
+            return ToolOutcome("「$query」没有搜到结果。换个说法再试一次，或者直接告诉对方没搜到。", "没搜到结果")
+        }
+        val lines = hits.mapIndexed { index, hit ->
+            buildString {
+                append("${index + 1}. ${hit.title}\n   ${hit.url}")
+                if (hit.snippet.isNotBlank()) append("\n   ${hit.snippet.replace('\n', ' ')}")
+            }
+        }.joinToString("\n\n")
+        return ToolOutcome(
+            "「$query」搜到 ${hits.size} 条：\n\n$lines\n\n（这些只是摘要。要回答对方，挑相关的用 read_webpage 打开看全文，" +
+                "再把网址给出来；不要凭标题猜内容。）",
+            "上网搜了「${query.take(12)}」",
         )
     }
 
@@ -1563,6 +1616,10 @@ class ToolBox(
         /** How much of a web page one read gives back: pages are longer than notes. */
         const val WEB_CHUNK = 4000
         const val WEB_MAX_CHUNK = 8000
+
+        /** How many search results one call gives back, and the most it may ask for. */
+        const val SEARCH_HITS = 5
+        const val SEARCH_MAX_HITS = 10
         const val LATER_WHAT_MAX = 200
         const val LATER_WHY_MAX = 200
         const val ALARM_LABEL_MAX = 60

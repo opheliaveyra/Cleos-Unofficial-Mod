@@ -14,7 +14,9 @@ import androidx.lifecycle.viewModelScope
 import com.cleo.cleos.AppContainer
 import com.cleo.cleos.ai.ChatException
 import com.cleo.cleos.ai.Habits
+import com.cleo.cleos.ai.SearchService
 import com.cleo.cleos.ai.ToolGroup
+import com.cleo.cleos.ai.WebException
 import android.media.MediaPlayer
 import com.cleo.cleos.ai.Speech
 import com.cleo.cleos.ai.SpeechException
@@ -103,6 +105,13 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     var voiceTesting by mutableStateOf(false)
         private set
     var voiceResult by mutableStateOf<String?>(null)
+        private set
+    /** Which search service web_search goes to (a SearchService name); empty until one is picked. */
+    var searchService by mutableStateOf("")
+    var searchKeyInput by mutableStateOf("")
+    var searchTesting by mutableStateOf(false)
+        private set
+    var searchResult by mutableStateOf<String?>(null)
         private set
     var photoTesting by mutableStateOf(false)
         private set
@@ -220,6 +229,12 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     val hasVoiceKey: StateFlow<Boolean> = snapshotFlow { voiceBaseUrl }
         .flatMapLatest { c.secrets.hasKey(it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Whether the chosen search service has a key yet: each service's key is filed by its endpoint. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val hasSearchKey: StateFlow<Boolean> = snapshotFlow { searchService }
+        .flatMapLatest { name -> c.secrets.hasKey(SearchService.of(name)?.endpoint.orEmpty()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val mcpServers: StateFlow<List<McpServer>> = c.mcp.servers.all.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Every TA: the one being edited is shown with its picture, and another can be picked. */
@@ -240,6 +255,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
             historySize = s.historySize
             weatherCity = s.weatherCity
             voiceBaseUrl = s.voiceBaseUrl
+            searchService = s.searchService
             voiceModel = s.voiceModel
             voiceService = VoiceService.of(s.speechEngine)
             speechVoices.putAll(s.speechVoices)
@@ -539,6 +555,42 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
                 withContext(Dispatchers.IO) { probe.delete() }
             }
             voiceTesting = false
+        }
+    }
+
+    /** Pick a search service. Keys are filed per service, so switching between them keeps both. */
+    fun chooseSearch(service: SearchService) {
+        searchService = service.name
+        searchResult = null
+        viewModelScope.launch { c.settings.update { it.copy(searchService = service.name) } }
+    }
+
+    fun saveSearchKey() {
+        val key = searchKeyInput.trim()
+        val endpoint = SearchService.of(searchService)?.endpoint ?: return
+        if (key.isEmpty()) return
+        viewModelScope.launch {
+            c.secrets.setKey(endpoint, key)
+            searchKeyInput = ""
+            searchResult = null
+        }
+    }
+
+    /** A throwaway search: if results come back, the service and the key are both right. */
+    fun testSearch() {
+        if (searchTesting || SearchService.of(searchService) == null) return
+        searchTesting = true
+        searchResult = null
+        viewModelScope.launch {
+            searchResult = try {
+                val hits = c.searcher.search(c.settings.current(), "今天的天气", 3)
+                if (hits.isEmpty()) "连上了，但没搜到结果（换个词再试）" else "能用，拿回 ${hits.size} 条：${hits.first().title.take(30)}"
+            } catch (e: WebException) {
+                "没用成：${e.message}"
+            } catch (e: Exception) {
+                "没用成：${e.message ?: "未知错误"}"
+            }
+            searchTesting = false
         }
     }
 

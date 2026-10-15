@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.CrashLog
+import com.cleo.cleos.ai.SearchService
 import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ai.Voice
 import com.cleo.cleos.data.ApiPresets
@@ -84,6 +86,7 @@ enum class SettingsPage(val title: String) {
     Mcp("外部服务（MCP）"),
     Chat("聊天"),
     VoiceInput("发语音"),
+    WebSearch("联网搜索"),
     Look("外观"),
     Data("数据与备份"),
     About("关于"),
@@ -194,6 +197,17 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         Entry(Icons.Rounded.Mic, "发语音", if (vm.voiceBaseUrl.isBlank()) "还没接转文字的服务" else "转文字：$transcriber") {
             onOpen(SettingsPage.VoiceInput)
         }
+        RowDivider()
+        val searcher = SearchService.of(vm.searchService)
+        Entry(
+            Icons.Rounded.TravelExplore,
+            "联网搜索",
+            when {
+                searcher == null -> "还没选服务，TA 还搜不了"
+                ToolGroup.Search in settings.tools -> "${searcher.label} · 开着"
+                else -> "${searcher.label} · 关着"
+            },
+        ) { onOpen(SettingsPage.WebSearch) }
         RowDivider()
         val glass = when (settings.glassMode) {
             GlassMode.Auto -> "跟随壁纸"

@@ -29,8 +29,8 @@ android {
         // The upstream author's line, continued: 165/0.41.88 was theirs, this is 166/0.41.89, and
         // every build handed over goes up one from there. Bumping it is what makes installing
         // this an update; without it the phone sees "the same version again" and asks twice.
-        versionCode = 167
-        versionName = "0.41.90"
+        versionCode = 168
+        versionName = "0.41.91"
     }
 
     signingConfigs {

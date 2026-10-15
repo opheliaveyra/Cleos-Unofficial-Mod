@@ -131,6 +131,7 @@ fun SettingsScreen(
                     SettingsPage.Mcp -> McpPage(vm, onOpenMcp)
                     SettingsPage.Chat -> ChatPage(vm)
                     SettingsPage.VoiceInput -> VoiceInputPage(vm)
+                    SettingsPage.WebSearch -> WebSearchPage(vm)
                     SettingsPage.Look -> LookPage(vm, onOpenLab, onOpenBubbleLab)
                     SettingsPage.Data -> DataPage(vm)
                     SettingsPage.About -> AboutPage()

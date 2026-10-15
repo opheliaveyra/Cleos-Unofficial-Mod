@@ -314,6 +314,12 @@ class ChatRepository(
         }
     }
 
+    /** Whether web_search has anywhere to go: a service chosen, and a key filed for it. */
+    private suspend fun searchReady(s: AppSettings): Boolean {
+        val service = SearchService.of(s.searchService) ?: return false
+        return !secrets.key(service.endpoint).isNullOrBlank()
+    }
+
     /** [block] with the reply here held back (a voice message being turned into words). */
     private suspend fun <T> holding(conversationId: Long, block: suspend () -> T): T {
         holds.merge(conversationId, 1) { a, b -> a + b }
@@ -1118,6 +1124,9 @@ class ChatRepository(
             // switches in settings: someone who sent a document did not ask to configure a tool,
             // and a TA that cannot open it can only talk about the file's name.
             if (history.any { MessageFiles.decode(it.files).isNotEmpty() }) groups = groups + ToolGroup.Files
+            // Searching is only offered when it can actually run: a model given a tool that
+            // fails every time spends its whole turn on it and answers nothing.
+            if (ToolGroup.Search in groups && !searchReady(s)) groups = groups - ToolGroup.Search
             // The tools of the MCP services switched on come along whenever tools do.
             var outside = mcp.tools()
             var withImages = endpointKey !in refusesImages && history.any { it.role == "user" && it.images != null }

@@ -54,6 +54,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.CrashLog
 import com.cleo.cleos.R
 import com.cleo.cleos.Releases
+import com.cleo.cleos.ai.SearchService
+import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ai.Voice
 import com.cleo.cleos.data.GlassMode
 import com.cleo.cleos.data.PatRecord
@@ -211,6 +213,99 @@ internal fun VoiceInputPage(vm: SettingsViewModel) {
             lineHeight = 18.sp,
         )
         vm.voiceResult?.let { Text(it, color = palette.content, fontSize = 13.sp, lineHeight = 19.sp) }
+    }
+}
+
+/**
+ * 联网搜索：选一家搜索服务，去它那儿申请一个 Key，填进来。
+ *
+ * 每一家都把申请 Key 的入口写在旁边 —— 「去申请」这种事不该让人自己去找。
+ * Key 按服务分别存（SecretStore），所以在几家之间切换不会把谁的 Key 弄丢。
+ */
+@Composable
+internal fun WebSearchPage(vm: SettingsViewModel) {
+    val palette = LocalGlassPalette.current
+    val context = LocalContext.current
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val hasKey by vm.hasSearchKey.collectAsStateWithLifecycle()
+    val chosen = SearchService.of(vm.searchService)
+
+    Section("让 TA 上网搜") {
+        Text(
+            "开着的时候，TA 遇到不知道的事、或者你让它查东西，会去网上搜，再把结果读出来给你。" +
+                "搜索得接一家服务：下面每一家旁边都有「去申请 Key」，点开就是它的注册页，" +
+                "注册好把 Key 填进来就能用。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        ExplainedSwitch(
+            "联网搜索",
+            "聊天输入框左边那个小地球就是它",
+            "开着时 TA 可以联网搜索；关掉就只靠它自己知道的。随时能改，输入框那个开关和这里是同一个。",
+            ToolGroup.Search in settings.tools,
+        ) { vm.setTool(ToolGroup.Search, it) }
+    }
+
+    Section("用哪一家") {
+        SearchService.entries.forEachIndexed { index, service ->
+            val isChosen = vm.searchService == service.name
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable(interactionSource = null, indication = null) { vm.chooseSearch(service) },
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        service.label,
+                        color = if (isChosen) palette.accentContent else palette.content,
+                        fontSize = 15.sp,
+                        fontWeight = if (isChosen) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                    if (isChosen) Text("已选", color = palette.accentContent, fontSize = 12.sp)
+                }
+                Text(service.hint, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                Text(
+                    "去申请 Key ↗",
+                    color = palette.accentContent,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(service.keyUrl))) }
+                    },
+                )
+            }
+            if (index != SearchService.entries.lastIndex) RowDivider(inset = 0.dp)
+        }
+    }
+
+    Section("Key") {
+        if (chosen == null) {
+            Text("先在上面点一家，再填它的 Key。", color = palette.contentSecondary, fontSize = 13.sp)
+            return@Section
+        }
+        OutlinedTextField(
+            value = vm.searchKeyInput,
+            onValueChange = { vm.searchKeyInput = it },
+            label = { Text("${chosen.label} 的 API Key") },
+            placeholder = { if (hasKey) Text("已保存（不再显示）；要换就重新填") else Text("粘在这里") },
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (vm.searchKeyInput.isNotBlank()) Chip("保存 Key", selected = true) { vm.saveSearchKey() }
+            Chip(if (vm.searchTesting) "正在试…" else "试一下", selected = false) { vm.testSearch() }
+        }
+        Text(
+            if (hasKey) "${chosen.label} 的 Key 已经有了。" else "Key 只存在这台手机上，而且按服务分开存：以后换一家再换回来，不用重填。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        vm.searchResult?.let { Text(it, color = palette.content, fontSize = 13.sp, lineHeight = 19.sp) }
     }
 }
 
