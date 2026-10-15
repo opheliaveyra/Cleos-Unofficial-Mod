@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -141,34 +142,58 @@ object LiveWidgets {
     }
 }
 
-/** 一条消息的正文：该是文字的是文字，该跑起来的是小玩意儿，该画的是卡片。 */
+/**
+ * 消息气泡里的正文：**只有字**。
+ *
+ * 卡片和小玩意儿不在这儿画 —— 它们在气泡外面单独占一块（[MessageExtras]），
+ * 就像工具调用那样。原因是气泡有它的脾气：宽度被 `widthIn(max = …)` 掐着，
+ * 里面还要塞玻璃、装饰、长按手势；WebView 那种要按自己方式量尺寸的东西进去，
+ * 很可能量出零高度，于是"它说写了，可我这儿什么都没有"。
+ */
 @Composable
 internal fun MessageBody(text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
     val live = LocalLiveWidgets.current
     val cards = LocalCards.current
-    val palette = LocalGlassPalette.current
-    val parts = remember(text, live, cards) { LiveWidgets.split(text, live = live, cards = cards) }
-    if (parts.size == 1 && parts[0] is MessagePart.Words) {
-        MarkdownText((parts[0] as MessagePart.Words).text, ink = color, style = style, modifier = modifier)
-        return
+    // 把文字部分拼回来：卡片和围栏都拿掉，中间断掉的地方补一个换行。
+    val words = remember(text, live, cards) {
+        LiveWidgets.split(text, live = live, cards = cards)
+            .filterIsInstance<MessagePart.Words>()
+            .joinToString("\n\n") { it.text }
     }
+    if (words.isNotBlank()) MarkdownText(words, ink = color, style = style, modifier = modifier)
+}
+
+/**
+ * TA 做的东西：**不当气泡里的内容，单独一块**，和工具调用一样。
+ *
+ * 全宽，不受气泡的宽度限制；能点、能玩、能放大。一段消息里最多三块（[LiveWidgets]）。
+ */
+@Composable
+internal fun MessageExtras(text: String, modifier: Modifier = Modifier) {
+    val live = LocalLiveWidgets.current
+    val cards = LocalCards.current
+    val palette = LocalGlassPalette.current
     val answer = LocalCardAnswer.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        parts.forEach { part ->
+    val extras = remember(text, live, cards) {
+        LiveWidgets.split(text, live = live, cards = cards).filter { it !is MessagePart.Words }
+    }
+    if (extras.isEmpty()) return
+
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        extras.forEach { part ->
             when (part) {
-                is MessagePart.Words -> MarkdownText(part.text, ink = color, style = style)
-                is MessagePart.Widget -> LiveWidget(part.html, color)
+                is MessagePart.Words -> Unit
+                is MessagePart.Widget -> LiveWidget(part.html, palette.content)
                 is MessagePart.Card -> {
-                    // 能到这儿说明已经解析过了；这里再取一次是给重组用的缓存。
                     val card = remember(part.json) { Cards.parse(part.json) }
-                    if (card == null) MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = color, style = style)
+                    if (card == null) MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = palette.content, style = TextStyle(fontSize = 14.sp))
                     else ChatCardView(card, onAnswer = answer)
                 }
                 // 声明了是卡片却读不懂：明说，别让人以为"它什么都没写"。
                 is MessagePart.Unreadable -> {
                     Text("（这张卡片没读懂 —— 可能是里面少了个引号或者逗号。原文在下面，可以让它重写一次。）",
                         color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                    MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = color, style = style)
+                    MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = palette.content, style = TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace))
                 }
             }
         }

@@ -1603,6 +1603,8 @@ private fun MessageBubble(
                             }
                         }
                     }
+                    // TA 做的卡片和小玩意儿：不当气泡里的内容，单独一块，全宽 —— 像工具那样。
+                    MessageExtras(message.content, Modifier.fillMaxWidth())
                     if (shared != null) FeedShareCard(shared, Modifier.widthIn(max = bubbleMaxWidth()), onLongClick = { menu = true }, onOpenImage = onOpenImage)
                     // The message this one answers, under it like in WeChat; a tap finds it.
                     if (quote != null) QuoteBox(quote, onOpenQuote)
@@ -1884,10 +1886,14 @@ private fun LiveBubble(live: StreamingReply, aiName: String, onAnswer: (ChatRepo
                             is StickerText.Piece.Words -> ChatBubbleSurface(
                                 modifier = Modifier.widthIn(max = bubbleMaxWidth()),
                             ) { ink ->
-                                Text(piece.text, color = ink, style = LocalChatType.current.body)
+                                // 和存下来的消息走同一套：流式输出的时候也认 Markdown。
+                                MessageBody(piece.text, color = ink, style = LocalChatType.current.body)
                             }
                         }
                     }
+                    // 卡片和小玩意儿不合在气泡里 —— 单独一块，和存下来的消息一样。
+                    // （围栏没闭合时不会画：写到一半的半截东西跑起来只会闪。）
+                    MessageExtras(live.text, Modifier.fillMaxWidth())
                 }
             }
         }
