@@ -416,6 +416,9 @@ fun ChatTab(
     var switching by remember { mutableStateOf(false) }
     var readingRecap by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    // The phone's haptics: a pat's buzz, and the small tap that says a recording has begun.
+    // Declared up here because starting a recording uses it, and that is defined further down.
+    val haptics = LocalHapticFeedback.current
     // Voice messages: the recording under way, what the indicator shows, and the one playing.
     val recorder = remember { VoiceRecorder(c.images.dir) }
     var recording by remember { mutableStateOf(false) }
@@ -594,6 +597,9 @@ fun ChatTab(
                 cancelling = false
                 voiceTarget = target
                 recording = true
+                // A small tap under the finger: without it the first moment of a recording is
+                // silent on screen, and there is no telling whether the press took at all.
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 return true
             }
         }
@@ -609,14 +615,18 @@ fun ChatTab(
             recorder.cancel()
             return
         }
+        // "Turning it into words" goes up before the recorder is stopped: stopping waits for the
+        // recording thread to finish writing the file, and a wait with nothing on screen at all
+        // reads as "it didn't hear me" rather than "it is working on it".
+        if (target == VoiceTarget.Text) transcribingVoice = true
         val clip = recorder.stop()
         if (clip == null) {
+            transcribingVoice = false
             voiceHint = "说话时间太短了"
             return
         }
         if (target == VoiceTarget.Text) {
             // Heard, then read: the words go into the input box to be looked over, not sent.
-            transcribingVoice = true
             vm.transcribeToInput(clip) { text, problem ->
                 transcribingVoice = false
                 if (text != null) voiceDraft = text else voiceHint = problem
@@ -721,7 +731,6 @@ fun ChatTab(
     // The chat's text, for the bubbles and for what is being typed alike.
     val chatType = remember(state.chatTextSize) { ChatType(state.chatTextSize) }
     // 拍一拍 (Pats): a double tap on an avatar; the phone buzzes once unless that is switched off.
-    val haptics = LocalHapticFeedback.current
     var editingPat by remember { mutableStateOf(false) }
     val buzz = state.patBuzz
     // Baseline each conversation first: opening history must never buzz for old reactions.
@@ -1060,7 +1069,7 @@ fun ChatTab(
                 }, page, modifier = Modifier.align(Alignment.BottomCenter)
                     .padding(bottom = inputBottom + with(density) { inputHeight.toDp() } + 12.dp))
             }
-            if (recording || voiceHint != null) {
+            if (recording || transcribingVoice || voiceHint != null) {
                 RecordingPill(
                     backdrop = page,
                     recording = recording,
