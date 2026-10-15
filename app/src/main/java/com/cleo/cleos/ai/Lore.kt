@@ -23,7 +23,7 @@ class LoreBook(private val dao: LoreDao) {
         val query = ToolArgs.text(a, "query")?.trim().orEmpty()
         if (query.isEmpty()) throw ToolFailure("search 要给 query：要查的那个词。", "没说查什么")
         val all = dao.allFor(companionId).filter { it.enabled }
-        if (all.isEmpty()) throw ToolFailure("对方还没有给你带设定过来。", "还没有设定")
+        if (all.isEmpty()) throw ToolFailure("对方还没有给你带世界书过来。", "还没有世界书")
         val words = LoreSearch.words(query)
         val hits = all
             .mapNotNull { entry -> LoreSearch.score(entry, words).takeIf { it > 0 }?.let { entry to it } }
@@ -32,12 +32,12 @@ class LoreBook(private val dao: LoreDao) {
             .map { it.first }
         if (hits.isEmpty()) {
             return ToolOutcome(
-                "设定里没有和「$query」有关的条目。换个说法，或者只拿其中一个词再查一次；确实没有就别当有。",
-                "设定里没有「$query」",
+                "世界书里没有和「$query」有关的条目。换个说法，或者只拿其中一个词再查一次；确实没有就别当有。",
+                "世界书里没有「$query」",
             )
         }
         val text = buildString {
-            append("设定里和「").append(query).append("」有关的 ").append(hits.size).append(" 条：")
+            append("世界书里和「").append(query).append("」有关的 ").append(hits.size).append(" 条：")
             for (e in hits) {
                 val keys = LoreKeys.decode(e.keys)
                 append("\n\n【#").append(e.id).append(' ').append(e.title).append('】')
@@ -45,9 +45,9 @@ class LoreBook(private val dao: LoreDao) {
                 append('\n').append(e.content.take(ENTRY_CHARS))
                 if (e.content.length > ENTRY_CHARS) append("…（还没完，用 open $e.id 看整条）")
             }
-            append("\n\n这是设定里的原文，照它说，别改动它；哪条要整条看就用 open。")
+            append("\n\n这是世界书里的原文，照它说，别改动它；哪条要整条看就用 open。")
         }
-        return ToolOutcome(text, "查了设定：$query")
+        return ToolOutcome(text, "查了世界书：$query")
     }
 
     private suspend fun open(a: JsonObject, companionId: Long): ToolOutcome {
@@ -62,7 +62,7 @@ class LoreBook(private val dao: LoreDao) {
             append('\n').append(entry.content.take(WHOLE_CHARS))
             if (entry.content.length > WHOLE_CHARS) append("\n…（这一条很长，后面的没有给完）")
         }
-        return ToolOutcome(text, "看了设定「${entry.title}」")
+        return ToolOutcome(text, "看了世界书「${entry.title}」")
     }
 
     private companion object {
@@ -141,9 +141,9 @@ object LoreDigest {
     fun forChat(lore: List<LoreEntity>): String? {
         val shown = lore.filter { it.enabled }
         if (shown.isEmpty()) return null
-        val head = "对方给你带了一份设定（世界书），那是你们所在的世界：里面的人、地方、称呼、规矩都以它为准。" +
-            "用到的时候用 lore 工具查：给 search 一个词（人名、地名、称呼，或者别的设定里的说法），它会把原文给你。" +
-            "查到就照原文说，别照着标题猜，也别编设定里没有的事；没说到的就当你不知道。"
+        val head = "对方给你带了一份世界书（世界书），那是你们所在的世界：里面的人、地方、称呼、规矩都以它为准。" +
+            "用到的时候用 lore 工具查：给 search 一个词（人名、地名、称呼，或者别的世界书里的说法），它会把原文给你。" +
+            "查到就照原文说，别照着标题猜，也别编世界书里没有的事；没说到的就当你不知道。"
         val list = buildString {
             for ((book, entries) in shown.groupBy { it.book }) {
                 append('\n')
@@ -155,7 +155,7 @@ object LoreDigest {
                 }
             }
         }
-        return if (list.length <= INDEX_MAX) "$head\n这份设定里有这些（只是名字，内容要查）：$list"
-        else "$head\n（设定里条目不少，共 ${shown.size} 条，不一一列了；用到哪个词就查哪个。）"
+        return if (list.length <= INDEX_MAX) "$head\n这份世界书里有这些（只是名字，内容要查）：$list"
+        else "$head\n（世界书里条目不少，共 ${shown.size} 条，不一一列了；用到哪个词就查哪个。）"
     }
 }

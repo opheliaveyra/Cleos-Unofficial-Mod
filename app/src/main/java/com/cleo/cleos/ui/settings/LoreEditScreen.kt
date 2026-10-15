@@ -160,7 +160,7 @@ fun LoreEditScreen(id: Long, onBack: () -> Unit) {
     GlassPage(
         overlay = { page ->
             GlassTopBar(
-                title = if (id == 0L) "自己加一条" else vm.title.ifBlank { "设定" },
+                title = if (id == 0L) "自己加一条" else vm.title.ifBlank { "世界书" },
                 subtitle = if (id == 0L) "要有标题和内容才会存" else "离开时自动存",
                 backdrop = page,
                 leading = { GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "返回", onBack, page) },
@@ -243,7 +243,7 @@ fun LoreEditScreen(id: Long, onBack: () -> Unit) {
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("删掉这条设定？") },
+            title = { Text("删掉这条世界书？") },
             text = { Text("$ta 就查不到它了。") },
             confirmButton = {
                 TextButton(onClick = {

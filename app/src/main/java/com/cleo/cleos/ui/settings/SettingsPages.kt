@@ -149,7 +149,7 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         }
         RowDivider()
         val books = lore.map { it.book.trim() }.filter { it.isNotEmpty() }.distinct().size
-        Entry(Icons.Rounded.AutoStories, "设定", when {
+        Entry(Icons.Rounded.AutoStories, "世界书", when {
             lore.isEmpty() -> "还没有 · 世界观、人物、地点，TA 想用时自己查"
             books == 0 -> "${lore.size} 条 · TA 想用时自己查"
             else -> "$books 本书 ${lore.size} 条 · TA 想用时自己查"

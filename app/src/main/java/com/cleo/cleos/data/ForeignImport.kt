@@ -284,7 +284,7 @@ object ForeignFile {
         if (bytes.size >= ole.size && ole.indices.all { bytes[it] == ole[it] })
             throw ImportException("旧版 DOC 或加密 Word 文档暂不支持，请另存为未加密的 .docx 再导入")
         if (isImage(bytes) || mimeType?.substringBefore(';')?.trim()?.startsWith("image/", ignoreCase = true) == true)
-            throw ImportException("这是一张普通图片，没有可导入的角色卡资料。请先提取图片里的文字，复制到设定，或另存为 TXT / DOCX 再导入。只有内嵌角色资料的 PNG 角色卡可以直接导入。")
+            throw ImportException("这是一张普通图片，没有可导入的角色卡资料。请先提取图片里的文字，复制到世界书，或另存为 TXT / DOCX 再导入。只有内嵌角色资料的 PNG 角色卡可以直接导入。")
         // 和聊天附件走同一套解码：BOM → UTF-8 → GBK。中文 Windows 记事本存的 TXT、
         // 只输出 GBK 的旧工具导出的世界书，硬按 UTF-8 读会整篇变成「�」——
         // 而且 JSON 的结构还是好的，所以照样"导入成功"，几百条乱码就这么进去了。
@@ -989,10 +989,10 @@ data class ForeignImportResult(
                 books.size > 2 -> "（$named 等 ${books.size} 本）"
                 else -> "（$named）"
             }
-            parts += "搬来 $lore 条设定$from"
+            parts += "搬来 $lore 条世界书$from"
         }
         if (memories.moved > 0) {
-            parts += "还有 ${memories.moved} 条同类满了，放进了「设定」（那边要用才查，随时能删）"
+            parts += "还有 ${memories.moved} 条同类满了，放进了「世界书」（那边要用才查，随时能删）"
         }
         if (chatMessages > 0) parts += if (chatConversations > 1) {
             "搬来 ${chatConversations} 段对话，共 ${chatMessages} 句聊天"

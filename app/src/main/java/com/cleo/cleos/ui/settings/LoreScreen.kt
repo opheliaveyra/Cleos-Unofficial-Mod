@@ -139,7 +139,7 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
     GlassPage(
         overlay = { page ->
             GlassTopBar(
-                title = "${name}的设定",
+                title = "${name}的世界书",
                 subtitle = if (selecting) "已选 ${selected.size} 条" else if (entries.isEmpty()) null else "${entries.size} 条 · 点开能改",
                 backdrop = page,
                 leading = { GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, if (selecting) "退出多选" else "返回", {
@@ -186,8 +186,8 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
             if (entries.isEmpty()) {
                 item(key = "empty") {
                     Notice(
-                        "还没有设定。世界观、人物、地点这类，一段就是一条：点右上角自己加，或者" +
-                            "在「设置 › 数据与备份」里从别的 app 搬一个世界书过来。",
+                        "还没有世界书。世界观、人物、地点这类，一段就是一条：点右上角自己加，或者" +
+                            "在「设置 › 数据与备份」里从别的 app 搬一本世界书过来。",
                     )
                 }
             } else {
@@ -202,14 +202,16 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                 }
             }
             if (entries.isNotEmpty() && shown.isEmpty()) {
-                item(key = "none") { Notice("设定里没有和「${query.trim()}」有关的条目。") }
+                item(key = "none") { Notice("世界书里没有和「${query.trim()}」有关的条目。") }
             }
             note?.let { text -> item(key = "note") { Notice(text) } }
-            for ((title, list) in grouped) {
+            // 搬进来的世界书一册一册排在前面，自己写的留在最后：这两样不是一回事，
+            // 混在一堆里看不出哪条是从哪儿来的。
+            for ((title, list) in grouped.filterKeys { it.isNotEmpty() } + grouped.filterKeys { it.isEmpty() }) {
                 item(key = "h-$title") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            (if (title.isEmpty()) "没归到书里" else "《$title》") + " · ${list.size} 条",
+                            (if (title.isEmpty()) "自己写的" else "《$title》") + " · ${list.size} 条",
                             color = palette.contentSecondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
@@ -236,7 +238,7 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "从别的 app 搬过来：选一个文件，角色卡（PNG 图片卡也认）、世界书、记忆库、聊天记录都认。" +
-                                "文件里有角色卡，一张就新开一个 TA，里面的东西都归第一个；只是设定的话，搬进现在这个 TA。" +
+                                "文件里有角色卡，一张就新开一个 TA，里面的东西都归第一个；只是世界书的话，搬进现在这个 TA。" +
                                 "已经有的条目不会重复进来。普通截图需要先提取文字；可直接导入的 PNG 角色卡要内嵌角色资料。",
                             color = palette.contentSecondary,
                             fontSize = 12.sp,
@@ -260,8 +262,8 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
         Dialog(onDismissRequest = { if (!deleting) confirmDelete = null }) {
             GlassSurface(Modifier.fillMaxWidth(), style = palette.card, contentPadding = PaddingValues(22.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text("删除 ${ids.size} 条设定？", color = palette.content, fontWeight = FontWeight.SemiBold, fontSize = 20.sp)
-                    Text("只删除${name}这次选中的设定，包含已停用的条目。删除后不能撤销；需要保留的话，请先导出备份。", color = palette.contentSecondary, fontSize = 14.sp, lineHeight = 21.sp)
+                    Text("删除 ${ids.size} 条世界书？", color = palette.content, fontWeight = FontWeight.SemiBold, fontSize = 20.sp)
+                    Text("只删除${name}这次选中的世界书，包含已停用的条目。删除后不能撤销；需要保留的话，请先导出备份。", color = palette.contentSecondary, fontSize = 14.sp, lineHeight = 21.sp)
                     Row(Modifier.align(Alignment.End)) {
                         TextButton(onClick = { confirmDelete = null }, enabled = !deleting) { Text("取消") }
                         TextButton(enabled = !deleting && target != null, onClick = {
@@ -272,7 +274,7 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                                     try {
                                         val count = c.db.lore().deleteSelected(target, ids.toList())
                                         selected = selected - ids
-                                        note = "已删除 $count 条设定。"
+                                        note = "已删除 $count 条世界书。"
                                         confirmDelete = null
                                         selecting = false
                                     } catch (e: CancellationException) {

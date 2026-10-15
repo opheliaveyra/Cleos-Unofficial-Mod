@@ -327,11 +327,11 @@ object ToolSpecs {
     val lore = ToolSpec(
         name = "lore",
         groups = setOf(ToolGroup.Lore),
-        action = "查设定",
-        description = "查你的设定（世界书）：你和对方所在的世界里，人、地方、称呼、规矩都写在里面。" +
-            "聊到里面会有的词（人名、地名、称呼、别的设定里的说法）时，先查了再开口，别自己编。\n" +
+        action = "查世界书",
+        description = "查你的世界书（世界书）：你和对方所在的世界里，人、地方、称呼、规矩都写在里面。" +
+            "聊到里面会有的词（人名、地名、称呼、别的世界书里的说法）时，先查了再开口，别自己编。\n" +
             "action 两种：\n" +
-            "· search：给一个词，看设定里和它有关的条目原文。\n" +
+            "· search：给一个词，看世界书里和它有关的条目原文。\n" +
             "· open：给编号，看一整条。",
         parameters = buildJsonObject {
             put("type", "object")
@@ -886,7 +886,7 @@ class ToolBox(
                 ToolSpecs.readWebpage.name -> readWebpage(args)
                 ToolSpecs.webSearch.name -> searchWeb(args, settings)
                 ToolSpecs.memory.name -> (book ?: throw ToolFailure("现在记不了。", "这里记不了")).act(args, companionId)
-                ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了设定。", "这里查不了")).act(args, companionId)
+                ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了世界书。", "这里查不了")).act(args, companionId)
                 ToolSpecs.getLocation.name -> getLocation()
                 ToolSpecs.noteForLater.name -> noteForLater(args, conversationId, companionId)
                 ToolSpecs.planNextVisit.name -> {
