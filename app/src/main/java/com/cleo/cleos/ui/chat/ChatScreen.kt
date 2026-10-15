@@ -1102,6 +1102,8 @@ fun ChatTab(
             LocalMessageSpacing provides appSettings.messageSpacing,
             LocalBubbleDecoration provides appSettings.bubbleDecoration,
             LocalLiveWidgets provides state.liveWidgets,
+            // 在卡片上点了某个选项 = 那句话当成他说的发出去。
+            LocalCardAnswer provides { said -> vm.sendText(said) },
             LocalBubbleBackgrounds provides (appSettings.bubbleBackgrounds[com.cleo.cleos.data.BubbleBackground.key(true, state.companionId, appSettings.myBubbleTheme)] to
                 appSettings.bubbleBackgrounds[com.cleo.cleos.data.BubbleBackground.key(false, state.companionId, appSettings.taBubbleThemes[state.companionId.toString()] ?: "glass")])) {
             if (editingPat) {

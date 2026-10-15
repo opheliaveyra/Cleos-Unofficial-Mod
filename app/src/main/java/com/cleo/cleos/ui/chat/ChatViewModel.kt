@@ -236,6 +236,19 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         if (files.isNotEmpty()) c.appScope.launch { c.files.delete(files) }
     }
 
+    /**
+     * 把一段话当成对方说的送出去 —— 在卡片上点了某个选项时用。
+     *
+     * 和 [send] 一样，但只发这句话：输入框里正打着的字、选好的图和文件都留着不动
+     * （人在卡片上点一下，不该把手里还没发的东西一起送出去）。
+     */
+    fun sendText(text: String) {
+        val id = conversationId.value ?: return
+        val body = text.trim()
+        if (body.isEmpty()) return
+        c.chat.send(id, body, emptyList(), quoting, null, null, emptyList())
+    }
+
     /** The switch in the input bar: may the TA search the web from here on. */
     fun setWebSearch(on: Boolean) {
         viewModelScope.launch {

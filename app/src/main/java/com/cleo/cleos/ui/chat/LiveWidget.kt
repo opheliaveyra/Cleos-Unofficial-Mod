@@ -28,11 +28,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.cleo.cleos.glass.LocalGlassPalette
 
-/** 一条消息切开的样子：普通文字，或者一个跑起来的小玩意儿。 */
+/** 一条消息切开的样子：普通文字、跑起来的小玩意儿，或者一张画出来的卡片。 */
 sealed interface MessagePart {
     data class Words(val text: String) : MessagePart
+    /** 跑起来的：它写的 HTML（LiveWidget）。 */
     data class Widget(val html: String) : MessagePart
+    /** 画出来的：它只说"要什么"，样式由 App 画（ChatCard）。 */
+    data class Card(val json: String) : MessagePart
 }
+
+/** 点卡片上某个选项之后该发生什么（把选项当成对方说的那句话送出去）。 */
+val LocalCardAnswer = androidx.compose.runtime.compositionLocalOf<(String) -> Unit> { {} }
 
 /**
  * 这一屏要不要把 TA 写的小玩意儿跑起来（设置里的开关）。
@@ -50,10 +56,14 @@ val LocalLiveWidgets = androidx.compose.runtime.compositionLocalOf { false }
  * 会报错，甚至把写了一半的版本先跑一遍 —— 等它写完再跑。
  */
 object LiveWidgets {
-    /** 一条消息里最多跑几个：每个都是一个 WebView，LazyColumn 里尤其贵。 */
+    /** 一条消息里最多放几个：每个都是一块 WebView 或者一张卡片。 */
     const val MAX_PER_MESSAGE = 3
 
-    private val LANGS = setOf("html", "htm", "widget")
+    /** 跑起来的那种：里面是会执行的 HTML。 */
+    private val RAN = setOf("html", "htm", "widget")
+
+    /** 画出来的那种：里面是"要什么"的描述，不执行。 */
+    const val CARD_LANG = "card"
 
     fun split(text: String, enabled: Boolean): List<MessagePart> {
         if (!enabled || !text.contains("```")) return listOf(MessagePart.Words(text))
@@ -61,6 +71,7 @@ object LiveWidgets {
         val plain = StringBuilder()
         val body = StringBuilder()
         var open: String? = null
+        var cardOpen = false
         var widgets = 0
 
         fun flushPlain() {
@@ -73,29 +84,32 @@ object LiveWidgets {
             val trimmed = line.trim()
             if (open == null) {
                 val lang = if (trimmed.startsWith("```")) trimmed.removePrefix("```").trim().lowercase() else null
-                if (lang != null && lang in LANGS && widgets < MAX_PER_MESSAGE) {
+                val known = lang != null && (lang in RAN || lang == CARD_LANG)
+                if (known && widgets < MAX_PER_MESSAGE) {
                     open = lang
+                    cardOpen = lang == CARD_LANG
                     body.setLength(0)
                     continue
                 }
                 plain.append(line).append('\n')
             } else if (trimmed == "```") {
                 flushPlain()
-                out += MessagePart.Widget(body.toString().trim())
+                val content = body.toString().trim()
+                out += if (cardOpen) MessagePart.Card(content) else MessagePart.Widget(content)
                 widgets++
                 open = null
             } else {
                 body.append(line).append('\n')
             }
         }
-        // 没闭合：把围栏连同里面的东西原样还回去，别当小组件跑。
+        // 没闭合：把围栏连同里面的东西原样还回去，别当小组件跑、也别当卡片画。
         if (open != null) plain.append("```").append(open).append('\n').append(body)
         flushPlain()
         return out.ifEmpty { listOf(MessagePart.Words(text)) }
     }
 }
 
-/** 一条消息的正文：该是文字的是文字，该跑起来的是小玩意儿。 */
+/** 一条消息的正文：该是文字的是文字，该跑起来的是小玩意儿，该画的是卡片。 */
 @Composable
 internal fun MessageBody(text: String, color: Color, style: TextStyle, widgets: Boolean, modifier: Modifier = Modifier) {
     val parts = remember(text, widgets) { LiveWidgets.split(text, widgets) }
@@ -103,11 +117,19 @@ internal fun MessageBody(text: String, color: Color, style: TextStyle, widgets: 
         MarkdownText((parts[0] as MessagePart.Words).text, ink = color, style = style, modifier = modifier)
         return
     }
+    val answer = LocalCardAnswer.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         parts.forEach { part ->
             when (part) {
                 is MessagePart.Words -> MarkdownText(part.text, ink = color, style = style)
                 is MessagePart.Widget -> LiveWidget(part.html, color)
+                is MessagePart.Card -> {
+                    // 认不出来就当普通文字：它写错一个逗号，代价是"这张卡没出来"，
+                    // 不是"这条消息炸了"。
+                    val card = remember(part.json) { Cards.parse(part.json) }
+                    if (card == null) MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = color, style = style)
+                    else ChatCardView(card, onAnswer = answer)
+                }
             }
         }
     }
