@@ -48,7 +48,7 @@ import java.util.Locale
  * writes a sticker's name into what it says, so it is told about apart from the tools, and a model
  * that takes no tools sends them too.
  */
-enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files, Workspace }
+enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files, Workspace, Web }
 
 /**
  * A function offered to the model, when any of its [groups] is on. [parameters] is a
@@ -634,6 +634,27 @@ object ToolSpecs {
         ),
     )
 
+    /**
+     * Reading a web page. Not search: the address has to come from somewhere — the person, or a
+     * link inside something already read. A page made of JavaScript comes back thin, and the
+     * tool says so rather than pretending.
+     */
+    val readWebpage = ToolSpec(
+        name = "read_webpage",
+        groups = setOf(ToolGroup.Web),
+        action = "读网页",
+        description = "打开一个网页，把上面的正文读出来（去掉导航、广告和脚本）。对方发来链接、" +
+            "或者你想看某条搜索结果的具体内容时用它。只能读 http/https 的公开网址，" +
+            "打不开对方手机所在的内网地址。网页很长时分段读：先不填 offset，返回里写着下次从哪接着读。" +
+            "读完再说看到了什么，读不到就直说，别凭网址猜内容。",
+        parameters = schema(
+            required = listOf("url"),
+            "url" to prop("string", "完整网址，以 http:// 或 https:// 开头"),
+            "offset" to prop("integer", "从第几个字开始读，默认 0；接着上次读就填上次返回的 next"),
+            "limit" to prop("integer", "这次读多少字，默认 4000，最多 8000"),
+        ),
+    )
+
     val all = listOf(
         sendMessage,
         sendVoice,
@@ -676,6 +697,7 @@ object ToolSpecs {
         makeWorkspaceDir,
         moveWorkspace,
         deleteWorkspace,
+        readWebpage,
     )
     val byName = all.associateBy { it.name }
 
@@ -784,6 +806,8 @@ class ToolBox(
      * the card is made after this box.
      */
     private val allow: suspend (conversationId: Long, request: ToolAsk) -> Boolean = { _, _ -> false },
+    /** Reads web pages, for read_webpage; null when the app has no way out to the network. */
+    private val web: WebReader? = null,
 ) {
     private val book = memories?.let { MemoryBook(it, clock) }
     private val loreBook = lore?.let { LoreBook(it) }
@@ -837,6 +861,7 @@ class ToolBox(
                 ToolSpecs.makeWorkspaceDir.name -> makeWorkspaceDir(args)
                 ToolSpecs.moveWorkspace.name -> moveWorkspace(args)
                 ToolSpecs.deleteWorkspace.name -> deleteWorkspace(args, conversationId)
+                ToolSpecs.readWebpage.name -> readWebpage(args)
                 ToolSpecs.memory.name -> (book ?: throw ToolFailure("现在记不了。", "这里记不了")).act(args, companionId)
                 ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了设定。", "这里查不了")).act(args, companionId)
                 ToolSpecs.getLocation.name -> getLocation()
@@ -900,6 +925,39 @@ class ToolBox(
             "到这里就是全文的结尾。"
         }
         return ToolOutcome("【${file.name} 第 $offset–$end 字，共 $total 字】\n$body\n（$more）", "读了《${file.name}》")
+    }
+
+    // ---- the web -------------------------------------------------------------------------------
+    //
+    // Reading a page, not searching: the address has to come from the person or from a link the
+    // model already read. What it may fetch is decided before the request goes out (WebAddress),
+    // because the address comes from a model that may be repeating a line it found in a file.
+
+    private suspend fun readWebpage(args: JsonObject): ToolOutcome {
+        val reader = web ?: throw ToolFailure("现在读不了网页。", "读网页用不了")
+        val url = ToolArgs.text(args, "url").orEmpty().trim()
+        if (url.isEmpty()) throw ToolFailure("要填 url：读哪个网页。", "没说读哪个网页")
+        val page = try {
+            reader.read(url)
+        } catch (e: WebException) {
+            throw ToolFailure("没有读成：${e.message}。照实告诉对方没读到，别编内容。", "读网页没成")
+        }
+        if (page.text.isEmpty()) {
+            throw ToolFailure("这一页没有能读的文字（可能需要 JavaScript 才显示内容）。照实说读不出来，别猜里面写了什么。", "页面没有文字")
+        }
+        val offset = (ToolArgs.int(args["offset"]) ?: 0).coerceIn(0, page.text.length - 1)
+        val limit = (ToolArgs.int(args["limit"]) ?: WEB_CHUNK).coerceIn(400, WEB_MAX_CHUNK)
+        val end = minOf(offset + limit, page.text.length)
+        val more = if (end < page.text.length) {
+            "还没完。接着读：read_webpage(url=\"$url\", offset=$end)"
+        } else {
+            "到这里就是这一页的结尾。"
+        }
+        val title = page.title.takeIf { it.isNotBlank() }?.let { "【$it】\n" }.orEmpty()
+        return ToolOutcome(
+            "$title$url\n\n${page.text.substring(offset, end)}\n\n（$more）",
+            "读了网页",
+        )
     }
 
     // ---- the TA's own folder (data/Workspace.kt) ----------------------------------------------
@@ -1501,6 +1559,10 @@ class ToolBox(
         /** How much of a workspace file one read gives back, by default and at most. */
         const val WORKSPACE_CHUNK = 3000
         const val WORKSPACE_MAX_CHUNK = 6000
+
+        /** How much of a web page one read gives back: pages are longer than notes. */
+        const val WEB_CHUNK = 4000
+        const val WEB_MAX_CHUNK = 8000
         const val LATER_WHAT_MAX = 200
         const val LATER_WHY_MAX = 200
         const val ALARM_LABEL_MAX = 60

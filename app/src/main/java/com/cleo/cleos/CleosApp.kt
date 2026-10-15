@@ -109,6 +109,8 @@ class AppContainer(context: Context) {
     internal val updates = Updates(context, http, version)
 
     val companions = Companions(db, settings, secrets, images)
+    /** Reading a page off the web, for read_webpage. */
+    val web: com.cleo.cleos.ai.WebReader = com.cleo.cleos.ai.WebPages(http)
     val toolDiagnostics = com.cleo.cleos.diagnostics.ToolDiagnostics(context)
     val chatClient = ChatClient(http, diagnostic = { toolDiagnostics.record(it) })
     val feedNews = com.cleo.cleos.ai.FeedNews(http.newBuilder().callTimeout(18, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
@@ -149,6 +151,7 @@ class AppContainer(context: Context) {
         workspace = { workspace },
         // A deletion waits on a card in the chat, which is made just below as well.
         allow = { conversationId, request -> chat.allow(conversationId, request) },
+        web = web,
     )
     val recaps = Recaps(db, settings, secrets, chatClient, appScope)
     val mcp = McpHub(

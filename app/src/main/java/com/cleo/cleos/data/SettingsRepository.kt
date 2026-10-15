@@ -72,6 +72,9 @@ data class AppSettings(
         // The TA's own folder. On by default: it writes only inside itself, and anything it
         // wants to delete comes back as a card the person has to say yes to.
         ToolGroup.Workspace,
+        // Reading a web page: on by default, since it does nothing unless the person or the TA
+        // has an address to look at.
+        ToolGroup.Web,
     ),
     /** Where "今天天气怎么样" means, when the model isn't told a city. */
     val weatherCity: String = "",

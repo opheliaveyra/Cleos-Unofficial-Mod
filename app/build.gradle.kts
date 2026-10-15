@@ -26,8 +26,11 @@ android {
         applicationId = "com.cleo.cleos"
         minSdk = 29
         targetSdk = 36
-        versionCode = 165
-        versionName = "0.41.88"
+        // The upstream author's line, continued: 165/0.41.88 was theirs, this is 166/0.41.89, and
+        // every build handed over goes up one from there. Bumping it is what makes installing
+        // this an update; without it the phone sees "the same version again" and asks twice.
+        versionCode = 166
+        versionName = "0.41.89"
     }
 
     signingConfigs {
