@@ -208,6 +208,23 @@ class ForeignFileTest {
     }
 
     @Test
+    fun aWorldBookWithNoKeysAtAllIsStillAWorldBookAndNotMemories() {
+        // 一本没写触发词、也没写备注的世界书：以前那些条目一条都认不出来，
+        // 于是掉进最后那个"整个文件当记忆读"的兜底 —— 记忆是每条消息都背在提示词里的，
+        // 几百条世界观就这么变成 TA 一直背着的"它记得的事"。
+        val text = """
+            {"name":"星历","entries":{
+              "0":{"content":"星历分四季，每季九十日。"},
+              "1":{"content":"旧历以月相为准，三日折一月。"}
+            }}
+        """.trimIndent()
+        val out = ForeignFile.read(text)
+        assertEquals(2, out.lore.size)
+        assertTrue("世界书不该串进记忆", out.memories.isEmpty())
+        assertEquals("星历", out.lore[0].book)
+    }
+
+    @Test
     fun plainNotesAreStillReadAsMemory() {
         // 空行分节：一份笔记里的一个小节是一条记忆，不是一行一条 ——
         // 一行一条的话，写成清单的人设文档导进来就是几百条碎渣。

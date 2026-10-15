@@ -354,7 +354,7 @@ object ForeignFile {
         if (blocks.isNotEmpty()) {
             val many = ForeignExport(
                 cards = blocks.flatMap { cardBodies(it) }.map(::aCard),
-                lore = blocks.flatMap { lore(it) },
+                lore = blocks.flatMap { lore(it, lenient = it["entries"] is JsonObject) },
                 memories = blocks.flatMap { memories(it) },
                 chats = blocks.flatMap { chats(it) },
             )
@@ -380,6 +380,15 @@ object ForeignFile {
     /** One object as one module; null when it is none of the four (it is then read as memory). */
     private fun module(o: JsonObject, position: Int): ForeignExport? {
         chats(o).takeIf { it.isNotEmpty() }?.let { return ForeignExport(chats = it) }
+        // 有 entries、**而且用序号当键**（酒馆世界书写成 { "0": {...}, "1": {...} }）＝ 这是世界书。
+        // 别的 app 的记忆文件也用 entries，但那是**数组**，条目里装的是 title/summary 那一套，
+        // 所以只认对象这一种形态，别把记忆文件也拖进来。
+        //
+        // 认准这一点很要紧：一本条目都没写触发词和备注的世界书，原来一条都过不了筛选，
+        // 于是掉到最后那个"整个文件当记忆读"的兜底 —— 记忆是每条消息都背在提示词里的，
+        // 几百条世界观就这么变成 TA 一直背着的"它记得的事"。
+        val entries = o["entries"]
+        if (entries is JsonObject && entries.isNotEmpty()) return ForeignExport(lore = lore(o, position, lenient = true))
         lore(o, position).takeIf { it.isNotEmpty() }?.let { return ForeignExport(lore = it) }
         val cards = cardBodies(o)
         if (cards.isNotEmpty()) {
@@ -442,18 +451,18 @@ object ForeignFile {
     }
 
     /** The entries of a world book: `entries` holding them, each with the words that bring it up. */
-    private fun lore(o: JsonObject, position: Int = 0): List<ImportedLore> {
+    private fun lore(o: JsonObject, position: Int = 0, lenient: Boolean = false): List<ImportedLore> {
         val raw = o["entries"] ?: return emptyList()
         val book = text(o["name"]).orEmpty()
         return when (raw) {
-            is JsonArray -> raw.mapIndexedNotNull { i, e -> (e as? JsonObject)?.let { entry(it, book, position + i) } }
+            is JsonArray -> raw.mapIndexedNotNull { i, e -> (e as? JsonObject)?.let { entry(it, book, position + i, lenient) } }
             // Some books write them as an object keyed by their order ("0", "1", …).
-            is JsonObject -> raw.mapNotNull { (k, v) -> (v as? JsonObject)?.let { entry(it, book, k.toIntOrNull() ?: position) } }
+            is JsonObject -> raw.mapNotNull { (k, v) -> (v as? JsonObject)?.let { entry(it, book, k.toIntOrNull() ?: position, lenient) } }
             else -> emptyList()
         }
     }
 
-    private fun entry(e: JsonObject, book: String, position: Int): ImportedLore? {
+    private fun entry(e: JsonObject, book: String, position: Int, lenient: Boolean = false): ImportedLore? {
         val content = text(e["content"]).orEmpty()
         if (content.isEmpty()) return null
         // 酒馆的世界书用 `key` / `keysecondary`（单数），也有写法是 `keys` / `secondary_keys`。
@@ -462,7 +471,8 @@ object ForeignFile {
         val keys = keyList(e["key"]) + keyList(e["keys"]) + keyList(e["keysecondary"]) + keyList(e["secondary_keys"])
         // A world book's entries are the ones that say which words bring them up. Without that it is
         // some other app's memory file, and it is read as one.
-        if (keys.isEmpty() && text(e["comment"]) == null && number(e["insertion_order"]) == null) return null
+        // [lenient]：已经确定这是世界书（外层有 entries）时不再挑 —— 没触发词也照样收进世界书。
+        if (!lenient && keys.isEmpty() && text(e["comment"]) == null && number(e["insertion_order"]) == null) return null
         // 文件没给 comment 的时候，标题从内容里取 —— 取**第一行**，不是前 20 个字。
         // 很多世界书第一条就是「文件设定」这样的一行标题，下面才是正文；
         // 按字数截会把正文的头一句话也塞进标题里，看起来像"标题和内容重复了一遍"。
