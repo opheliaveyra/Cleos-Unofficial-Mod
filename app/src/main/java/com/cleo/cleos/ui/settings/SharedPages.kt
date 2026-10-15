@@ -233,6 +233,17 @@ internal fun AbilitiesPage(vm: SettingsViewModel, onOpenVoice: () -> Unit) {
                 "删东西一定会先弹卡片问你，你不点同意就删不掉，而且每一次都要问。",
             on(ToolGroup.Workspace),
         ) { vm.setTool(ToolGroup.Workspace, it) }
+        RowDivider(inset = 0.dp)
+        ExplainedSwitch(
+            "对话里的小玩意儿",
+            "让它做能点、能玩的小东西，直接在聊天里跑",
+            "打开后，TA 可以在回复里放一小段网页（HTML／JavaScript），**在聊天里直接跑起来** —— " +
+                "选择题、小计算器、倒计时、随机抽、小游戏这类，你能点、能填。\n\n" +
+                "它跑在一个关起来的小盒子里：**不能联网**（发不出请求、加载不了外面的图）、" +
+                "**碰不到这台手机上的文件**、也**跳不出去**，只能在那一小块地方里折腾。\n\n" +
+                "关掉的话，它写的东西会原样显示成文字（不会被跑起来）。",
+            on(ToolGroup.Live),
+        ) { vm.setTool(ToolGroup.Live, it) }
     }
 
     ListCard("用手机") {

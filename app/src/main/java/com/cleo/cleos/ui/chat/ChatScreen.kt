@@ -1101,6 +1101,7 @@ fun ChatTab(
             LocalBubblePadding provides (appSettings.bubblePaddingX to appSettings.bubblePaddingY),
             LocalMessageSpacing provides appSettings.messageSpacing,
             LocalBubbleDecoration provides appSettings.bubbleDecoration,
+            LocalLiveWidgets provides state.liveWidgets,
             LocalBubbleBackgrounds provides (appSettings.bubbleBackgrounds[com.cleo.cleos.data.BubbleBackground.key(true, state.companionId, appSettings.myBubbleTheme)] to
                 appSettings.bubbleBackgrounds[com.cleo.cleos.data.BubbleBackground.key(false, state.companionId, appSettings.taBubbleThemes[state.companionId.toString()] ?: "glass")])) {
             if (editingPat) {
@@ -1589,10 +1590,11 @@ private fun MessageBubble(
                                         ),
                                     mine = mine,
                                 ) { bubbleInk ->
-                                    MessageText(
+                                    MessageBody(
                                         piece.text,
                                         color = bubbleInk,
                                         style = LocalChatType.current.body,
+                                        widgets = LocalLiveWidgets.current,
                                     )
                                 }
                             }
