@@ -4,9 +4,12 @@ import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.CallRecord
 import com.cleo.cleos.data.CallRecords
 import com.cleo.cleos.data.Companions
+import com.cleo.cleos.data.FileStore
 import com.cleo.cleos.data.ImageStore
 import com.cleo.cleos.data.MessageAudio
 import com.cleo.cleos.data.MessageEdits
+import com.cleo.cleos.data.MessageFile
+import com.cleo.cleos.data.MessageFiles
 import com.cleo.cleos.data.MessageImageCopies
 import androidx.room.withTransaction
 import com.cleo.cleos.data.MessageAudios
@@ -94,6 +97,8 @@ class ChatRepository(
     private val client: ChatClient,
     private val tools: ToolBox,
     private val images: ImageStore,
+    /** Files sent in the chat, and the text read out of them (FileStore). */
+    private val files: FileStore,
     private val companions: Companions,
     private val recaps: Recaps,
     private val mcp: McpHub,
@@ -109,7 +114,7 @@ class ChatRepository(
     private val listening: suspend () -> String? = { null },
     private val interrupted: (Long) -> Unit = {},
     private val activities: WakeActivities = WakeActivities(db),
-) {
+) : FileShelf {
     /** The replies being written, by conversation. */
     private val _streaming = MutableStateFlow<Map<Long, StreamingReply>>(emptyMap())
     val streaming: StateFlow<Map<Long, StreamingReply>> = _streaming.asStateFlow()
@@ -145,6 +150,17 @@ class ChatRepository(
     fun shown() {
         _focus.value = null
     }
+
+    // read_file's side (FileShelf): which files this conversation has been sent, newest first,
+    // and the text that was read out of one. The text lives in FileStore rather than in the
+    // row, so reading a long document again costs a file read and no parsing.
+
+    override suspend fun filesIn(conversationId: Long): List<MessageFile> =
+        db.messages().newest(conversationId, FILE_LOOKBACK)
+            .flatMap { MessageFiles.decode(it.files) }
+            .distinctBy { it.file }
+
+    override suspend fun text(file: String, offset: Int, limit: Int): String? = files.read(file, offset, limit)
 
     /** Voice messages being turned into text, by message id. */
     private val _transcribing = MutableStateFlow<Set<Long>>(emptySet())
@@ -294,7 +310,7 @@ class ChatRepository(
         val upTo = answeredUpTo[conversationId] ?: Long.MIN_VALUE
         return db.messages().newest(conversationId, UNANSWERED_LOOKBACK).any { m ->
             m.role == "user" && m.note == null && m.error == null && m.createdAt > upTo &&
-                (m.content.isNotBlank() || m.images != null)
+                (m.content.isNotBlank() || m.images != null || m.files != null)
         }
     }
 
@@ -404,10 +420,10 @@ class ChatRepository(
      * stopped for a moment ([answerSoon]). [quote]: the message this one answers. False only
      * when there is nothing to send.
      */
-    fun send(conversationId: Long, text: String, pictures: List<MessageImage> = emptyList(), quote: MessageQuote? = null, diaryRequestId: Long? = null, feedShare: FeedShare? = null): Boolean {
+    fun send(conversationId: Long, text: String, pictures: List<MessageImage> = emptyList(), quote: MessageQuote? = null, diaryRequestId: Long? = null, feedShare: FeedShare? = null, files: List<MessageFile> = emptyList()): Boolean {
         val shared = feedShare?.copy(caption = text.trim())
         val content = shared?.let(FeedShares::text) ?: text.trim()
-        if (content.isEmpty() && pictures.isEmpty()) return false
+        if (content.isEmpty() && pictures.isEmpty() && files.isEmpty()) return false
         val at = stamp()
         scope.launch {
             val request = diaryRequestId?.let { id ->
@@ -423,13 +439,16 @@ class ChatRepository(
                     diaryRequestId = request,
                     createdAt = at,
                     images = MessageImages.encode(shared?.images.orEmpty() + pictures),
+                    files = MessageFiles.encode(files),
                     quote = quote?.let(MessageQuotes::encode),
                     feedShare = shared?.let(FeedShares::encode),
                 ),
             )
             val conversation = db.conversations().get(conversationId)
             if (conversation != null && conversation.title == DEFAULT_TITLE) {
-                db.conversations().rename(conversationId, StickerText.plain(content).lineSequence().first().take(24).ifBlank { "[图片]" })
+                val title = StickerText.plain(content).lineSequence().first().take(24)
+                    .ifBlank { if (files.isEmpty()) "[图片]" else "[文件]" }
+                db.conversations().rename(conversationId, title)
             }
             db.conversations().touch(conversationId, at)
             answerSoon(conversationId)
@@ -639,6 +658,7 @@ class ChatRepository(
             rows.filter { it.id in plan.deleted }
         }
         images.delete(removed.flatMap { MessageImages.decode(it.images).map { image -> image.file } + listOfNotNull(MessageAudios.decode(it.audio)?.file) })
+        files.delete(removed.flatMap { MessageFiles.decode(it.files).map { file -> file.file } })
     }
 
     // Phone calls (ai/Call.kt). What the two say goes into the conversation as messages marked as
@@ -828,14 +848,16 @@ class ChatRepository(
         return Step.Called(ApiMessage("assistant", text.toString(), calls, reasoning = sentBack), savedId = id)
     }
 
-    /** A conversation, its pictures and recordings: the rows go by cascade, the files would stay behind. */
+    /** A conversation, its pictures, recordings and files: the rows go by cascade, the files would stay behind. */
     fun deleteConversation(id: Long) {
         scope.launch {
             stopReplies(listOf(id))
             val pictures = db.messages().imagesIn(id).flatMap { MessageImages.decode(it) }.map { it.file } +
                 db.messages().audioIn(id).mapNotNull { MessageAudios.decode(it)?.file }
+            val sent = db.messages().filesIn(id).flatMap { MessageFiles.decode(it) }.map { it.file }
             db.conversations().delete(id)
             images.delete(pictures)
+            files.delete(sent)
         }
     }
 
@@ -1092,6 +1114,10 @@ class ChatRepository(
             val recap = conversation?.recap
             val now = ZonedDateTime.now()
             var groups = groupsFor(s, ta)
+            // A file among what is being answered brings read_file with it. It is not one of the
+            // switches in settings: someone who sent a document did not ask to configure a tool,
+            // and a TA that cannot open it can only talk about the file's name.
+            if (history.any { MessageFiles.decode(it.files).isNotEmpty() }) groups = groups + ToolGroup.Files
             // The tools of the MCP services switched on come along whenever tools do.
             var outside = mcp.tools()
             var withImages = endpointKey !in refusesImages && history.any { it.role == "user" && it.images != null }
@@ -1109,10 +1135,19 @@ class ChatRepository(
             val heard = if (ToolGroup.Music in s.tools) runCatching { listening() }.getOrNull() else null
             val (stickers, sendStickers) = stickersFor(s)
             val calls = callsOutside(history)
+            // A file short enough to be written into the message is read whole, once for this
+            // reply; a longer one only as far as the opening the message will carry.
+            val inlineFiles = HashMap<String, String>()
+            for (m in history) for (f in MessageFiles.decode(m.files)) {
+                if (!f.ready || f.file in inlineFiles) continue
+                val want = if (f.chars <= ChatFiles.INLINE_CHARS) f.chars else ChatFiles.PREVIEW_CHARS
+                files.read(f.file, want)?.let { inlineFiles[f.file] = it }
+            }
             fun build() = Prompt.messages(
                 s, ta, history, now, groups, withImages, memories, recap, outside, due.map { it.what }, heard, stickers, sendStickers, calls = calls,
                 lore = lore,
                 preserveReasoning = Thinking.keepsToolReasoning(endpoint.model),
+                fileText = { name -> inlineFiles[name] },
             )
             var messages = prepare(build())
             var rounds = 0
@@ -1656,6 +1691,9 @@ class ChatRepository(
 
         /** How far back to look for what the person said and wasn't answered, or what the TA quotes. */
         private const val UNANSWERED_LOOKBACK = 30
+
+/** How far back read_file looks for the files of a conversation: they are sent, not stored there. */
+private const val FILE_LOOKBACK = 200
 
         /** How long a call to an outside service waits for the person to allow it. */
         private const val ASK_WAIT = 10 * 60_000L

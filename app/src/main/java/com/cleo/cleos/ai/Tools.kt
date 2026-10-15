@@ -4,6 +4,7 @@ import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.DiaryBlock
 import com.cleo.cleos.data.DiaryBlocks
+import com.cleo.cleos.data.MessageFile
 import com.cleo.cleos.data.Pats
 import com.cleo.cleos.data.db.DiaryDao
 import com.cleo.cleos.data.db.DiaryEntryEntity
@@ -44,7 +45,7 @@ import java.util.Locale
  * writes a sticker's name into what it says, so it is told about apart from the tools, and a model
  * that takes no tools sends them too.
  */
-enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos }
+enum class ToolGroup { Todos, Diary, AiDiary, Secrets, Avatar, Weather, Messages, Letters, Memory, Lore, Location, Speak, Later, Alarm, Calendar, Music, Stickers, Pat, FreeVisit, Feed, FeedActions, Photos, Files }
 
 /**
  * A function offered to the model, when any of its [groups] is on. [parameters] is a
@@ -526,6 +527,26 @@ object ToolSpecs {
         ),
     )
 
+    /**
+     * Files the person sent with a message. This group is not one of the switches in settings:
+     * it comes along by itself whenever the conversation holds a file (ChatRepository.reply),
+     * so that a TA who was sent a PDF can read it without the person first finding a switch.
+     */
+    val readFile = ToolSpec(
+        name = "read_file",
+        groups = setOf(ToolGroup.Files),
+        action = "读文件",
+        description = "读对方发来的文件（TXT、MD、PDF、DOCX）里的文字。name 照消息里写的原样填，包括扩展名。" +
+            "短文件的全文已经在消息里，不用再读；长文件只给了名字和字数，要从 offset=0 开始一段一段读，" +
+            "返回里写着从哪个字接着读。回答关于文件的问题之前先读，不要凭文件名猜内容，也不要说看不到文件。",
+        parameters = schema(
+            required = listOf("name"),
+            "name" to prop("string", "文件名，照消息里写的原样（含扩展名）"),
+            "offset" to prop("integer", "从第几个字开始读，默认 0；接着上次读就填上次返回的 next"),
+            "limit" to prop("integer", "这次读多少个字，默认 2000，最少 200，最多 4000"),
+        ),
+    )
+
     val all = listOf(
         sendMessage,
         sendVoice,
@@ -560,6 +581,7 @@ object ToolSpecs {
         commentFeed,
         searchPhotos,
         sharePhoto,
+        readFile,
     )
     val byName = all.associateBy { it.name }
 
@@ -611,6 +633,18 @@ interface SelfAvatar {
 }
 
 /**
+ * The files sent in a conversation, for read_file. Answered by ChatRepository, which has both
+ * the rows that name them and the FileStore the text was read into.
+ */
+interface FileShelf {
+    /** Every file sent in [conversationId], newest first. */
+    suspend fun filesIn(conversationId: Long): List<MessageFile>
+
+    /** [limit] characters of [file] from [offset]; null when the text is no longer there. */
+    suspend fun text(file: String, offset: Int, limit: Int): String?
+}
+
+/**
  * Runs what the model asked for. Whether a group is allowed is checked here again, at the
  * moment of the call, not only when the tools are offered: the history may hold calls
  * from before a switch was turned off, and a model can call a tool it was not offered.
@@ -646,6 +680,8 @@ class ToolBox(
     private val feed: FeedBook? = null,
     private val feedActions: FeedActions? = null,
     private val photos: PhotoBook? = null,
+    /** The files the person sent, for read_file; asked for at the call, since it is made after this. */
+    private val fileShelf: () -> FileShelf? = { null },
 ) {
     private val book = memories?.let { MemoryBook(it, clock) }
     private val loreBook = lore?.let { LoreBook(it) }
@@ -691,6 +727,7 @@ class ToolBox(
                 // Sent messages become bubbles in ChatRepository; this is only reached by mistake.
                 ToolSpecs.sendMessage.name, ToolSpecs.sendVoice.name -> ToolOutcome(ToolSpecs.SENT, "")
                 ToolSpecs.readLetters.name -> readLetters(args, today, companionId)
+                ToolSpecs.readFile.name -> readFile(args, conversationId)
                 ToolSpecs.memory.name -> (book ?: throw ToolFailure("现在记不了。", "这里记不了")).act(args, companionId)
                 ToolSpecs.lore.name -> (loreBook ?: throw ToolFailure("现在查不了设定。", "这里查不了")).act(args, companionId)
                 ToolSpecs.getLocation.name -> getLocation()
@@ -721,6 +758,39 @@ class ToolBox(
         } catch (f: ToolFailure) {
             failed(f.result, f.note)
         }
+    }
+
+    /**
+     * One slice of a file the person sent. The text was read out of the file when it arrived
+     * and is kept in FileStore, so a forty-page PDF is read a few paragraphs at a time instead
+     * of being carried in every request from then on.
+     */
+    private suspend fun readFile(args: JsonObject, conversationId: Long): ToolOutcome {
+        val shelf = fileShelf() ?: throw ToolFailure("现在读不了文件。", "读不了文件")
+        val asked = ToolArgs.text(args, "name").orEmpty().trim()
+        if (asked.isEmpty()) throw ToolFailure("要填 name：读哪一个文件。", "没说读哪个文件")
+        val files = shelf.filesIn(conversationId)
+        if (files.isEmpty()) throw ToolFailure("这个聊天里还没有收到文件。", "这里没有文件")
+        val file = files.firstOrNull { it.name == asked }
+            ?: files.firstOrNull { it.name.contains(asked, ignoreCase = true) }
+            ?: files.firstOrNull { asked.contains(it.name, ignoreCase = true) }
+            ?: throw ToolFailure("这个聊天里没有叫「$asked」的文件。有的是：" + files.joinToString("、") { it.name }, "没有这个文件")
+        file.error?.let { throw ToolFailure("「${file.name}」没能读成文字：$it。", "这个文件读不了") }
+        if (!file.ready) throw ToolFailure("「${file.name}」还在读，等一会儿再试。", "文件还在读")
+        val total = file.chars
+        val offset = (ToolArgs.int(args["offset"]) ?: 0).coerceIn(0, maxOf(0, total - 1))
+        val limit = (ToolArgs.int(args["limit"]) ?: ChatFiles.CHUNK_CHARS)
+            .coerceIn(ChatFiles.MIN_CHUNK_CHARS, ChatFiles.MAX_CHUNK_CHARS)
+        val end = minOf(offset + limit, total)
+        val body = shelf.text(file.file, offset, end - offset)
+            ?: throw ToolFailure("「${file.name}」的文字已经不在了，请让对方重新发一次。", "文件不在了")
+        if (body.isEmpty()) throw ToolFailure("「${file.name}」的这段没有文字，换个 offset 试试。", "这一段是空的")
+        val more = if (end < total) {
+            "还没完。接着读：read_file(name=\"${file.name}\", offset=$end)"
+        } else {
+            "到这里就是全文的结尾。"
+        }
+        return ToolOutcome("【${file.name} 第 $offset–$end 字，共 $total 字】\n$body\n（$more）", "读了《${file.name}》")
     }
 
     private suspend fun musicControl(a: JsonObject): ToolOutcome {

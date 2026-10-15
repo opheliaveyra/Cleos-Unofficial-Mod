@@ -182,6 +182,8 @@ class BackupService(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val images: ImageStore,
+    /** Files sent in the chat, and the text read out of them: both travel with a backup. */
+    private val files: FileStore,
 ) {
     private val resolver = context.contentResolver
     private val cacheDir = context.cacheDir
@@ -309,6 +311,9 @@ class BackupService(
         var written = 0
         var voices = 0
         var stickers = 0
+        // The files the person sent, and the text taken out of each: without both, a restored
+        // message would name a file the TA can no longer read.
+        val attachments = data.messages.flatMap { m -> MessageFiles.decode(m.files) }.map { it.file }.toSet()
         ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
             zip.putNextEntry(ZipEntry(JSON_NAME))
             zip.write(json.encodeToString(data).toByteArray(Charsets.UTF_8))
@@ -325,6 +330,13 @@ class BackupService(
                     else -> written++
                 }
             }
+            for (name in attachments + attachments.map { FileStore.textName(it) }) {
+                val f = files.file(name)
+                if (!f.exists()) continue
+                zip.putNextEntry(ZipEntry("files/$name"))
+                f.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
         }
         return BackupSummary(
             companions.size, data.conversations.size, data.messages.size, data.diary.size, data.letters.size, data.todos.size,
@@ -336,6 +348,9 @@ class BackupService(
 
     private suspend fun restoreFrom(input: InputStream, takeSnapshot: Boolean): BackupSummary {
         val staging = File(cacheDir, "restore-${System.nanoTime()}").apply { mkdirs() }
+        // Files are staged apart from pictures: both are named by bare file name in the archive,
+        // and a file whose text is read back must not be mistaken for a picture.
+        val stagingFiles = File(cacheDir, "restore-files-${System.nanoTime()}").apply { mkdirs() }
         try {
             var data: BackupFile? = null
             ZipInputStream(BufferedInputStream(input)).use { zip ->
@@ -352,6 +367,12 @@ class BackupService(
                             val name = File(entry.name).name
                             if (name.isNotBlank() && !name.startsWith(".")) {
                                 File(staging, name).outputStream().use { zip.copyTo(it) }
+                            }
+                        }
+                        entry.name.startsWith("files/") && !entry.isDirectory -> {
+                            val name = File(entry.name).name
+                            if (name.isNotBlank() && !name.startsWith(".")) {
+                                File(stagingFiles, name).outputStream().use { zip.copyTo(it) }
                             }
                         }
                     }
@@ -373,6 +394,10 @@ class BackupService(
             val pictures = staging.listFiles().orEmpty()
             for (f in pictures) {
                 val dest = images.file(f.name)
+                if (!dest.exists()) f.copyTo(dest)
+            }
+            for (f in stagingFiles.listFiles().orEmpty()) {
+                val dest = files.file(f.name)
                 if (!dest.exists()) f.copyTo(dest)
             }
             val bs = d.settings
@@ -497,6 +522,7 @@ class BackupService(
             )
         } finally {
             staging.deleteRecursively()
+            stagingFiles.deleteRecursively()
         }
     }
 

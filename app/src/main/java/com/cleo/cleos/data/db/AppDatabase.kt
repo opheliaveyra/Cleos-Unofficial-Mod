@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 36,
+    version = 37,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -95,6 +95,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 33, to = 34),
         AutoMigration(from = 34, to = 35),
         AutoMigration(from = 35, to = 36),
+        // 36 -> 37: files sent in the chat (one nullable column). The file itself and the text
+        // read out of it live in FileStore; the row keeps only what the chat shows.
+        AutoMigration(from = 36, to = 37),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -32,6 +32,7 @@ import com.cleo.cleos.ai.Transcriber
 import com.cleo.cleos.data.BackupService
 import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.ForeignImport
+import com.cleo.cleos.data.FileStore
 import com.cleo.cleos.data.ImageStore
 import com.cleo.cleos.data.McpServers
 import com.cleo.cleos.data.SecretStore
@@ -88,6 +89,8 @@ class AppContainer(context: Context) {
     val secrets = SecretStore(context)
     val modelProfiles = com.cleo.cleos.data.ModelProfiles(secrets)
     val images = ImageStore(context)
+    /** Files sent in the chat, kept as they came; the text read out of them sits beside them. */
+    val files = FileStore(context)
     val feed = com.cleo.cleos.data.FeedRepository(db, images)
 
     private val http = OkHttpClient.Builder()
@@ -137,6 +140,8 @@ class AppContainer(context: Context) {
         feedActions = com.cleo.cleos.ai.FeedActions(db.feed(), { id -> db.companions().get(id) != null },
             { action -> db.withTransaction { action() } }),
         photos = com.cleo.cleos.ai.PhotoBook(photoSource, diagnostic = { toolDiagnostics.record(it) }),
+        // Read at the call: the chat that answers read_file is made just below.
+        fileShelf = { chat },
     )
     val recaps = Recaps(db, settings, secrets, chatClient, appScope)
     val mcp = McpHub(
@@ -151,7 +156,7 @@ class AppContainer(context: Context) {
     val ear = EarVoice(context, images)
     val wakeActivities = com.cleo.cleos.ai.WakeActivities(db)
     val chat: ChatRepository = ChatRepository(
-        db, settings, secrets, chatClient, tools, images, companions, recaps, mcp, transcriber, speaker, appScope,
+        db, settings, secrets, chatClient, tools, images, files, companions, recaps, mcp, transcriber, speaker, appScope,
         // A reply finished where the person isn't looking (they left, or went to another page): as a notification.
         replied = { ta, conversationId, said ->
             if (!(visible && chatOnScreen == conversationId)) notifier.messages(ta, conversationId, said)
@@ -169,7 +174,7 @@ class AppContainer(context: Context) {
         db.conversations().idsFor(id).any { chat.busy(it) || chat.isTyping(it) }
     }
     val favorites = com.cleo.cleos.data.Favorites(db, settings, images)
-    val backup = BackupService(context, db, settings, images)
+    val backup = BackupService(context, db, settings, images, files)
     val imports = ForeignImport(context, db, companions)
     val notifier = Notifier(context, images)
 

@@ -154,6 +154,10 @@ interface MessageDao {
     @Query("SELECT audio FROM messages WHERE conversationId = :conversationId AND audio IS NOT NULL")
     suspend fun audioIn(conversationId: Long): List<String>
 
+    /** The files sent in one conversation (a JSON array each), to delete their copies with it. */
+    @Query("SELECT files FROM messages WHERE conversationId = :conversationId AND files IS NOT NULL")
+    suspend fun filesIn(conversationId: Long): List<String>
+
     @Query("UPDATE messages SET error = :error WHERE id = :id")
     suspend fun setError(id: Long, error: String?)
 

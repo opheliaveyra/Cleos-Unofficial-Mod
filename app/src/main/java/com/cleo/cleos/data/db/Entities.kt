@@ -322,6 +322,12 @@ data class MessageEntity(
     val note: String? = null,
     /** "user": the pictures sent with it, a JSON array of MessageImage, in order. */
     val images: String? = null,
+    /**
+     * "user": the files sent with it, a JSON array of MessageFile, in order. Only what was
+     * read off them is kept here (name, size, kind, length); the text itself stays in
+     * FileStore, where read_file goes back for it turn after turn.
+     */
+    val files: String? = null,
     /** "user": a voice message's recording (MessageAudio as JSON); [content] is what it said, once transcribed. */
     val audio: String? = null,
     /**

@@ -11,6 +11,7 @@ import com.cleo.cleos.AppContainer
 import com.cleo.cleos.ai.ChatRepository
 import com.cleo.cleos.ai.Recap
 import com.cleo.cleos.data.MessageAudio
+import com.cleo.cleos.data.MessageFile
 import com.cleo.cleos.ai.Prompt
 import com.cleo.cleos.ai.Speech
 import com.cleo.cleos.ai.StreamingReply
@@ -174,6 +175,50 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         c.appScope.launch { c.images.delete(listOf(image.file)) }
     }
 
+    /**
+     * Files picked for the next message, already copied in and read (FileStore.add), in the
+     * order they were picked. A file whose reading failed stays in the list with the reason on
+     * it: the person can send it anyway, and the TA is told it could not be opened.
+     */
+    val fileAttachments = mutableStateListOf<MessageFile>()
+
+    /** A file is being copied in and read right now. */
+    var readingFiles by mutableStateOf(false)
+        private set
+
+    /** Why the last file would not come in at all; shown for a moment, like the voice hint. */
+    var fileProblem by mutableStateOf<String?>(null)
+        private set
+
+    fun attachFiles(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            readingFiles = true
+            try {
+                for (uri in uris.take(Prompt.MAX_FILES - fileAttachments.size)) {
+                    runCatching { c.files.add(uri) }
+                        .onSuccess { file ->
+                            fileAttachments += file
+                            file.error?.let { fileProblem = "《${file.name}》$it" }
+                        }
+                        .onFailure { e -> fileProblem = e.message ?: "这个文件读不了" }
+                }
+            } finally {
+                readingFiles = false
+            }
+        }
+    }
+
+    fun dropFile(file: MessageFile) {
+        fileAttachments.removeAll { it.file == file.file }
+        c.appScope.launch { c.files.delete(listOf(file.file)) }
+    }
+
+    /** The problem has been shown; nothing left to say about it. */
+    fun clearFileProblem() {
+        fileProblem = null
+    }
+
     /** The message the next one answers, picked with 引用; shown above the input until it goes or is dropped. */
     var quoting by mutableStateOf<MessageQuote?>(null)
         private set
@@ -191,11 +236,12 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         conversationId.value?.let { c.chat.typing(it, now, processingMedia) }
     }
 
-    /** False when nothing went out: the text and pictures stay where they are. */
+    /** False when nothing went out: the text, pictures and files stay where they are. */
     fun send(text: String, diaryRequestId: Long? = null, feedShare: com.cleo.cleos.data.FeedShare? = null): Boolean {
         val id = conversationId.value ?: return false
-        if (!c.chat.send(id, text, attachments.toList(), quoting, diaryRequestId, feedShare)) return false
+        if (!c.chat.send(id, text, attachments.toList(), quoting, diaryRequestId, feedShare, fileAttachments.toList())) return false
         attachments.clear()
+        fileAttachments.clear()
         quoting = null
         return true
     }
@@ -281,6 +327,8 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         // Picked but never sent: nothing will ever point at these files.
         val unsent = attachments.map { it.file }
         if (unsent.isNotEmpty()) c.appScope.launch { c.images.delete(unsent) }
+        val unsentFiles = fileAttachments.map { it.file }
+        if (unsentFiles.isNotEmpty()) c.appScope.launch { c.files.delete(unsentFiles) }
         (stickerDraft as? StickerDraft.New)?.let { c.stickers.discard(it.picked) }
     }
 
@@ -301,6 +349,29 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun delete(messageId: Long) = c.chat.deleteMessage(messageId)
+
+    /**
+     * A 按住说话 recording turned into words for the input box, instead of being sent as a
+     * voice message. [done] gets the text, or null and the reason it could not be heard. The
+     * recording is deleted either way: it was a way of typing, and nothing points at it.
+     */
+    fun transcribeToInput(clip: MessageAudio, done: (String?, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val s = c.settings.current()
+                if (s.voiceBaseUrl.isBlank() || s.voiceModel.isBlank()) {
+                    done(null, "还没接语音转文字的服务，去设置「发语音」里选一个。")
+                    return@launch
+                }
+                val text = c.transcriber.transcribe(s.voiceBaseUrl, s.voiceModel, c.images.file(clip.file)).trim()
+                if (text.isEmpty()) done(null, "没听清，再说一次？") else done(text, null)
+            } catch (e: Exception) {
+                done(null, e.message ?: "没听清，再说一次？")
+            } finally {
+                c.images.delete(listOf(clip.file))
+            }
+        }
+    }
 
     /** Sends a recording, with the quote waiting if there is one. Without a conversation it is thrown away, and false. */
     fun sendVoice(clip: MessageAudio): Boolean {

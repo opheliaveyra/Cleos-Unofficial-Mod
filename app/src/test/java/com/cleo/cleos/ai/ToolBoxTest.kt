@@ -4,6 +4,7 @@ import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.DiaryBlock
 import com.cleo.cleos.data.DiaryBlocks
+import com.cleo.cleos.data.MessageFile
 import com.cleo.cleos.data.db.DiaryDao
 import com.cleo.cleos.data.db.DiaryEntryEntity
 import com.cleo.cleos.data.db.LetterEntity
@@ -50,6 +51,61 @@ class ToolBoxTest {
 
     private fun run(name: String, args: String, settings: AppSettings = all, companionId: Long = Companions.FIRST) =
         runBlocking { box.run(ToolCall("c", name, args), settings, companionId = companionId) }
+
+    /** A conversation with one file in it, read a slice at a time the way ChatRepository does. */
+    private fun shelfOf(sent: MessageFile, body: String) = object : FileShelf {
+        override suspend fun filesIn(conversationId: Long): List<MessageFile> = listOf(sent)
+
+        override suspend fun text(file: String, offset: Int, limit: Int): String =
+            body.substring(offset, minOf(offset + limit, body.length))
+    }
+
+    private fun readFile(shelf: FileShelf, args: String) = runBlocking {
+        ToolBox(todos, diary, weather, fileShelf = { shelf }, clock = { nowMillis }, zone = { zone })
+            .run(ToolCall("r", ToolSpecs.readFile.name, args), all, conversationId = 1)
+    }
+
+    @Test
+    fun readFileGivesOneSliceAndSaysWhereTheNextOneStarts() {
+        val body = "一二三四五六七八九十".repeat(100)
+        val shelf = shelfOf(MessageFile("f1.txt", "笔记.txt", 3000, MessageFile.TXT, chars = body.length), body)
+        val first = readFile(shelf, """{"name":"笔记.txt","limit":200}""")
+        assertTrue(first.result, first.result.contains("第 0–200 字，共 1000 字"))
+        assertTrue(first.result, first.result.contains("offset=200"))
+        assertEquals("读了《笔记.txt》", first.note)
+        val second = readFile(shelf, """{"name":"笔记.txt","offset":200,"limit":800}""")
+        assertTrue(second.result, second.result.contains("第 200–1000 字"))
+        assertTrue(second.result, second.result.contains("结尾"))
+    }
+
+    @Test
+    fun readFileFindsAFileByPartOfItsNameAndRefusesWhatIsNotThere() {
+        val body = "短"
+        val shelf = shelfOf(MessageFile("f2.pdf", "会议纪要.pdf", 90, MessageFile.PDF, chars = body.length), body)
+        assertTrue(readFile(shelf, """{"name":"会议纪要"}""").result.contains("会议纪要.pdf"))
+        val missing = readFile(shelf, """{"name":"别的东西.pdf"}""")
+        assertTrue(missing.result, missing.result.contains("会议纪要.pdf"))
+        assertTrue(missing.note, missing.note.contains("没有这个文件"))
+        assertTrue(readFile(shelf, """{"limit":100}""").note.contains("没说读哪个文件"))
+    }
+
+    @Test
+    fun readFileSaysWhenTheFileItselfCouldNotBeRead() {
+        val broken = MessageFile("f3.pdf", "扫描件.pdf", 500, MessageFile.PDF, error = "这个 PDF 里没有文字")
+        val out = readFile(shelfOf(broken, ""), """{"name":"扫描件.pdf"}""")
+        assertTrue(out.result, out.result.contains("没有文字"))
+        val reading = MessageFile("f4.docx", "论文.docx", 500, MessageFile.DOCX)
+        assertTrue(readFile(shelfOf(reading, ""), """{"name":"论文.docx"}""").result.contains("还在读"))
+    }
+
+    @Test
+    fun readFileIsOnlyOfferedWithAFileInTheConversation() {
+        // The group is not one of the settings switches: it comes with the files themselves.
+        val spec = ToolSpecs.readFile
+        assertEquals(setOf(ToolGroup.Files), spec.groups)
+        assertTrue(ToolSpecs.offered(setOf(ToolGroup.Files)).any { it.name == spec.name })
+        assertFalse(ToolSpecs.offered(setOf(ToolGroup.Todos)).any { it.name == spec.name })
+    }
 
     @Test
     fun disabledPhotoToolsCannotSearchOrDownloadEvenWhenModelCallsThem() {

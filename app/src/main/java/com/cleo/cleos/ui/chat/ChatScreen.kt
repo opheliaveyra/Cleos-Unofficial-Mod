@@ -30,6 +30,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.rounded.DynamicFeed
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -167,8 +170,11 @@ import com.cleo.cleos.ai.StreamingReply
 import com.cleo.cleos.ai.Voice
 import com.cleo.cleos.data.MessageAudio
 import com.cleo.cleos.data.MessageAudios
+import com.cleo.cleos.data.MessageFile
+import com.cleo.cleos.data.MessageFiles
 import com.cleo.cleos.data.MessageImage
 import com.cleo.cleos.data.MessageImages
+import com.cleo.cleos.data.readableSize
 import com.cleo.cleos.data.MessageQuote
 import com.cleo.cleos.data.MessageQuotes
 import com.cleo.cleos.data.FeedShare
@@ -417,6 +423,16 @@ fun ChatTab(
     var recordedMs by remember { mutableLongStateOf(0L) }
     var loudness by remember { mutableFloatStateOf(0f) }
     var voiceHint by remember { mutableStateOf<String?>(null) }
+    /**
+     * Where the recording under way is headed. 按住说话 on the input box turns the words into
+     * text for the person to read and edit before sending; the microphone button beside it
+     * sends the recording itself, which is what it has always done.
+     */
+    var voiceTarget by remember { mutableStateOf(VoiceTarget.Message) }
+    /** One of those recordings is being turned into text. */
+    var transcribingVoice by remember { mutableStateOf(false) }
+    /** What it said, waiting for the input box (declared further down) to be handed it. */
+    var voiceDraft by remember { mutableStateOf<String?>(null) }
     var selecting by remember(state.conversationId) { mutableStateOf(false) }
     var selected by remember(state.conversationId) { mutableStateOf(setOf<Long>()) }
     var savingFavorite by remember { mutableStateOf(false) }
@@ -566,7 +582,7 @@ fun ChatTab(
         }
     }
 
-    fun startVoice(): Boolean {
+    fun startVoice(target: VoiceTarget = VoiceTarget.Message): Boolean {
         when {
             !state.voiceReady -> askVoiceSetup = true
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ->
@@ -576,6 +592,7 @@ fun ChatTab(
                 stopPlaying()
                 recordedMs = 0
                 cancelling = false
+                voiceTarget = target
                 recording = true
                 return true
             }
@@ -585,6 +602,7 @@ fun ChatTab(
 
     fun endVoice(cancel: Boolean) {
         if (!recording) return
+        val target = voiceTarget
         recording = false
         cancelling = false
         if (cancel) {
@@ -592,8 +610,20 @@ fun ChatTab(
             return
         }
         val clip = recorder.stop()
+        if (clip == null) {
+            voiceHint = "说话时间太短了"
+            return
+        }
+        if (target == VoiceTarget.Text) {
+            // Heard, then read: the words go into the input box to be looked over, not sent.
+            transcribingVoice = true
+            vm.transcribeToInput(clip) { text, problem ->
+                transcribingVoice = false
+                if (text != null) voiceDraft = text else voiceHint = problem
+            }
+            return
+        }
         when {
-            clip == null -> voiceHint = "说话时间太短了"
             !vm.sendVoice(clip) -> voiceHint = "没发出去，再试一次"
             else -> sentCount++
         }
@@ -614,6 +644,12 @@ fun ChatTab(
             delay(2200)
             voiceHint = null
         }
+    }
+    // A file that would not come in at all: said in the same place as a voice hint, once.
+    LaunchedEffect(vm.fileProblem) {
+        val problem = vm.fileProblem ?: return@LaunchedEffect
+        voiceHint = problem
+        vm.clearFileProblem()
     }
     DisposableEffect(Unit) {
         onDispose {
@@ -663,6 +699,13 @@ fun ChatTab(
     val stickerPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         pickingAttachment = false
         if (uri != null) vm.pickSticker(uri) { voiceHint = it }
+    }
+    // Files (TXT, MD, PDF, DOCX), through the system picker. It hands the app one document at a
+    // time and grants reading it for this session, so no storage permission is asked for and the
+    // app never sees the rest of the phone's storage.
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        pickingAttachment = false
+        vm.attachFiles(uris)
     }
     val focusManager = LocalFocusManager.current
     BackHandler(enabled = drawerOpen && pageShown) { drawerOpen = false }
@@ -743,8 +786,9 @@ fun ChatTab(
         if (sentCount > 0) listState.animateScrollToItem(0)
     }
     // Something in the box: the TA waits for it before answering.
-    val composing = input.isNotBlank() || pendingShare != null || recording || pickingAttachment || vm.attaching || vm.attachments.isNotEmpty() || drawerOpen
-    val processingMedia = recording || pickingAttachment || vm.attaching
+    val composing = input.isNotBlank() || pendingShare != null || recording || pickingAttachment || vm.attaching ||
+        vm.readingFiles || vm.attachments.isNotEmpty() || vm.fileAttachments.isNotEmpty() || drawerOpen
+    val processingMedia = recording || pickingAttachment || vm.attaching || vm.readingFiles
     LaunchedEffect(composing, processingMedia, pageShown, state.conversationId) {
         vm.typing(pageShown && composing, processingMedia = processingMedia)
     }
@@ -752,6 +796,16 @@ fun ChatTab(
     val scope = rememberCoroutineScope()
     val inputFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    // 按住说话 came back with words: into the box, cursor ready, for the person to fix and send.
+    LaunchedEffect(voiceDraft) {
+        val said = voiceDraft ?: return@LaunchedEffect
+        voiceDraft = null
+        input = if (input.isBlank()) said else input.trimEnd() + " " + said
+        drawerOpen = false
+        editProblem = null
+        inputFocus.requestFocus()
+        keyboard?.show()
+    }
     LaunchedEffect(editingMessage?.id) {
         if (editingMessage != null) { withFrameNanos { }; inputFocus.requestFocus(); keyboard?.show() }
     }
@@ -923,6 +977,16 @@ fun ChatTab(
                 attaching = editingMessage == null && vm.attaching,
                 onPick = { pickingAttachment = true; vm.typing(true, processingMedia = true); picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onRemove = vm::detach,
+                files = if (editingMessage == null) vm.fileAttachments else emptyList(),
+                readingFiles = editingMessage == null && vm.readingFiles,
+                onPickFiles = {
+                    pickingAttachment = true
+                    vm.typing(true, processingMedia = true)
+                    // Everything: some phones report a .md as octet-stream, and the app tells the
+                    // person itself when what they picked is not one of the four it can read.
+                    filePicker.launch(arrayOf("*/*"))
+                },
+                onRemoveFile = vm::dropFile,
                 quote = if (editingMessage != null) MessageQuotes.decode(editingMessage?.quote)?.let { quoteLabel(it) }
                     else if (diaryRequestId != null) "询问 TA 的这篇小秘密" else vm.quoting?.let { quoteLabel(it) },
                 onDropQuote = { diaryRequestId = null; vm.unquote() },
@@ -959,9 +1023,13 @@ fun ChatTab(
                 },
                 onStop = vm::stop,
                 recording = recording,
-                onVoiceStart = { startVoice() },
+                onVoiceStart = { startVoice(VoiceTarget.Message) },
                 onVoiceMove = { cancelling = it },
                 onVoiceEnd = { endVoice(it) },
+                onHoldToTalk = { startVoice(VoiceTarget.Text) },
+                onHoldMove = { cancelling = it },
+                onHoldEnd = { endVoice(it) },
+                transcribingVoice = transcribingVoice,
                 drawerOpen = drawerOpen,
                 onDrawer = {
                     drawerOpen = !drawerOpen
@@ -999,7 +1067,8 @@ fun ChatTab(
                     ms = recordedMs,
                     level = loudness,
                     cancelling = cancelling,
-                    hint = voiceHint,
+                    hint = if (transcribingVoice) "正在转成文字…" else voiceHint,
+                    toText = voiceTarget == VoiceTarget.Text,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = inputBottom + with(density) { inputHeight.toDp() } + 10.dp),
@@ -1466,6 +1535,13 @@ private fun MessageBubble(
                     if (pictures.isNotEmpty()) {
                         PictureGroup(pictures, onOpen = onOpenImage, onLongPress = { menu = true })
                     }
+                    // Files sent with this message, above the words the way attachments read.
+                    val sentFiles = remember(message.files) { MessageFiles.decode(message.files) }
+                    if (sentFiles.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            sentFiles.forEach { sent -> SentFileCard(sent) }
+                        }
+                    }
                     if (audio != null) {
                         VoiceBubble(
                             audio = audio,
@@ -1647,6 +1723,8 @@ private fun RecordingPill(
     level: Float,
     cancelling: Boolean,
     hint: String?,
+    /** 按住说话 on the input box: letting go gives words to edit, not a voice message. */
+    toText: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalGlassPalette.current
@@ -1668,9 +1746,16 @@ private fun RecordingPill(
         val s = ms / 1000
         Text("${s / 60}:%02d".format(s % 60), color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.width(12.dp))
-        Text(if (cancelling) "松开取消" else "松开发送，上滑取消", color = if (cancelling) palette.error else palette.contentSecondary, fontSize = 14.sp)
+        Text(if (cancelling) "松开取消" else if (toText) "松手变文字，上滑取消" else "松开发送，上滑取消", color = if (cancelling) palette.error else palette.contentSecondary, fontSize = 14.sp)
     }
 }
+
+/**
+ * Where a recording is headed. 按住说话 on the input box is a way of typing: what was said comes
+ * back as words in the box, to be read over and mended before it goes. The microphone button at
+ * the end of the bar sends the recording itself, which is what a voice message is.
+ */
+private enum class VoiceTarget { Message, Text }
 
 /**
  * Hold to talk: pressing starts a recording, letting go sends it, and sliding up first then
@@ -2393,6 +2478,12 @@ private fun ChatInputBar(
     attaching: Boolean,
     onPick: () -> Unit,
     onRemove: (MessageImage) -> Unit,
+    /** Files picked for this message, with whatever was read out of them already. */
+    files: List<MessageFile> = emptyList(),
+    /** A file is being copied in and read right now. */
+    readingFiles: Boolean = false,
+    onPickFiles: () -> Unit = {},
+    onRemoveFile: (MessageFile) -> Unit = {},
     quote: String?,
     onDropQuote: () -> Unit,
     focus: FocusRequester,
@@ -2410,6 +2501,12 @@ private fun ChatInputBar(
     onVoiceStart: () -> Boolean = { false },
     onVoiceMove: (Boolean) -> Unit = {},
     onVoiceEnd: (Boolean) -> Unit = {},
+    /** 按住说话 on the input box itself: records, and puts the words in the box to be edited. */
+    onHoldToTalk: () -> Boolean = { false },
+    onHoldMove: (Boolean) -> Unit = {},
+    onHoldEnd: (Boolean) -> Unit = {},
+    /** A 按住说话 recording is being turned into text. */
+    transcribingVoice: Boolean = false,
     drawerOpen: Boolean = false,
     onDrawer: () -> Unit = {},
     onFieldFocus: () -> Unit = {},
@@ -2418,7 +2515,9 @@ private fun ChatInputBar(
 ) {
     val palette = LocalGlassPalette.current
     val c = appContainer()
-    val canSend = text.isNotBlank() || attachments.isNotEmpty() || share != null
+    // A tap on the empty box lands on the 按住说话 layer, so the keyboard is opened by hand.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val canSend = text.isNotBlank() || attachments.isNotEmpty() || files.isNotEmpty() || share != null
     Column(
         modifier
             .fillMaxWidth()
@@ -2478,6 +2577,16 @@ private fun ChatInputBar(
                 }
             }
         }
+        // Files wait above the text, one row each: a name, a size, and how the reading went.
+        if (files.isNotEmpty() || readingFiles) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                files.forEach { file -> FileChip(file, if (editing) null else ({ onRemoveFile(file) })) }
+                if (readingFiles) FileChipReading()
+            }
+        }
         // Each button sits in the middle of a square as tall as the bar: on one line it is
         // centred, concentric with the capsule's round end; as the text grows to more lines
         // the squares stay at the bottom. (Padding the buttons by hand left them 4dp from
@@ -2494,6 +2603,23 @@ private fun ChatInputBar(
                     Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = "发图片", tint = palette.contentSecondary, modifier = Modifier.size(24.dp))
                 }
             }
+            // Narrower than the picture button: the text keeps as much of the bar as it can.
+            Box(Modifier.size(width = 34.dp, height = BarHeight), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .clickable(enabled = !editing && files.size < Prompt.MAX_FILES && !readingFiles, onClick = onPickFiles),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.AttachFile,
+                        contentDescription = "发文件（TXT、MD、PDF、DOCX）",
+                        tint = palette.contentSecondary.copy(alpha = if (!editing && files.size < Prompt.MAX_FILES) 1f else 0.4f),
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+            }
             Box(
                 Modifier
                     .weight(1f)
@@ -2502,7 +2628,11 @@ private fun ChatInputBar(
                 contentAlignment = Alignment.CenterStart,
             ) {
                 if (text.isEmpty()) {
-                    Text("说点什么…", color = palette.contentSecondary, style = type.body)
+                    Text(
+                        if (transcribingVoice) "正在转成文字…" else "发消息或按住说话",
+                        color = palette.contentSecondary,
+                        style = type.body,
+                    )
                 }
                 BasicTextField(
                     value = text,
@@ -2519,6 +2649,45 @@ private fun ChatInputBar(
                         .onFocusChanged { if (it.isFocused) onFieldFocus() }
                         .semantics { contentDescription = "输入消息" },
                 )
+                // 按住说话: an empty box is only the placeholder, so a press here is the
+                // microphone — hold it and talk, let go and the words appear above for editing.
+                // A tap still belongs to the text box and opens the keyboard.
+                if (text.isEmpty() && !editing) {
+                    val start = rememberUpdatedState(onHoldToTalk)
+                    val move = rememberUpdatedState(onHoldMove)
+                    val end = rememberUpdatedState(onHoldEnd)
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .pointerInput(Unit) {
+                                val away = 72.dp.toPx()
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    val long = awaitLongPressOrCancellation(down.id)
+                                    if (long == null) {
+                                        down.consume()
+                                        focus.requestFocus()
+                                        keyboard?.show()
+                                        return@awaitEachGesture
+                                    }
+                                    long.consume()
+                                    if (!start.value()) return@awaitEachGesture
+                                    var cancel = false
+                                    while (true) {
+                                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!change.pressed) break
+                                        val awayNow = down.position.y - change.position.y > away
+                                        if (awayNow != cancel) {
+                                            cancel = awayNow
+                                            move.value(cancel)
+                                        }
+                                        change.consume()
+                                    }
+                                    end.value(cancel)
+                                }
+                            },
+                    )
+                }
             }
             // Narrower than the squares either side: the text keeps as much of the bar as it can.
             Box(Modifier.size(width = 40.dp, height = BarHeight), contentAlignment = Alignment.Center) {
@@ -2563,6 +2732,111 @@ private fun ChatInputBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * A file that was sent, above the words of its message: what it is called and how big it is.
+ * What was read out of it is not shown — it is long, and the TA is the one reading it — but a
+ * file that could not be read says so, because that decides what the answer can be.
+ */
+@Composable
+private fun SentFileCard(file: MessageFile) {
+    val palette = LocalGlassPalette.current
+    val failed = file.error != null
+    Row(
+        Modifier
+            .widthIn(max = bubbleMaxWidth())
+            .background(palette.content.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Rounded.Description,
+            contentDescription = null,
+            tint = if (failed) palette.error else palette.contentSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f, fill = false)) {
+            Text(file.name, color = palette.content, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                fileStatus(file),
+                color = if (failed) palette.error else palette.contentSecondary,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * A file waiting to go, above the input: what it is called, how big it is, and how the reading
+ * went. One that could not be read stays here with the reason on it — it can still be sent, and
+ * the TA is told it could not be opened instead of being left to guess from the name.
+ */
+@Composable
+private fun FileChip(file: MessageFile, onRemove: (() -> Unit)?) {
+    val palette = LocalGlassPalette.current
+    val failed = file.error != null
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(palette.content.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+            .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Rounded.Description,
+            contentDescription = null,
+            tint = if (failed) palette.error else palette.contentSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(file.name, color = palette.content, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                fileStatus(file),
+                color = if (failed) palette.error else palette.contentSecondary,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (onRemove != null) {
+            Box(Modifier.size(28.dp).clip(CircleShape).clickable(onClick = onRemove), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Close, contentDescription = "去掉这个文件", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+/** The same row while a file is still being copied in and read. */
+@Composable
+private fun FileChipReading() {
+    val palette = LocalGlassPalette.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(palette.content.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+            .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Description, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("正在读取文件…", color = palette.contentSecondary, fontSize = 13.sp)
+    }
+}
+
+/** A file's size, and what became of it. */
+private fun fileStatus(file: MessageFile): String {
+    val size = readableSize(file.size)
+    return when {
+        file.error != null -> "$size · 读不了：${file.error}"
+        file.chars <= 0 -> "$size · 正在读…"
+        file.pages != null -> "$size · ${file.pages} 页 · ${file.chars} 字"
+        else -> "$size · ${file.chars} 字"
     }
 }
 
