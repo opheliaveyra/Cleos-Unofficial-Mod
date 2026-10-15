@@ -620,59 +620,6 @@ internal fun DataPage(vm: SettingsViewModel) {
     }
 }
 
-/**
- * The WeChat code to pay the developer through. A phone can't scan its own screen, so the code
- * can be kept in the gallery, and picked from there in WeChat's scanner.
- */
-@Composable
-private fun TipDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var said by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("请开发者喝杯奶茶") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Image(
-                    painterResource(R.drawable.tip_qr),
-                    contentDescription = "微信收款码",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                )
-                Text(
-                    said ?: "在这台手机上付的话：先存到相册，再打开微信「扫一扫」，点右上角的相册选这张图。",
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { scope.launch { said = saveTipCode(context) } }) { Text("存到相册") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
-    )
-}
-
-/** Copies the code into the gallery, under Pictures/Cleos; what to tell the person comes back. */
-private suspend fun saveTipCode(context: Context): String = withContext(Dispatchers.IO) {
-    val resolver = context.contentResolver
-    val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "Cleos-milk-tea.png")
-        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Cleos")
-        // Hidden from the gallery until it is all there.
-        put(MediaStore.Images.Media.IS_PENDING, 1)
-    }
-    val uri = runCatching { resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) }.getOrNull()
-        ?: return@withContext "相册没让存。截个图也一样能扫。"
-    runCatching {
-        resolver.openOutputStream(uri)!!.use { out -> context.resources.openRawResource(R.drawable.tip_qr).use { it.copyTo(out) } }
-        resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
-        "存好了，在相册的「Cleos」里。打开微信「扫一扫」，点右上角的相册选它就行。"
-    }.getOrElse {
-        runCatching { resolver.delete(uri, null, null) }
-        "没存上（${it.message ?: it.javaClass.simpleName}）。截个图也一样能扫。"
-    }
-}
 
 /** The version and where new ones are, the last crash when there was one, privacy, and credits. */
 @Composable
@@ -681,59 +628,28 @@ internal fun AboutPage() {
     val context = LocalContext.current
     val c = com.cleo.cleos.ui.common.appContainer()
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() }
-    var releasesHint by remember { mutableStateOf<String?>(null) }
-    val updates = c.updates
-    val checkingUpdate by updates.checking.collectAsStateWithLifecycle()
-    val updateFeedback by updates.feedback.collectAsStateWithLifecycle()
     var showNotices by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Section("Cleos ${version.orEmpty()}") {
+    Section("Cleos ${version.orEmpty()} · 二改版") {
         Text(
-            "新版本都放在蓝奏云上。更新时直接装新的 apk、覆盖安装，聊天记录都还在；别先卸载，卸载会把这台手机上的聊天、" +
-                "日记一起清掉。真要重装，先在「数据与备份」里导出一份备份。",
+            "这是拿原作者的 Cleos（github.com/jqzhang921-sudo/cleos）改出来的版本。加的和改的：" +
+                "发文件给 TA 看（TXT / MD / PDF / DOCX）、按住输入框说话转文字、TA 自己的工作区、" +
+                "读网页和联网搜索，另外修了几个导入和 PDF 的老问题。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
-        Chip(if (checkingUpdate) "正在检查更新…" else "检查更新", selected = false) {
-            if (!checkingUpdate) scope.launch { updates.check(manual = true) }
-        }
-        updateFeedback?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
-        Chip("去蓝奏云看新版", selected = false) {
-            // The page asks for the code once; it is on the clipboard by then.
-            context.getSystemService(ClipboardManager::class.java)
-                ?.setPrimaryClip(ClipData.newPlainText("提取码", Releases.CODE))
-            releasesHint = "正在找能打开的地址…"
-            // On whichever of 蓝奏云's domains still exists: one of them going away stranded every copy of an
-            // older version on a page that never loads.
-            scope.launch {
-                val url = Releases.reachableUrl()
-                val opened = runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                }.isSuccess
-                releasesHint = if (opened) {
-                    "提取码 ${Releases.CODE} 已经复制好了，页面让输密码时粘贴就行。"
-                } else {
-                    "没找到能打开网页的浏览器。地址是 $url ，提取码 ${Releases.CODE}（已复制）。"
-                }
-            }
-        }
-        releasesHint?.let { Text(it, color = palette.content, fontSize = 13.sp, lineHeight = 19.sp) }
-    }
-
-    // For whoever wants to give something back. Only here: nothing in the app ever asks for it.
-    var showTip by remember { mutableStateOf(false) }
-    Section("请开发者喝杯奶茶") {
         Text(
-            "Cleos 是一个人做的，一直免费。觉得好用、想请开发者喝杯奶茶的话，可以用微信扫一下。",
+            "更新不走原项目的渠道：原来那个「检查更新」和「去蓝奏云看新版」在这里关掉了 —— " +
+                "它们给的都是原版，装上去会把上面这些改动盖掉。新版本还是从你拿到这个 apk 的地方取，" +
+                "直接覆盖安装就行，聊天记录、日记都还在（**别先卸载**，卸载会把这台手机上的东西一起清掉）。" +
+                "真要重装，先在「数据与备份」里导出一份。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
-        Chip("看收款码", selected = false) { showTip = true }
     }
-    if (showTip) TipDialog { showTip = false }
 
     var diagnosticHint by remember { mutableStateOf<String?>(null) }
     var diagnosticBusy by remember { mutableStateOf(false) }

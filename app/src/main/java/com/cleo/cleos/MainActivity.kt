@@ -30,11 +30,8 @@ class MainActivity : ComponentActivity() {
             settings?.let { s ->
                 CleosTheme(s, container.images) {
                     CleosNavHost()
-                    com.cleo.cleos.ui.common.UpdatePrompt(container)
-                }
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(1500)
-                    container.updates.check()
+                    // UpdatePrompt 留着不用：它指向的是原项目的发布页，
+                    // 这个版本装了原版会把二改的东西盖掉。见 关于 那一页的说明。
                 }
                 AskForNotifications(container, s)
             }
