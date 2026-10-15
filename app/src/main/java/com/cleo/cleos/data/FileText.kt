@@ -33,7 +33,7 @@ internal object FileText {
      * neither is read as Latin-1 rather than refused, so a slightly odd encoding costs a few
      * wrong characters instead of the whole file.
      */
-    private fun decodeText(bytes: ByteArray): String {
+    internal fun decodeText(bytes: ByteArray): String {
         if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte())
             return String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
         if (bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte())

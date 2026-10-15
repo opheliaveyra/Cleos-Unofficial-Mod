@@ -2,6 +2,7 @@ package com.cleo.cleos.data
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.room.withTransaction
 import com.cleo.cleos.ai.ChatRepository
 import com.cleo.cleos.ai.MemoryKinds
@@ -78,13 +79,24 @@ data class ForeignExport(
     val chats: List<ImportedChat> = emptyList(),
 ) {
     val books: List<String> get() = lore.map { it.book }.filter { it.isNotEmpty() }.distinct()
-
     /** The one card, when the file has just the one: its opening line, and the name to file under. */
     val card: ImportedCard? get() = cards.firstOrNull()
 
     /** Nothing in it had any of the four shapes. */
     val empty: Boolean
         get() = cards.isEmpty() && lore.isEmpty() && memories.isEmpty() && chats.none { it.messages.isNotEmpty() }
+}
+
+/**
+ * The same export, with [name] filled in as the book name for entries that came without one.
+ *
+ * 酒馆导出的世界书，根对象里没有 name —— 那本书叫什么，就是文件叫什么。不补这一下，
+ * 导进来的条目全落到「没归到书里」，几本书混成一堆，也就没法一册一册地看。
+ */
+fun ForeignExport.withBookName(name: String): ForeignExport {
+    val title = name.trim().take(80)
+    if (title.isEmpty() || lore.isEmpty()) return this
+    return copy(lore = lore.map { if (it.book.isBlank()) it.copy(book = title) else it })
 }
 
 /**
@@ -273,7 +285,10 @@ object ForeignFile {
             throw ImportException("旧版 DOC 或加密 Word 文档暂不支持，请另存为未加密的 .docx 再导入")
         if (isImage(bytes) || mimeType?.substringBefore(';')?.trim()?.startsWith("image/", ignoreCase = true) == true)
             throw ImportException("这是一张普通图片，没有可导入的角色卡资料。请先提取图片里的文字，复制到设定，或另存为 TXT / DOCX 再导入。只有内嵌角色资料的 PNG 角色卡可以直接导入。")
-        return read(bytes.decodeToString())
+        // 和聊天附件走同一套解码：BOM → UTF-8 → GBK。中文 Windows 记事本存的 TXT、
+        // 只输出 GBK 的旧工具导出的世界书，硬按 UTF-8 读会整篇变成「�」——
+        // 而且 JSON 的结构还是好的，所以照样"导入成功"，几百条乱码就这么进去了。
+        return read(FileText.decodeText(bytes))
     }
 
     /** Check content as well as MIME: gallery providers may label images as generic files. */
@@ -441,7 +456,10 @@ object ForeignFile {
     private fun entry(e: JsonObject, book: String, position: Int): ImportedLore? {
         val content = text(e["content"]).orEmpty()
         if (content.isEmpty()) return null
-        val keys = keyList(e["keys"]) + keyList(e["secondary_keys"])
+        // 酒馆的世界书用 `key` / `keysecondary`（单数），也有写法是 `keys` / `secondary_keys`。
+        // 只认后者的话，标准酒馆世界书导进来**一条触发词都读不到** —— 条目在、内容在，
+        // 但 TA 永远查不到它，等于白导。两边都认。
+        val keys = keyList(e["key"]) + keyList(e["keys"]) + keyList(e["keysecondary"]) + keyList(e["secondary_keys"])
         // A world book's entries are the ones that say which words bring them up. Without that it is
         // some other app's memory file, and it is read as one.
         if (keys.isEmpty() && text(e["comment"]) == null && number(e["insertion_order"]) == null) return null
@@ -678,9 +696,20 @@ class ForeignImport(
     private val resolver = context.contentResolver
 
     /** What one import made, for the line the page shows. */
+    /**
+     * The picked file's own name, extension off. 世界书常常不自报名字，那这本书叫什么叫，
+     * 就是文件叫什么 —— 这是唯一还在的信息。
+     */
+    private fun bookNameOf(uri: Uri): String = runCatching {
+        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null
+        }
+    }.getOrNull().orEmpty().substringBeforeLast('.')
+
     suspend fun import(uri: Uri, companionId: Long): ForeignImportResult = withContext(Dispatchers.IO) {
         val bytes = resolver.openInputStream(uri)?.use { readAtMost(it, MAX_BYTES) } ?: throw ImportException("打不开这个文件")
         val file = ForeignFile.read(bytes, runCatching { resolver.getType(uri) }.getOrNull())
+            .withBookName(bookNameOf(uri))
         val now = System.currentTimeMillis()
         var target = companionId
         val made = mutableListOf<Pair<Long, String>>()
@@ -749,10 +778,15 @@ class ForeignImport(
             // over a pile of them gets the pile rather than two thirds of it. The ones already
             // there, by title and text, are left be: importing the same file twice changes nothing.
             val kept = db.lore().allFor(companionId)
-            val known = kept.map { it.title.trim() to it.content.trim() }.toMutableSet()
+            // 比的是**存进去的样子**：正文插进去时会截到 CONTENT_MAX，拿没截的原文去比，
+            // 第二次导入永远对不上，同一条会长出第二条，而且两条截完一模一样、分不出谁是谁。
+            val known = kept.map { it.title.trim() to it.content.trim().take(CONTENT_MAX) }.toMutableSet()
             var position = (kept.filter { it.book == MOVED_BOOK }.maxOfOrNull { it.position } ?: -1) + 1
             for (m in imported) {
-                val same = have.firstOrNull { it.name.trim() == m.name.trim() }
+                // 同名**而且同文**才算同一条。只按名字比的话，名字是 summary 前 12 个字，
+                // 两份开头一样的段落会被当成一条，后一条的正文就悄悄没了 ——
+                // 导入还显示成功，人根本不知道少了东西。
+                val same = have.firstOrNull { it.name.trim() == m.name.trim() && it.summary.trim() == m.summary.trim() }
                 if (same != null) {
                     val old = MemoryDetails.decode(same.details)
                     val merged = (old + m.details.filter { it !in old }).take(MemoryKinds.DETAILS)
@@ -774,7 +808,8 @@ class ForeignImport(
                 }
                 val title = m.name.trim().ifEmpty { m.summary.trim() }.take(TITLE_MAX)
                 val body = (listOf(m.summary.trim()) + m.details).filter { it.isNotEmpty() }.joinToString("\n")
-                if (body.isEmpty() || !known.add(title to body)) continue
+                // 和插进去的样子一致（截到 CONTENT_MAX），否则重复导入会对不上。
+                if (body.isEmpty() || !known.add(title to body.take(CONTENT_MAX))) continue
                 db.lore().insert(
                     LoreEntity(
                         companionId = companionId,
@@ -801,10 +836,12 @@ class ForeignImport(
     private suspend fun addLore(entries: List<ImportedLore>, companionId: Long, now: Long): Int {
         if (entries.isEmpty()) return 0
         return db.withTransaction {
-            val have = db.lore().allFor(companionId).map { it.title.trim() to it.content.trim() }.toMutableSet()
+            // 比的是存进去的样子（正文会截到 CONTENT_MAX）；拿没截的原文比，
+            // 超过两万字的条目第二次导入一定对不上，长出两条一样的。
+            val have = db.lore().allFor(companionId).map { it.title.trim() to it.content.trim().take(CONTENT_MAX) }.toMutableSet()
             var added = 0
             for (e in entries) {
-                if (!have.add(e.title.trim() to e.content.trim())) continue
+                if (!have.add(e.title.trim() to e.content.take(CONTENT_MAX))) continue
                 db.lore().insert(
                     LoreEntity(
                         companionId = companionId,
