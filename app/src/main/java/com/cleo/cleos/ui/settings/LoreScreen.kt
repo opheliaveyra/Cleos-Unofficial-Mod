@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -156,7 +157,16 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                         if (entries.isNotEmpty()) GlassIconButton(Icons.Rounded.Checklist, if (selecting) "退出多选" else "多选", {
                             if (selecting) cancelSelection() else if (!importing) selecting = true
                         }, page)
-                        if (!selecting) GlassIconButton(Icons.Rounded.Add, "自己加一条", { onOpen(0) }, page)
+                        if (!selecting) {
+                            // 导入入口钉在顶栏上：以前它在列表最底下，条目一多就要翻半天才够得着。
+                            GlassIconButton(
+                                Icons.Rounded.FileDownload,
+                                if (importing) "正在导入…" else "从别的 app 导入文件",
+                                { if (!importing) importPicker.launch(arrayOf("*/*")) },
+                                page,
+                            )
+                            GlassIconButton(Icons.Rounded.Add, "自己加一条", { onOpen(0) }, page)
+                        }
                     }
                 },
             )
@@ -189,6 +199,32 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
             contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = statusTop + TopBarHeight + 10.dp, bottom = navBottom + if (selecting) 200.dp else 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // 导入的那一块挪到最前头（以前在最底下，条目多了要翻半天）。
+            if (!selecting) item(key = "foreign") {
+                GlassSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = GlassShape.Rounded(22.dp),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "从别的 app 搬过来：角色卡（PNG 图片卡也认）、世界书、记忆库、聊天记录都认，" +
+                                "已经有的条目不会重复进来。",
+                            color = palette.contentSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                        )
+                        Box(
+                            Modifier
+                                .background(palette.content.copy(alpha = 0.07f), CircleShape)
+                                .clickable(interactionSource = null, indication = null) { if (!importing) importPicker.launch(arrayOf("*/*")) }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Text(if (importing) "正在导入…" else "导入文件", color = palette.content, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
             if (entries.isEmpty()) {
                 item(key = "empty") {
                     Notice(
@@ -252,32 +288,6 @@ fun LoreScreen(onBack: () -> Unit, onOpen: (Long) -> Unit) {
                         onSelect = { selected = LoreSelection.toggle(selected, listOf(e.id)) }, onOpen = { onOpen(e.id) }, onToggle = { on ->
                         scope.launch { c.db.lore().update(e.copy(enabled = on, updatedAt = System.currentTimeMillis())) }
                     })
-                }
-            }
-            if (!selecting) item(key = "foreign") {
-                GlassSurface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = GlassShape.Rounded(22.dp),
-                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "从别的 app 搬过来：选一个文件，角色卡（PNG 图片卡也认）、世界书、记忆库、聊天记录都认。" +
-                                "文件里有角色卡，一张就新开一个 TA，里面的东西都归第一个；只是世界书的话，搬进现在这个 TA。" +
-                                "已经有的条目不会重复进来。普通截图需要先提取文字；可直接导入的 PNG 角色卡要内嵌角色资料。",
-                            color = palette.contentSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                        )
-                        Box(
-                            Modifier
-                                .background(palette.content.copy(alpha = 0.07f), CircleShape)
-                                .clickable(interactionSource = null, indication = null) { if (!importing) importPicker.launch(arrayOf("*/*")) }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Text(if (importing) "正在导入…" else "导入文件", color = palette.content, fontSize = 14.sp)
-                        }
-                    }
                 }
             }
         }
