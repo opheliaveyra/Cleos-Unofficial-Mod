@@ -61,4 +61,35 @@ class LiveWidgetsTest {
         assertEquals(1, parts.size)
         assertEquals("今天天气不错，出去走走？", (parts[0] as MessagePart.Words).text)
     }
+
+    @Test
+    fun aCardWrittenAsJsonStillBecomesACard() {
+        // 模型写 JSON 习惯用 ```json。只认 `card` 的话，它写出来的东西会原样变成一段代码，
+        // 而人看到的是"它说写了，可我这儿什么都没有" —— 所以 json 围栏也拿去试解析。
+        val parts = LiveWidgets.split("```json\n{\"type\":\"choice\",\"options\":[\"甲\",\"乙\"]}\n```", live = false, cards = true)
+        assertEquals(1, parts.size)
+        assertTrue(parts[0] is MessagePart.Card)
+    }
+
+    @Test
+    fun aJsonFenceThatIsNotACardStaysCode() {
+        val parts = LiveWidgets.split("```json\n{\"name\":\"玖玖\"}\n```", live = false, cards = true)
+        assertEquals(1, parts.size)
+        assertTrue(parts[0] is MessagePart.Words)
+    }
+
+    @Test
+    fun aCardThatCannotBeReadSaysSoInsteadOfVanishing() {
+        val parts = LiveWidgets.split("```card\n{\"type\":\"choice\" 这儿少了个东西\n```", live = false, cards = true)
+        assertEquals(1, parts.size)
+        assertTrue("读不懂也要留个痕，不能什么都不显示", parts[0] is MessagePart.Unreadable)
+    }
+
+    @Test
+    fun cardsStayOffWhenTheirOwnSwitchIsOff() {
+        // 卡片和小玩意儿是两个开关：关掉卡片那个，card 就只是普通的代码块。
+        val parts = LiveWidgets.split("```card\n{\"type\":\"choice\",\"options\":[\"甲\"]}\n```", live = true, cards = false)
+        assertEquals(1, parts.size)
+        assertTrue(parts[0] is MessagePart.Words)
+    }
 }

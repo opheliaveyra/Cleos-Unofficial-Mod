@@ -35,6 +35,8 @@ sealed interface MessagePart {
     data class Widget(val html: String) : MessagePart
     /** 画出来的：它只说"要什么"，样式由 App 画（ChatCard）。 */
     data class Card(val json: String) : MessagePart
+    /** 它声明了这是卡片，但那段读不懂 —— 说一句，再把原文放过。 */
+    data class Unreadable(val json: String) : MessagePart
 }
 
 /** 点卡片上某个选项之后该发生什么（把选项当成对方说的那句话送出去）。 */
@@ -68,13 +70,19 @@ object LiveWidgets {
     /** 画出来的那种：里面是"要什么"的描述，不执行。 */
     const val CARD_LANG = "card"
 
+    /**
+     * 也当卡片试的语言。模型写 JSON 时习惯用 ```json —— 只认 `card` 的话，
+     * 它写出来的东西就原样变成一段代码，人看到的是"它说写了，可我这儿什么都没有"。
+     * 所以 json 围栏**先拿去试解析**：解得出卡片就画，解不出就还它代码块的样子。
+     */
+    private val MAYBE_CARD = setOf(CARD_LANG, "json", "card-json")
+
     fun split(text: String, live: Boolean, cards: Boolean): List<MessagePart> {
         if ((!live && !cards) || !text.contains("```")) return listOf(MessagePart.Words(text))
         val out = mutableListOf<MessagePart>()
         val plain = StringBuilder()
         val body = StringBuilder()
         var open: String? = null
-        var cardOpen = false
         var widgets = 0
 
         fun flushPlain() {
@@ -89,13 +97,12 @@ object LiveWidgets {
                 val lang = if (trimmed.startsWith("```")) trimmed.removePrefix("```").trim().lowercase() else null
                 // 卡片归卡片那个开关管，会跑的归小玩意儿那个开关管 —— 两件事，别混。
                 val known = when {
-                    lang == CARD_LANG -> cards
+                    lang != null && lang in MAYBE_CARD -> cards
                     lang != null && lang in RAN -> live
                     else -> false
                 }
                 if (known && widgets < MAX_PER_MESSAGE) {
                     open = lang
-                    cardOpen = lang == CARD_LANG
                     body.setLength(0)
                     continue
                 }
@@ -103,7 +110,17 @@ object LiveWidgets {
             } else if (trimmed == "```") {
                 flushPlain()
                 val content = body.toString().trim()
-                out += if (cardOpen) MessagePart.Card(content) else MessagePart.Widget(content)
+                val lang = open!!
+                val card = if (lang in MAYBE_CARD) Cards.parse(content) else null
+                when {
+                    card != null -> out += MessagePart.Card(content)
+                    // 声明了 `card` 却读不懂：**别装作没看见**，说一句，再把原文放上。
+                    // 不然人看到的是"它说写了，可我这儿什么都没有"。
+                    lang == CARD_LANG -> out += MessagePart.Unreadable(content)
+                    lang in RAN -> out += MessagePart.Widget(content)
+                    // `json` 围栏里不是卡片，那就是一段普通的 JSON —— 还它代码块的样子。
+                    else -> out += MessagePart.Words("```$lang\n$content\n```")
+                }
                 widgets++
                 open = null
             } else {
@@ -111,7 +128,7 @@ object LiveWidgets {
             }
         }
         // 没闭合：把围栏连同里面的东西原样还回去，别当小组件跑、也别当卡片画。
-        if (open != null) plain.append("```").append(open).append('\n').append(body)
+        open?.let { plain.append("```").append(it).append('\n').append(body) }
         flushPlain()
         return out.ifEmpty { listOf(MessagePart.Words(text)) }
     }
@@ -122,6 +139,7 @@ object LiveWidgets {
 internal fun MessageBody(text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
     val live = LocalLiveWidgets.current
     val cards = LocalCards.current
+    val palette = LocalGlassPalette.current
     val parts = remember(text, live, cards) { LiveWidgets.split(text, live = live, cards = cards) }
     if (parts.size == 1 && parts[0] is MessagePart.Words) {
         MarkdownText((parts[0] as MessagePart.Words).text, ink = color, style = style, modifier = modifier)
@@ -134,11 +152,16 @@ internal fun MessageBody(text: String, color: Color, style: TextStyle, modifier:
                 is MessagePart.Words -> MarkdownText(part.text, ink = color, style = style)
                 is MessagePart.Widget -> LiveWidget(part.html, color)
                 is MessagePart.Card -> {
-                    // 认不出来就当普通文字：它写错一个逗号，代价是"这张卡没出来"，
-                    // 不是"这条消息炸了"。
+                    // 能到这儿说明已经解析过了；这里再取一次是给重组用的缓存。
                     val card = remember(part.json) { Cards.parse(part.json) }
                     if (card == null) MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = color, style = style)
                     else ChatCardView(card, onAnswer = answer)
+                }
+                // 声明了是卡片却读不懂：明说，别让人以为"它什么都没写"。
+                is MessagePart.Unreadable -> {
+                    Text("（这张卡片没读懂 —— 可能是里面少了个引号或者逗号。原文在下面，可以让它重写一次。）",
+                        color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                    MarkdownText("```${LiveWidgets.CARD_LANG}\n${part.json}\n```", ink = color, style = style)
                 }
             }
         }
