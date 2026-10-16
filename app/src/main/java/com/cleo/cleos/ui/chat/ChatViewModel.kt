@@ -48,6 +48,13 @@ data class ChatUiState(
     /** The TA this conversation is with. */
     val companionId: Long = 0,
     val aiName: String = "",
+    /**
+     * 这段对话叫什么（第一条消息之后自动取的）。
+     *
+     * 顶栏原本只有角色名和型号 —— **说不出"这是哪一段"**，
+     * 尤其是同一个 TA 聊了好几段的时候，光看"墨"分不出来。
+     */
+    val conversationTitle: String = "",
     val userName: String = "",
     val aiAvatar: String? = null,
     val aiAvatarEmoji: String? = null,
@@ -144,6 +151,7 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 replying = live != null && !live.finished,
                 hasApiKey = hasKey,
                 companionId = ta.id,
+                conversationTitle = conversation?.title.orEmpty().takeIf { it != com.cleo.cleos.ai.ChatRepository.DEFAULT_TITLE }.orEmpty(),
                 aiName = ta.name,
                 userName = s.userName,
                 aiAvatar = ta.avatar,

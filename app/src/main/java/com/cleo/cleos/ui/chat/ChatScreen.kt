@@ -915,7 +915,13 @@ fun ChatTab(
             GlassTopBar(
                 title = if (selecting) "已选 ${selected.size} 条" else state.aiName.ifBlank { "聊天" },
                 // 点模型名 → 换模型；点名字 → 换 TA。两件事分开，不用再进设置翻页。
-                subtitle = state.model.takeIf { !selecting }?.takeIf { it.isNotBlank() }?.let { "$it ▾" },
+                //
+                // 副标题写**这段对话叫什么 + 用哪个模型**：光有"墨"和型号，说不出"这是哪一段"，
+                // 同一个 TA 聊了好几段就分不清了。
+                subtitle = if (selecting) null else listOfNotNull(
+                    state.conversationTitle.takeIf { it.isNotBlank() },
+                    state.model.takeIf { it.isNotBlank() }?.let { "$it ▾" },
+                ).takeIf { it.isNotEmpty() }?.joinToString(" · "),
                 backdrop = page,
                 onSubtitleClick = if (selecting || modelChoices.isEmpty()) null else ({ modelMenu = true }),
                 subtitleMenu = {
