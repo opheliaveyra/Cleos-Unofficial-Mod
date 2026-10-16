@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 37,
-    "identityHash": "3d70fe6ddb4e971c43f5b68ad36df496",
+    "identityHash": "a6e9325d3f215c72770796b88196b575",
     "entities": [
       {
         "tableName": "companions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `persona` TEXT NOT NULL, `apiBaseUrl` TEXT NOT NULL, `apiModel` TEXT NOT NULL, `avatar` TEXT, `avatarEmoji` TEXT, `knownSince` INTEGER, `createdAt` INTEGER NOT NULL, `lastLetterTry` INTEGER, `deepThinking` INTEGER NOT NULL DEFAULT 0, `replyWaitSeconds` INTEGER NOT NULL DEFAULT 3, `followUpEnabled` INTEGER NOT NULL DEFAULT 0, `followUpDelaySeconds` INTEGER NOT NULL DEFAULT 60, `freeTopicEnabled` INTEGER NOT NULL DEFAULT 0, `freeTopicLevel` INTEGER NOT NULL DEFAULT 1, `freeTopicQuietOn` INTEGER NOT NULL DEFAULT 1, `freeTopicQuietStart` INTEGER NOT NULL DEFAULT 1380, `freeTopicQuietEnd` INTEGER NOT NULL DEFAULT 480, `feedVisitEnabled` INTEGER NOT NULL DEFAULT 0, `feedVisitLevel` INTEGER NOT NULL DEFAULT 0, `feedVisitPosts` INTEGER NOT NULL DEFAULT 0, `feedVisitNews` INTEGER NOT NULL DEFAULT 0, `feedVisitQuietOn` INTEGER NOT NULL DEFAULT 1, `feedVisitQuietStart` INTEGER NOT NULL DEFAULT 1380, `feedVisitQuietEnd` INTEGER NOT NULL DEFAULT 480, `proactive` INTEGER NOT NULL DEFAULT 1, `spokenModelOn` INTEGER NOT NULL DEFAULT 0, `spokenApiBaseUrl` TEXT NOT NULL DEFAULT '', `spokenApiModel` TEXT NOT NULL DEFAULT '', `featureModels` TEXT NOT NULL DEFAULT '')",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `persona` TEXT NOT NULL, `apiBaseUrl` TEXT NOT NULL, `apiModel` TEXT NOT NULL, `avatar` TEXT, `avatarEmoji` TEXT, `knownSince` INTEGER, `createdAt` INTEGER NOT NULL, `lastLetterTry` INTEGER, `deepThinking` INTEGER NOT NULL DEFAULT 0, `replyWaitSeconds` INTEGER NOT NULL DEFAULT 3, `followUpEnabled` INTEGER NOT NULL DEFAULT 0, `followUpDelaySeconds` INTEGER NOT NULL DEFAULT 60, `freeTopicEnabled` INTEGER NOT NULL DEFAULT 0, `freeTopicLevel` INTEGER NOT NULL DEFAULT 1, `freeTopicQuietOn` INTEGER NOT NULL DEFAULT 1, `freeTopicQuietStart` INTEGER NOT NULL DEFAULT 1380, `freeTopicQuietEnd` INTEGER NOT NULL DEFAULT 480, `feedVisitEnabled` INTEGER NOT NULL DEFAULT 0, `feedVisitLevel` INTEGER NOT NULL DEFAULT 0, `feedVisitPosts` INTEGER NOT NULL DEFAULT 0, `feedVisitNews` INTEGER NOT NULL DEFAULT 0, `feedVisitQuietOn` INTEGER NOT NULL DEFAULT 1, `feedVisitQuietStart` INTEGER NOT NULL DEFAULT 1380, `feedVisitQuietEnd` INTEGER NOT NULL DEFAULT 480, `proactive` INTEGER NOT NULL DEFAULT 1, `spokenModelOn` INTEGER NOT NULL DEFAULT 0, `spokenApiBaseUrl` TEXT NOT NULL DEFAULT '', `spokenApiModel` TEXT NOT NULL DEFAULT '')",
         "fields": [
           {
             "fieldPath": "id",
@@ -200,13 +200,6 @@
           {
             "fieldPath": "spokenApiModel",
             "columnName": "spokenApiModel",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "''"
-          },
-          {
-            "fieldPath": "featureModels",
-            "columnName": "featureModels",
             "affinity": "TEXT",
             "notNull": true,
             "defaultValue": "''"
@@ -1917,7 +1910,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3d70fe6ddb4e971c43f5b68ad36df496')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a6e9325d3f215c72770796b88196b575')"
     ]
   }
 }
