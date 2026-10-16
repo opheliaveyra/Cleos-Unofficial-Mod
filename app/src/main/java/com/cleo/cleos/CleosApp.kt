@@ -227,8 +227,8 @@ class AppContainer(private val context: Context) {
     )
     val stickers = Stickers(context, db, images)
 
-    /** 探一个配置到底会不会看图（见 [com.cleo.cleos.ai.CapabilityProbe]）。放在 chatClient 之后。 */
-    val capabilityTester = com.cleo.cleos.ai.CapabilityTester(images, secrets, chatClient)
+    /** 探一个配置到底会不会看图 / 看视频（见 [com.cleo.cleos.ai.CapabilityProbe]）。放在 chatClient 之后。 */
+    val capabilityTester = com.cleo.cleos.ai.CapabilityTester(images, videos, secrets, chatClient)
 
     val groupChat = com.cleo.cleos.ai.GroupChatRepository(db, settings, secrets, chatClient, images, appScope,
         groupTools = com.cleo.cleos.ai.GroupTools(tools) { settings.current() },

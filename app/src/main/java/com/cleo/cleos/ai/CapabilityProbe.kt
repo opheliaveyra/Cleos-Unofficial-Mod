@@ -33,6 +33,9 @@ object CapabilityProbe {
     /** 提示词：只回码，别描述 —— 描述得再热闹也可能是在编。 */
     const val PROMPT = "图里有一串字符。只回那串字符本身，不要解释，不要描述图片。"
 
+    /** 视频那条的提示词：码在整段里都显示着。 */
+    const val PROMPT_VIDEO = "这段视频里有一串字符，一直都在画面上。只回那串字符本身，不要解释，不要描述视频。"
+
     fun newCode(random: Random = Random): String =
         (1..CODE_LENGTH).map { ALPHABET[random.nextInt(ALPHABET.length)] }.joinToString("")
 
@@ -85,19 +88,60 @@ object CapabilityProbe {
 
 /** 一次探测的结果。 */
 data class ProbeResult(val passed: Boolean, val message: String)
-
-/**
- * 用一次真实的请求验一个配置的能力。
- *
- * **验过了才把能力记到配置上**（[ModelProfile.directImage]）——
- * 之前是按名字和直觉猜，猜错了就是"配了一个不会看图的模型给图像识别"，
- * 而且要到人发了图发现没用才知道。
- */
 class CapabilityTester(
     private val images: ImageStore,
+    private val videos: com.cleo.cleos.data.VideoStore,
     private val secrets: SecretStore,
     private val client: ChatClient,
 ) {
+    /**
+     * 测这个配置会不会看视频。
+     *
+     * 和看图那条同一个套路，只是把"画一张图"换成"**现造一小段视频**"
+     * （见 [TestVideo]：四帧灰度图，MediaCodec 编码 + MediaMuxer 封成 mp4，几 KB）。
+     * **发的就是真的视频**（`video_url` + base64），走的就是聊天时那条路 ——
+     * 测通了才算数，不是拿一帧图片糊弄过去。
+     */
+    suspend fun testVideo(profile: ModelProfile): ProbeResult {
+        val key = secrets.key(profile.baseUrl)?.takeIf { it.isNotBlank() }
+            ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「连接」那里填上")
+        val code = CapabilityProbe.newCode()
+        val probe = java.io.File(videos.dir, "probe-${java.util.UUID.randomUUID()}.mp4")
+        val made = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { TestVideo.write(code, probe) }.getOrDefault(false)
+        }
+        if (!made) {
+            probe.delete()
+            return ProbeResult(
+                false,
+                "测试视频没能造出来 —— 这台机器的视频编码器挑食（模拟器上常见）。" +
+                    "换个办法：在聊天里真发一条几秒的视频，一样能看出它会不会看。",
+            )
+        }
+        return try {
+            val url = videos.dataUrl(probe.name) ?: return ProbeResult(false, "测试视频读不出来")
+            val said = StringBuilder()
+            client.stream(
+                ApiEndpoint(profile.baseUrl, key, profile.model),
+                listOf(ApiMessage("user", CapabilityProbe.PROMPT_VIDEO, videos = listOf(url))),
+            ).collect { if (it is ChatEvent.Delta) said.append(it.text) }
+            val text = said.toString().trim()
+            if (CapabilityProbe.matches(text, code)) {
+                ProbeResult(true, "看得见视频：画面里的码是 $code，它答对了")
+            } else {
+                ProbeResult(
+                    false,
+                    "它没能认出视频里的码（正确答案 $code，它回的是「${text.take(60)}」）——" +
+                        "这个模型多半看不了视频，换一个（豆包 Seed、通义 Qwen、小米 MiMo、Gemini 都行）。",
+                )
+            }
+        } catch (e: Exception) {
+            ProbeResult(false, "连不上或报错了：${e.message?.take(120) ?: "没有说明"}")
+        } finally {
+            probe.delete()
+        }
+    }
+
     /**
      * 测这个配置会不会看图。
      *

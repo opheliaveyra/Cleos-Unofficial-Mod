@@ -851,8 +851,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
             for (capability in need) {
                 last = when (capability) {
                     com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(profile)
-                    com.cleo.cleos.data.Capability.Video ->
-                        com.cleo.cleos.ai.ProbeResult(false, "视频能力要真发一条视频才知道 —— 这个探针还没做，先在聊天里发一条短的试试。")
+                    com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(profile)
                 }
                 if (last.passed) c.modelProfiles.setCapability(profile.id, capability, true)
             }
