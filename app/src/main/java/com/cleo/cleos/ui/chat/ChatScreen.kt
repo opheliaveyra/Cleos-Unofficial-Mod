@@ -89,6 +89,7 @@ import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import com.cleo.cleos.data.MessageEdits
@@ -654,6 +655,12 @@ fun ChatTab(
         voiceHint = problem
         vm.clearFileProblem()
     }
+    // 一条视频读不出画面：同一个地方说一声，别让人以为发出去了。
+    LaunchedEffect(vm.videoProblem) {
+        val problem = vm.videoProblem ?: return@LaunchedEffect
+        voiceHint = problem
+        vm.clearVideoProblem()
+    }
     DisposableEffect(Unit) {
         onDispose {
             stopPlaying()
@@ -711,6 +718,12 @@ fun ChatTab(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         pickingAttachment = false
         vm.attachFiles(uris)
+    }
+    // 视频：**本地抽几帧当图片**发过去（见 VideoFrames），一次一条。
+    // 系统选择器只给一个，够用了 —— 多条视频抽出来的帧会把图片名额占满。
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        pickingAttachment = false
+        if (uri != null) vm.attachVideo(uri)
     }
     val focusManager = LocalFocusManager.current
     BackHandler(enabled = drawerOpen && pageShown) { drawerOpen = false }
@@ -1009,6 +1022,12 @@ fun ChatTab(
                     filePicker.launch(arrayOf("*/*"))
                 },
                 onRemoveFile = vm::dropFile,
+                onPickVideo = {
+                    attachOpen = false
+                    pickingAttachment = true
+                    vm.typing(true, processingMedia = true)
+                    videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                },
                 quote = if (editingMessage != null) MessageQuotes.decode(editingMessage?.quote)?.let { quoteLabel(it) }
                     else if (diaryRequestId != null) "询问 TA 的这篇小秘密" else vm.quoting?.let { quoteLabel(it) },
                 onDropQuote = { diaryRequestId = null; vm.unquote() },
@@ -2496,6 +2515,8 @@ private fun ChatInputBar(
     /** A file is being copied in and read right now. */
     readingFiles: Boolean = false,
     onPickFiles: () -> Unit = {},
+    /** 选一条视频：本地抽几帧当图片发（见 VideoFrames）。 */
+    onPickVideo: () -> Unit = {},
     onRemoveFile: (MessageFile) -> Unit = {},
     quote: String?,
     onDropQuote: () -> Unit,
@@ -2769,6 +2790,14 @@ private fun ChatInputBar(
                     "文件",
                     enabled = !editing && files.size < Prompt.MAX_FILES && !readingFiles,
                     onClick = onPickFiles,
+                )
+                // 视频不是"发原片"，是**本地抽几帧当图片**发（见 VideoFrames）——
+                // 所以它占的是图片的名额，也会走看图模型那条路。
+                AttachChip(
+                    Icons.Rounded.VideoLibrary,
+                    "视频",
+                    enabled = !editing && attachments.size < MAX_ATTACHMENTS,
+                    onClick = onPickVideo,
                 )
             }
         }

@@ -38,6 +38,7 @@ import com.cleo.cleos.data.McpServers
 import com.cleo.cleos.data.SecretStore
 import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.Stickers
+import com.cleo.cleos.data.VideoFrames
 import com.cleo.cleos.data.Workspace
 import com.cleo.cleos.data.db.AppDatabase
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -46,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -99,6 +101,19 @@ class AppContainer(private val context: Context) {
      * 它写的笔记别的 TA 读不到、也覆盖不到。
      */
     fun workspaceFor(companionId: Long): Workspace = Workspace(context, companionId)
+
+    /**
+     * 一条视频抽几帧，当成图片用（见 [VideoFrames]）。
+     *
+     * 放在这里而不是让调用方自己 new 一个 MediaMetadataRetriever：那玩意儿要 Context，
+     * 而 ViewModel 里不该握着 Activity 的 Context。
+     */
+    suspend fun videoFrames(uri: android.net.Uri, count: Int = VideoFrames.DEFAULT_COUNT) =
+        withContext(Dispatchers.IO) { VideoFrames.frames(context, uri, count) }
+
+    /** 视频多长，用来在聊天里显示 `1:23`；读不出来是 0。 */
+    suspend fun videoLength(uri: android.net.Uri) =
+        withContext(Dispatchers.IO) { VideoFrames.durationMs(context, uri) }
 
     val feed = com.cleo.cleos.data.FeedRepository(db, images)
 

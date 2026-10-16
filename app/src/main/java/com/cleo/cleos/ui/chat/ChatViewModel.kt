@@ -189,6 +189,42 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         c.appScope.launch { c.images.delete(listOf(image.file)) }
     }
 
+    /** 上一条视频没能进来的原因；显示一下就消失，跟 [fileProblem] 一样。 */
+    var videoProblem by mutableStateOf<String?>(null)
+        private set
+
+    fun clearVideoProblem() { videoProblem = null }
+
+    /**
+     * 一条视频：**本地抽几帧，当成几张图片**发过去（见 [com.cleo.cleos.data.VideoFrames]）。
+     *
+     * 为什么不把视频本身发给模型：没有几个模型直接吃视频，而且视频几十上百 MB，
+     * 塞进请求里不现实。抽帧是本地干的，抽出来的帧走的就是现成的图片管线 ——
+     * 配了"看图模型"的话，那些帧会先被转述成文字再交给聊天的模型。
+     *
+     * 抽不出帧就明说，**别让人以为发出去了**。
+     */
+    fun attachVideo(uri: Uri) {
+        viewModelScope.launch {
+            attaching = true
+            val frames = runCatching { c.videoFrames(uri) }.getOrDefault(emptyList())
+            if (frames.isEmpty()) {
+                videoProblem = "这条视频读不出画面（可能不是视频，或者系统解不了），没有发出去"
+            } else {
+                val room = (Prompt.MAX_IMAGES - attachments.size).coerceAtLeast(0)
+                for (frame in frames.take(room)) {
+                    val width = frame.width
+                    val height = frame.height
+                    runCatching { c.images.save(frame, prefix = "video-") }
+                        .onSuccess { name -> attachments += MessageImage(name, width, height) }
+                    frame.recycle()
+                }
+                if (room <= 0) videoProblem = "这次已经带够 ${Prompt.MAX_IMAGES} 张图了，视频的帧没放进来"
+            }
+            attaching = false
+        }
+    }
+
     /**
      * Files picked for the next message, already copied in and read (FileStore.add), in the
      * order they were picked. A file whose reading failed stays in the list with the reason on
