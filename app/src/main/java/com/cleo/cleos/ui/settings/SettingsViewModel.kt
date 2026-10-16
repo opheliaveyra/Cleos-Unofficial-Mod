@@ -767,6 +767,15 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun featureModel(feature: com.cleo.cleos.data.db.Feature) = featureModels[feature]
 
     /**
+     * 已经保存过的模型配置（主模型页那份），给"按功能换模型"当选项用。
+     *
+     * **不能让人手打模型名** —— `deepseek-flash`、`claude-sonnet-5[次]` 这种名字谁记得住？
+     * 她配过的服务就摆在这儿，点一下选走。
+     */
+    val modelProfiles: kotlinx.coroutines.flow.StateFlow<List<com.cleo.cleos.data.ModelProfile>> =
+        c.modelProfiles.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
      * 给某个功能单独配模型，或者传 null 改回"跟随主模型"。
      *
      * 地址和模型名**两个都填了才算数** —— 只填一半的话，[CompanionEntity.modelFor]

@@ -5,10 +5,13 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -39,10 +43,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.data.ApiPresets
 import com.cleo.cleos.data.db.Feature
 import com.cleo.cleos.data.db.FeatureModel
+import com.cleo.cleos.glass.GlassShape
+import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.avatarLetter
@@ -205,15 +212,18 @@ internal fun ModelPage(vm: SettingsViewModel) {
 }
 
 /**
- * 每个功能一行：现在用谁、点开改。
+ * 每个功能一行：现在用谁、点开选。
  *
- * 只让人填**地址 + 模型名**，不填 Key —— Key 是跟着接口地址存的（SecretStore 按地址归档），
- * 同一个地址的 Key 填一次就够，这里再要一遍纯属添乱。
+ * **选，不是填。** 模型名（`deepseek-flash`、`claude-sonnet-5[次]`）没人记得住，
+ * 所以这里列出**已经保存过的模型配置** —— 就是主模型那页配的那些服务 —— 点一下带走。
+ * 手填留作后备（想用一个没保存过的地址时才用）。
  */
 @Composable
 private fun FeatureModelRows(vm: SettingsViewModel) {
     val palette = LocalGlassPalette.current
-    var open by remember { mutableStateOf<String?>(null) }
+    val profiles by vm.modelProfiles.collectAsStateWithLifecycle()
+    var open by remember { mutableStateOf<Feature?>(null) }
+    var filling by remember { mutableStateOf<Feature?>(null) }
 
     Feature.entries.forEach { feature ->
         val picked = vm.featureModel(feature)
@@ -229,44 +239,127 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Chip(if (open == feature.name) "收起" else "设置", selected = picked != null) {
-                    open = if (open == feature.name) null else feature.name
+                Chip(if (picked == null) "选择" else "已选 · 改", selected = picked != null) {
+                    filling = null
+                    open = feature
                 }
-            }
-            if (open == feature.name) {
-                Text(feature.hint, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                // 输入框是本地的：每敲一个字就存一次，不搞"保存"按钮那一套。
-                var url by remember(feature, picked) { mutableStateOf(picked?.baseUrl.orEmpty()) }
-                var model by remember(feature, picked) { mutableStateOf(picked?.model.orEmpty()) }
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it; vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())) },
-                    label = { Text("接口地址") },
-                    placeholder = { Text("比如 https://api.deepseek.com/v1") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it; vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())) },
-                    label = { Text("模型名") },
-                    placeholder = { Text("比如 deepseek-flash") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (url.isBlank() || model.isBlank()) {
-                    Text("两个都填了才算数；只填一个等于没配，还是走主模型。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                }
-                TextButton(
-                    enabled = picked != null,
-                    onClick = {
-                        url = ""
-                        model = ""
-                        vm.setFeatureModel(feature, null)
-                    },
-                ) { Text("改回跟随主模型") }
             }
         }
+    }
+
+    // 选一个
+    open?.let { feature ->
+        val picked = vm.featureModel(feature)
+        Dialog(onDismissRequest = { open = null }) {
+            GlassSurface(
+                modifier = Modifier.fillMaxWidth(),
+                style = palette.card,
+                shape = GlassShape.Rounded(28.dp),
+                contentPadding = PaddingValues(20.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("给「${feature.label}」选模型", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text(feature.hint, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+
+                    ListRow(
+                        title = "跟随主模型",
+                        detail = "上面那个，不用另配",
+                        chosen = picked == null,
+                    ) { vm.setFeatureModel(feature, null); open = null }
+
+                    profiles.forEach { profile ->
+                        ListRow(
+                            title = profile.name.ifBlank { profile.model },
+                            detail = "${profile.model} · ${profile.baseUrl}",
+                            chosen = picked?.baseUrl == profile.baseUrl && picked?.model == profile.model,
+                        ) { vm.setFeatureModel(feature, FeatureModel(profile.baseUrl, profile.model)); open = null }
+                    }
+
+                    if (profiles.isEmpty()) {
+                        Text(
+                            "你还没保存过别的模型配置。去上面「连接」那一节配好一个、点保存，这里就能选了。",
+                            color = palette.contentSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { filling = feature; open = null }) { Text("自己填地址") }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { open = null }) { Text("取消") }
+                    }
+                }
+            }
+        }
+    }
+
+    // 自己填（想用一个没保存过的地址时才用）
+    filling?.let { feature ->
+        val picked = vm.featureModel(feature)
+        var url by remember(feature) { mutableStateOf(picked?.baseUrl.orEmpty()) }
+        var model by remember(feature) { mutableStateOf(picked?.model.orEmpty()) }
+        Dialog(onDismissRequest = { filling = null }) {
+            GlassSurface(
+                modifier = Modifier.fillMaxWidth(),
+                style = palette.card,
+                shape = GlassShape.Rounded(28.dp),
+                contentPadding = PaddingValues(20.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("给「${feature.label}」填一个", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Key 不用填 —— 它是跟着接口地址存的，同一个地址填一次就够。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text("接口地址") },
+                        placeholder = { Text("https://api.deepseek.com/v1") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text("模型名") },
+                        placeholder = { Text("deepseek-flash") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (url.isBlank() || model.isBlank()) {
+                        Text("两个都填了才算数；只填一个等于没配，还是走主模型。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            enabled = url.isNotBlank() && model.isNotBlank(),
+                            onClick = { vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())); filling = null },
+                        ) { Text("保存") }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { filling = null }) { Text("取消") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 选择弹窗里的一行：点一下选中，选中的那条打勾。 */
+@Composable
+private fun ListRow(title: String, detail: String, chosen: Boolean, onClick: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(palette.content.copy(alpha = if (chosen) 0.10f else 0.04f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = palette.content, fontSize = 15.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+            Text(detail, color = palette.contentSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (chosen) Text("✓", color = palette.accentContent, fontSize = 16.sp)
     }
 }
 
