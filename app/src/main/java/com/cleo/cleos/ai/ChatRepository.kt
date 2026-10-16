@@ -854,6 +854,24 @@ class ChatRepository(
                         say(event.text)
                     }
                     is ChatEvent.Reasoning -> if (event.sendBack) reasoning.append(event.text)
+                    is ChatEvent.Usage -> {
+                        // **视频有没有真的进去，只有这个信号能说清楚。**
+                        //
+                        // 有些模型（GPT 全系、智谱 glm）收到视频会**悄悄丢掉、照样返回 200**，
+                        // 而且 GPT 还会顺着问题编一段视频里根本没有的画面 —— 不报错、不提示，
+                        // 人只会以为"这个模型看懂了"。
+                        //
+                        // 实测一段 10 秒视频大约是：Seed/Qwen 5000、Gemini 700、Kimi 14000。
+                        // **只有几十个 token 就说明视频没进去**，这时候宁可中断，
+                        // 也不能把接下来那段编出来的话当成"它看到了"。
+                        if (messages.any { it.videos.isNotEmpty() } && event.prompt in 1 until VIDEO_TOKENS_MIN) {
+                            throw ChatException(
+                                "这个模型没有真的收到视频（只用掉了 ${event.prompt} 个 token，一段十秒的视频至少几千个）。" +
+                                    "它接下来多半会顺着问题编一段没发生过的画面 —— 所以这次不算数。" +
+                                    "在「按功能换模型」里给「视频理解」换一个能看视频的，比如豆包 Seed、通义 Qwen、小米 MiMo 或者 Gemini。",
+                            )
+                        }
+                    }
                     is ChatEvent.ToolCalls -> {
                         // Sending messages isn't offered on the phone. A model used to it may send one
                         // all the same: what it meant to send is said instead.
@@ -1449,6 +1467,17 @@ class ChatRepository(
                         text.append(event.text)
                         live(StreamingReply(conversationId, text.toString(), thinking = false, thought = thoughtShown, thoughtMs = thinkingMs))
                     }
+                    is ChatEvent.Usage -> {
+                        // 和主循环里那条一样：**发了视频但 token 只有几十，就是对面把视频丢了**。
+                        // 这里也要拦 —— 这条路上跑的是普通的聊天回复，视频照样会经过它。
+                        if (messages.any { it.videos.isNotEmpty() } && event.prompt in 1 until VIDEO_TOKENS_MIN) {
+                            throw ChatException(
+                                "这个模型没有真的收到视频（只用掉了 ${event.prompt} 个 token，一段十秒的视频至少几千个）。" +
+                                    "它接下来多半会顺着问题编一段没发生过的画面 —— 所以这次不算数。" +
+                                    "在「按功能换模型」里给「视频理解」换一个能看视频的，比如豆包 Seed、通义 Qwen、小米 MiMo 或者 Gemini。",
+                            )
+                        }
+                    }
                     is ChatEvent.Reasoning -> {
                         if (event.sendBack) reasoning.append(event.text)
                         if (showThought) {
@@ -1847,6 +1876,15 @@ class ChatRepository(
 
         /** Messages sent in one go: past this it is a flood, not a conversation. */
         const val MAX_MESSAGES = 8
+
+        /**
+         * 一段十秒视频至少该有这么多输入 token，不然就是**被丢掉了**。
+         *
+         * 实测（2026-10，10 秒 540p）：Seed/Qwen 约 5000、Gemini 约 700、Kimi 约 14000。
+         * 取 200 是留足余量 —— 正常情况离它远得很，被丢掉时只有几十。
+         * 判据见主循环里的 `ChatEvent.Usage` 那一支。
+         */
+        const val VIDEO_TOKENS_MIN = 200
 
         private const val HOLD_CHECK = 300L
 

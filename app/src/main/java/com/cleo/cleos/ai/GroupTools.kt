@@ -93,6 +93,8 @@ object GroupToolReply {
                     stream(messages, specs, useThinking).collect { event ->
                         currentCoroutineContext().ensureActive()
                         when (event) {
+                            // 群聊不发视频，用量不用管。
+                            is ChatEvent.Usage -> Unit
                             is ChatEvent.Delta -> {
                                 val separator = if (body.isEmpty() && shown.isNotEmpty() && event.text.isNotEmpty()) "\n\n" else ""
                                 check(shown.length + separator.length + event.text.length <= GroupChatRules.MAX_REPLY) { "这段回复太长了，请重试" }

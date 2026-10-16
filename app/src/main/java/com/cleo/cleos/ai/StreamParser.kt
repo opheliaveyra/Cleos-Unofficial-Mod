@@ -37,11 +37,19 @@ internal class StreamParser {
             ?: return emptyList<ChatEvent>().also { structure.invalidChunk() }
         structure.record(obj)
         obj["error"]?.let { throw ChatException("服务端报错：" + errorText(it)) }
+        // 用量帧**没有 choices**（服务在流的最后单独发一帧），所以得在那句"没有 choices 就返回"
+        // **之前**读掉，不然它永远到不了上层 —— 而它是判断"视频有没有真的进去"的唯一信号。
+        val usage = obj["usage"]?.jsonObject?.let { u ->
+            u["prompt_tokens"]?.jsonPrimitive?.intOrNull?.let { prompt ->
+                ChatEvent.Usage(prompt, u["completion_tokens"]?.jsonPrimitive?.intOrNull ?: 0)
+            }
+        }
         // A relay that ignores stream:true sends the whole reply as one JSON, under "message".
         val choice = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject
         val delta = (choice?.get("delta") ?: choice?.get("message")) as? JsonObject
-            ?: return emptyList()
-        val events = ArrayList<ChatEvent>(2)
+            ?: return listOfNotNull(usage)
+        val events = ArrayList<ChatEvent>(3)
+        usage?.let { events += it }
         fun text(key: String) = (delta[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
         // DeepSeek and most others say reasoning_content; OpenRouter says reasoning. Some
         // servers send both with the same words, so reasoning only counts on its own.

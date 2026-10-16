@@ -45,6 +45,8 @@ object GroupReplyEngine {
                         onText(text.toString())
                     }
                     is ChatEvent.ToolCalls -> check(event.calls.isEmpty()) { "本版群聊暂未接入工具，这次没有执行操作" }
+                    // 群聊不走视频那条路，用量不用管（聊天那边会检查"视频有没有真的进去"）。
+                    is ChatEvent.Usage -> Unit
                     is ChatEvent.Reasoning -> if (stage != GroupReplyStage.ANSWERING && event.text.isNotBlank()) progress(GroupReplyStage.THINKING)
                 }
             }

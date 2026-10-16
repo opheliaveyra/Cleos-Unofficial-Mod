@@ -105,6 +105,16 @@ sealed interface ChatEvent {
 
     /** The tool calls the reply ended with. Sent once, after everything else. */
     data class ToolCalls(val calls: List<ToolCall>) : ChatEvent
+
+    /**
+     * 这次请求实际用掉多少 token。多数服务在流的最后一帧给，也可能一直不给。
+     *
+     * **为什么非要读它**：有些模型（GPT 全系、智谱 glm）**收到视频会悄悄丢掉，照样返回 200**，
+     * 而且 GPT 还会顺着问题编一段不存在的画面出来。唯一的程序化信号就是 [prompt] ——
+     * 一段 10 秒视频正常是几千个 token（Seed/Qwen 约 5000、Gemini 约 700、Kimi 约 14000），
+     * **只有几十个就说明视频根本没进去**。见 `ChatRepository.prepareVideo` 里那条检查。
+     */
+    data class Usage(val prompt: Int, val completion: Int = 0) : ChatEvent
 }
 
 /**
@@ -622,14 +632,14 @@ internal fun requestBody(
                             }
                         }
                         for (url in m.videos) {
-                            // 视频和图片是对称的，只是多两个可调项：
-                            // fps 是"每秒抽几帧"（默认 2），media_resolution 是单帧清晰度。
-                            // 都用默认值 —— 调高了 token 涨得很快，而默认那档已经够看懂内容。
+                            // **只发最通用的那个字段。**
+                            //
+                            // 各家在这上面并不统一：`fps` 只有字节的 Seed 认（别家会忽略，不会报错），
+                            // 而 `media_resolution` 是**小米专有的** —— 别家收到可能直接 400。
+                            // 上一版把小米的方言当成了通用语法，这里改回只发 `video_url`。
                             addJsonObject {
                                 put("type", "video_url")
                                 putJsonObject("video_url") { put("url", url) }
-                                put("fps", 2)
-                                put("media_resolution", "default")
                             }
                         }
                     }

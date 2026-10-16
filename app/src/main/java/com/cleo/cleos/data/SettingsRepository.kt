@@ -173,14 +173,41 @@ object ApiPresets {
         ApiPreset("硅基流动", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V3"),
         ApiPreset("Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k"),
         ApiPreset("OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini"),
-        // 小米 MiMo：**能看视频**，而且听得见声音 —— 它的用量里 video_tokens 和 audio_tokens 是分开算的
+        // 小米 MiMo：能看视频，而且听得见声音 —— 它的用量里 video_tokens 和 audio_tokens 是分开算的
         // （见 mimo.mi.com 的视频理解文档）。这几款是文档里点名支持视频的。
-        // 视频一个 50 MB（base64 之后），所以短片子才发得动，长的会明确报出来。
         ApiPreset(
             "小米 MiMo",
             "https://api.xiaomimimo.com/v1",
             "mimo-v2.6-pro",
             models = listOf("mimo-v2.6-pro", "mimo-v2.6-flash", "mimo-v2.6-pro-ultraspeed", "mimo-v2.5"),
+        ),
+        // 下面几家是**实测**能看视频的（2026-10，19 个模型的横评：
+        // docs.apiyi.com/api-capabilities/video-understanding）。挑模型时按这个来 ——
+        // **GPT 全系、Grok、Claude、智谱 glm、DeepSeek 都不支持视频**，
+        // 其中 GPT 和智谱会把视频**悄悄丢掉还返回 200**，人根本看不出来。
+        ApiPreset(
+            // 字节豆包 Seed：**全系都能看视频**，而且 `fps` 这个字段只有它认（也是唯一能调采样密度的）。
+            "豆包 Seed",
+            "https://ark.cn-beijing.volces.com/api/v3",
+            "seed-2-0-pro-260328",
+            models = listOf(
+                "seed-2-0-pro-260328", "dola-seed-2-1-turbo-260628", "seed-2-0-lite-260428",
+                "seed-2-0-mini-260428", "seed-1-8-251228",
+            ),
+        ),
+        ApiPreset(
+            // 通义：视觉和全模态系列都能看视频，价格低。
+            "通义千问",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "qwen3.8-flash",
+            models = listOf("qwen3.8-flash", "qwen3.8-max", "qwen3-vl-plus", "qwen3.5-omni-plus"),
+        ),
+        ApiPreset(
+            // Kimi 的 K3 能看视频，但**视频 token 是别家的约 3 倍**，长视频很贵。
+            "月之暗面 Kimi",
+            "https://api.moonshot.cn/v1",
+            "kimi-k3",
+            models = listOf("kimi-k3"),
         ),
     )
 
