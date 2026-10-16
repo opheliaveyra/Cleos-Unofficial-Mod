@@ -9,6 +9,7 @@ import com.cleo.cleos.data.StickerText
 import com.cleo.cleos.data.db.AppDatabase
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.DiaryEntryEntity
+import com.cleo.cleos.data.db.Feature
 import com.cleo.cleos.data.db.LetterEntity
 import com.cleo.cleos.data.db.MemoryEntity
 import com.cleo.cleos.data.db.MessageEntity
@@ -354,7 +355,9 @@ class Letters(
 
     /** The letter's text, or null when it can't be written now (no key yet, nothing came back). */
     private suspend fun write(ta: CompanionEntity, replyTo: LetterEntity?): String? {
-        val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: return null
+        // 写信是它自己主动干的活，没单独配就跟着主模型（见 Feature.Letters）。
+        val use = ta.modelFor(Feature.Letters)
+        val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: return null
         val s = settings.current()
         val z = zone()
         val letters = db.letters().allFor(ta.id)
@@ -385,7 +388,7 @@ class Letters(
             ),
         )
         val text = StringBuilder()
-        client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), messages).collect { if (it is ChatEvent.Delta) text.append(it.text) }
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), messages).collect { if (it is ChatEvent.Delta) text.append(it.text) }
         return text.toString().trim().ifEmpty { null }
     }
 

@@ -10,6 +10,7 @@ import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.StickerText
 import com.cleo.cleos.data.db.AppDatabase
 import com.cleo.cleos.data.db.CompanionEntity
+import com.cleo.cleos.data.db.Feature
 import com.cleo.cleos.data.db.ConversationEntity
 import com.cleo.cleos.data.db.MessageEntity
 import kotlinx.coroutines.CancellationException
@@ -201,9 +202,11 @@ class Recaps(
             val s = settings.current()
             val batch = Recap.toFold(live(conversation), s.historySize)
             if (batch.isEmpty()) return
-            val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: return
+            // 总结是后台自己干的活，没单独配就跟着主模型（见 Feature.Recap）。
+            val use = ta.modelFor(Feature.Recap)
+            val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: return
             val text = StringBuilder()
-            client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), Recap.request(ta, s.userName, conversation.recap, batch, zone()))
+            client.stream(ApiEndpoint(use.baseUrl, key, use.model), Recap.request(ta, s.userName, conversation.recap, batch, zone()))
                 .collect { if (it is ChatEvent.Delta) text.append(it.text) }
             val recap = Recap.clean(text.toString()) ?: return
             val last = batch.last()

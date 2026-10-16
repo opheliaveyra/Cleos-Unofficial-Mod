@@ -97,9 +97,11 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
     val busy: Boolean get() = lock.isLocked
     private suspend fun write(ta: CompanionEntity, context: String, sources: List<FeedNewsItem>, interests: String,
         allowPhoto: Boolean): FeedAiDraft? {
-        val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为 ${ta.name.ifBlank { "TA" }} 配置模型密钥")
+        // 朋友圈是它自己刷、自己写的活，没单独配就跟着主模型（见 Feature.Feed）。
+        val use = ta.modelFor(Feature.Feed)
+        val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为 ${ta.name.ifBlank { "TA" }} 配置模型密钥")
         val text = StringBuilder()
-        client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), listOf(
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedAiRules.system(ta, interests, allowPhoto)),
             ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context")), thinking = ta.deepThinking)
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }
@@ -113,7 +115,8 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
         source: FeedNewsItem?, allowed: suspend () -> Boolean, onRequest: suspend () -> Unit = {}): FeedPhotoPlan {
         if (query == null) return FeedPhotoPlan(content, null)
         val library = photoLibraries?.forLibrary(s.photoLibrary) ?: error("图库暂时不可用，这次未发布")
-        val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: error("请先配置模型密钥")
+        val use = ta.modelFor(Feature.Feed)
+        val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先配置模型密钥")
         val maximum = if (source == null) 80 else 600
         return FeedPhotoPlanner(library).prepare(content, query, allowed) { candidates ->
             val text = StringBuilder()
@@ -123,7 +126,7 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
             }
             if (!allowed()) throw FeedPhotoChanged()
             onRequest()
-            client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), listOf(
+            client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
                 ApiMessage("system", FeedAiRules.system(ta, s.feedInterests).substringBefore("只输出 JSON：") + FeedPhotoRules.instruction(maximum)),
                 ApiMessage("user", context)), thinking = ta.deepThinking)
                 .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的配图选择过长" }; text.append(it.text) } }
@@ -210,12 +213,13 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
             if (newsUnavailable) append("本次没有读到可分享的新资讯；不要编造新闻，可以回应朋友、说一点日常或安静。\n")
             append("本次实际收到 ${photos.size} 张图片。")
         }
-        val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: error("请先配置模型密钥")
+        val use = ta.modelFor(Feature.Feed)
+        val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先配置模型密钥")
         suspend fun current() = allowed() && sameSettings(s, settings.current(), taId)
         if (!current()) return@once FeedVisitResult(false, "逛逛或兴趣、图库设置已改变", true)
         val text = StringBuilder()
         onRequest()
-        client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), listOf(
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedVisitRules.system(ta, s.feedInterests, allowPost, FeedPhotoRules.enabled(s, taId))),
             ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context", images = photos)), thinking = ta.deepThinking)
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }
@@ -288,10 +292,11 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
                 append('：').append(comment.content.take(600)).append('\n')
             }
         }
-        val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为 ${ta.name.ifBlank { "TA" }} 配置模型密钥")
+        val use = ta.modelFor(Feature.Feed)
+        val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为 ${ta.name.ifBlank { "TA" }} 配置模型密钥")
         val photos = MessageImages.decode(post.images).mapNotNull { images.dataUrl(it.file) }
         val text = StringBuilder()
-        client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), listOf(
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedAiRules.reactionSystem(ta, settings.current().feedInterests)),
             ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context\n本次实际收到 ${photos.size} 张图片。", images = photos)), thinking = ta.deepThinking)
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }

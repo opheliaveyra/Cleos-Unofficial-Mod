@@ -60,6 +60,15 @@ data class CompanionEntity(
     val spokenApiBaseUrl: String = "",
     @ColumnInfo(defaultValue = "")
     val spokenApiModel: String = "",
+    /**
+     * 每个功能各自指定模型，存成 JSON（见 [FeatureModels]）。空着就是全都跟着主模型走。
+     *
+     * 为什么要分开：不同活儿值得用不同档次的模型。**上下文总结**、**朋友圈**这种
+     * 是"后台自己干活"，用便宜的就够了；**聊天**得用好的；**看视频**更特殊 ——
+     * 得用一个真能读视频的模型，而它多半跟聊天的不是同一个。
+     */
+    @ColumnInfo(defaultValue = "")
+    val featureModels: String = "",
 ) {
     /**
      * The model for this TA's words: its own, or, for words that will be heard, the other one when
@@ -72,6 +81,61 @@ data class CompanionEntity(
         } else {
             TaModel(apiBaseUrl, apiModel, forHeard = false)
         }
+
+    /**
+     * 某个功能的模型：单独配了就用那个，没配（或者只填了一半）就跟着主模型。
+     *
+     * "只填了一半算没配"是故意的 —— 地址填了、模型名没填，那种配置发出去只会报错，
+     * 不如老老实实用主模型，别让一个没填完的表单把功能弄哑。
+     */
+    fun modelFor(feature: Feature): TaModel {
+        val picked = FeatureModels.decode(featureModels)[feature]
+        return if (picked != null && picked.baseUrl.isNotBlank() && picked.model.isNotBlank()) {
+            TaModel(picked.baseUrl.trim(), picked.model.trim(), forHeard = false)
+        } else {
+            TaModel(apiBaseUrl, apiModel, forHeard = false)
+        }
+    }
+}
+
+/**
+ * 能单独配模型的功能。
+ *
+ * [label] 是设置页上给人看的那一行字，**别随便改** —— 改了界面上就认不出来了。
+ */
+enum class Feature(val label: String, val hint: String) {
+    Recap("上下文总结", "聊天久了自动压缩前文，用便宜的就够"),
+    Feed("朋友圈", "它自己刷帖、写动态，用便宜的就够"),
+    Letters("信件", "它主动写给你的信"),
+    Groups("群聊", "几个 TA 在群里说话"),
+    Vision("看图", "你发的图片、它自己找的图；要选能看图的模型"),
+    Video("视频理解", "要选真能读视频的模型；没配就用抽帧顶上"),
+}
+
+/** 某个功能指定的模型；两个都填了才算数。 */
+@Serializable
+data class FeatureModel(val baseUrl: String = "", val model: String = "")
+
+/**
+ * 功能和它的模型，整份存成一条 JSON 挂在 TA 身上。
+ *
+ * 单独一个对象是为了**好读也好坏**：字段缺了、JSON 坏了，一律当成"什么都没配"，
+ * 退回主模型 —— 不能让一个存坏的字符串把整个 TA 弄哑。
+ */
+object FeatureModels {
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    fun decode(raw: String): Map<Feature, FeatureModel> {
+        if (raw.isBlank()) return emptyMap()
+        val parsed = runCatching { json.decodeFromString<Map<String, FeatureModel>>(raw) }.getOrNull() ?: return emptyMap()
+        return parsed.mapNotNull { (name, value) -> Feature.entries.firstOrNull { it.name == name }?.let { it to value } }.toMap()
+    }
+
+    fun encode(map: Map<Feature, FeatureModel>): String {
+        val clean = map.filterValues { it.baseUrl.isNotBlank() && it.model.isNotBlank() }
+        if (clean.isEmpty()) return ""
+        return json.encodeToString(clean.mapKeys { it.key.name })
+    }
 }
 
 /** Where a TA's words come from (CompanionEntity.modelFor); [forHeard]: the model for words heard, not the chat one. */

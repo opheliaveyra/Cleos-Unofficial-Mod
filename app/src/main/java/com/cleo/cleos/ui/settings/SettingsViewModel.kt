@@ -296,6 +296,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         chat.load(ta.apiBaseUrl, ta.apiModel, ta.id)
         spokenOn = ta.spokenModelOn
         spoken.load(ta.spokenApiBaseUrl, ta.spokenApiModel, ta.id)
+        featureModels = com.cleo.cleos.data.db.FeatureModels.decode(ta.featureModels)
         aiName = ta.name
         persona = ta.persona
         replyWaitSeconds = com.cleo.cleos.ai.ReplyWaitRules.seconds(ta.replyWaitSeconds)
@@ -749,6 +750,40 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun setTool(group: ToolGroup, on: Boolean) {
         viewModelScope.launch {
             c.settings.update { it.copy(tools = if (on) it.tools + group else it.tools - group) }
+        }
+    }
+
+    /**
+     * 每个功能各自配的模型（见 [Feature]）。空 map = 全都跟着主模型走。
+     *
+     * 这是界面上那份的**副本**：改完立刻更新它（所以界面马上有反应），
+     * 再落库（[setFeatureModel]）。两边都做，是因为落库要走协程，
+     * 只靠它的话按钮点下去会有一会儿没动静。
+     */
+    var featureModels by mutableStateOf<Map<com.cleo.cleos.data.db.Feature, com.cleo.cleos.data.db.FeatureModel>>(emptyMap())
+        private set
+
+    /** 某个功能单独配的模型；null 表示它跟着主模型。 */
+    fun featureModel(feature: com.cleo.cleos.data.db.Feature) = featureModels[feature]
+
+    /**
+     * 给某个功能单独配模型，或者传 null 改回"跟随主模型"。
+     *
+     * 地址和模型名**两个都填了才算数** —— 只填一半的话，[CompanionEntity.modelFor]
+     * 那边也会当没配，所以这里存之前先判掉，免得界面上显示"已配置"、实际却走了主模型。
+     */
+    fun setFeatureModel(feature: com.cleo.cleos.data.db.Feature, model: com.cleo.cleos.data.db.FeatureModel?) {
+        val filled = model?.takeIf { it.baseUrl.isNotBlank() && it.model.isNotBlank() }
+        featureModels = featureModels.toMutableMap().apply {
+            if (filled == null) remove(feature) else put(feature, filled)
+        }
+        val id = companionId
+        viewModelScope.launch {
+            c.companions.update(id) { ta ->
+                val now = com.cleo.cleos.data.db.FeatureModels.decode(ta.featureModels).toMutableMap()
+                if (filled == null) now.remove(feature) else now[feature] = filled
+                ta.copy(featureModels = com.cleo.cleos.data.db.FeatureModels.encode(now))
+            }
         }
     }
 

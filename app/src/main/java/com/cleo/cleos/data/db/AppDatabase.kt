@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 37,
+    version = 38,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -98,6 +98,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // 36 -> 37: files sent in the chat (one nullable column). The file itself and the text
         // read out of it live in FileStore; the row keeps only what the chat shows.
         AutoMigration(from = 36, to = 37),
+        // 37 -> 38: 每个功能各自指定模型（一个带默认值的 TEXT 列，空着就是跟着主模型走）。
+        // 只是个字符串，里面装的是 JSON（FeatureModels）；解析不了就退回主模型，
+        // 所以这一列的默认值本身不会影响任何已有数据。
+        AutoMigration(from = 37, to = 38),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

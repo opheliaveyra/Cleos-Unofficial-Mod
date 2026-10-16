@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.data.ApiPresets
+import com.cleo.cleos.data.db.Feature
+import com.cleo.cleos.data.db.FeatureModel
 import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.avatarLetter
@@ -185,6 +187,84 @@ internal fun ModelPage(vm: SettingsViewModel) {
             ConnectionFields(vm.spoken)
             if (vm.spoken.baseUrl.isBlank() || vm.spoken.model.isBlank()) {
                 Text("地址和模型都填好才会换，之前还用上面那个。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+            }
+        }
+    }
+
+    Section("按功能换模型") {
+        Text(
+            "不同活儿值得用不同档次的模型：**总结**、**朋友圈**这种是它自己在后台干的，用便宜的就够；" +
+                "**聊天**要好的；**看视频**得专门挑一个真能读视频的。" +
+                "下面每条不填就是跟着上面那个主模型走 —— 不填也行。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        FeatureModelRows(vm)
+    }
+}
+
+/**
+ * 每个功能一行：现在用谁、点开改。
+ *
+ * 只让人填**地址 + 模型名**，不填 Key —— Key 是跟着接口地址存的（SecretStore 按地址归档），
+ * 同一个地址的 Key 填一次就够，这里再要一遍纯属添乱。
+ */
+@Composable
+private fun FeatureModelRows(vm: SettingsViewModel) {
+    val palette = LocalGlassPalette.current
+    var open by remember { mutableStateOf<String?>(null) }
+
+    Feature.entries.forEach { feature ->
+        val picked = vm.featureModel(feature)
+        ListCard {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(feature.label, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        if (picked == null) "跟随主模型" else "${picked.model} · ${picked.baseUrl}",
+                        color = if (picked == null) palette.contentSecondary else palette.accentContent,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Chip(if (open == feature.name) "收起" else "设置", selected = picked != null) {
+                    open = if (open == feature.name) null else feature.name
+                }
+            }
+            if (open == feature.name) {
+                Text(feature.hint, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                // 输入框是本地的：每敲一个字就存一次，不搞"保存"按钮那一套。
+                var url by remember(feature, picked) { mutableStateOf(picked?.baseUrl.orEmpty()) }
+                var model by remember(feature, picked) { mutableStateOf(picked?.model.orEmpty()) }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it; vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())) },
+                    label = { Text("接口地址") },
+                    placeholder = { Text("比如 https://api.deepseek.com/v1") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it; vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())) },
+                    label = { Text("模型名") },
+                    placeholder = { Text("比如 deepseek-flash") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (url.isBlank() || model.isBlank()) {
+                    Text("两个都填了才算数；只填一个等于没配，还是走主模型。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                }
+                TextButton(
+                    enabled = picked != null,
+                    onClick = {
+                        url = ""
+                        model = ""
+                        vm.setFeatureModel(feature, null)
+                    },
+                ) { Text("改回跟随主模型") }
             }
         }
     }
