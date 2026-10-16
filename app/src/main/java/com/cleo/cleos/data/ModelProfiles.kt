@@ -12,14 +12,81 @@ import kotlinx.serialization.json.Json
 import java.net.URI
 import java.util.UUID
 
-/** Keys continue to live in SecretStore by address; profiles never duplicate credentials. */
+/**
+ * 一条模型配置：用谁家的哪个型号。
+ *
+ * **能力是"声明"，不是"指派"。** 下面那几个 `direct*` 开关说的是
+ * **"这个模型自己能直接吃这种媒体"**，和"你把它派给了哪个功能"是两件事。
+ *
+ * 这一点是从 Operit 学来的（`ModelConfigData` 里的 `enableDirectImageProcessing` 等），
+ * 而且它**默认全是 false** —— 没证明过的能力一律当作没有。
+ *
+ * 玖玖遇到的问题正是这个：她在「图像识别」配了一个模型，
+ * 但那条配置上没声明"我能看图"，于是调度那边判断"没配识图服务"，图就没送过去。
+ */
 @Serializable
 data class ModelProfile(val id: String = UUID.randomUUID().toString(), val name: String,
                         val baseUrl: String, val model: String, val forgotten: Boolean = false,
-                        val userSaved: Boolean? = null) {
+                        val userSaved: Boolean? = null,
+                        /**
+                         * 能直接看图吗。
+                         *
+                         * **默认 false** —— 由设置页那个「测试」按钮探出来才置真：
+                         * 发一张印着随机暗号的图让它只回暗号，答对了才算会看。
+                         * 猜出来的"它会看"不算数（GPT 全系收到图会静默丢掉还回一段编的）。
+                         */
+                        val directImage: Boolean = false,
+                        /** 能直接看视频吗（`video_url` + base64）。同样由探针确定。 */
+                        val directVideo: Boolean = false) {
     // The old release did not mark explicit saves. Preserve named entries and retain other
     // records in a separate recoverable list instead of guessing and deleting them.
     val isUserSaved: Boolean get() = userSaved ?: (name != model)
+}
+
+/**
+ * 一个功能**需要**什么能力。
+ *
+ * 这是"能力调度"的另一半：一边是配置声明"我有什么"，一边是功能声明"我要什么"，
+ * 两边对不上就说明**这个功能配错了**，界面要当场说出来。
+ */
+enum class Capability(val label: String) {
+    /** 能直接看图。 */
+    Image("看图"),
+    /** 能直接看视频。 */
+    Video("看视频"),
+}
+
+/** 每个功能需要的能力；没列的功能不需要特殊能力（能聊天就行）。 */
+val Feature.needs: Set<Capability>
+    get() = when (this) {
+        Feature.Vision -> setOf(Capability.Image)
+        Feature.Video -> setOf(Capability.Video)
+        else -> emptySet()
+    }
+
+/** 这条配置有没有某个能力。 */
+fun ModelProfile.has(capability: Capability): Boolean = when (capability) {
+    Capability.Image -> directImage
+    Capability.Video -> directVideo
+}
+
+/** 记下探测出来的能力。只有**验过了**才这么改（见 `CapabilityTester`）。 */
+fun ModelProfile.with(capability: Capability, value: Boolean): ModelProfile = when (capability) {
+    Capability.Image -> copy(directImage = value)
+    Capability.Video -> copy(directVideo = value)
+}
+
+/**
+ * 功能指向的配置缺不缺能力。
+ *
+ * 返回缺的那些；空集表示没问题。**界面上要把结果画出来** ——
+ * 配了一个不会看图的模型给「图像识别」，就该当场警告，
+ * 而不是等人发了图发现没用、再回来一个字段一个字段地猜。
+ */
+fun missingCapabilities(feature: Feature, picked: ModelProfile?): Set<Capability> {
+    val need = feature.needs
+    if (need.isEmpty() || picked == null) return emptySet()
+    return need.filterNot { picked.has(it) }.toSet()
 }
 
 /**
@@ -204,6 +271,16 @@ class ModelProfiles(private val read: () -> Flow<String?>, private val write: su
             val have = profiles.map { it.id }.toSet()
             profiles + added.filter { it.id !in have }
         }
+    }
+
+    /**
+     * 记下探测出来的能力。
+     *
+     * **只有验过了才走到这里**（见 `CapabilityTester`）——
+     * 能力不是"我猜它会"，是"它答对了那道只有真会看才答得出的题"。
+     */
+    suspend fun setCapability(id: String, capability: Capability, value: Boolean) = change { profiles ->
+        profiles.map { if (it.id == id) it.with(capability, value) else it }
     }
 
     private suspend fun change(transform: (List<ModelProfile>) -> List<ModelProfile>) = mutex.withLock {

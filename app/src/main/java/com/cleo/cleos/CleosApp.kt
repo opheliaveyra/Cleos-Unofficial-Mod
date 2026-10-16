@@ -226,6 +226,10 @@ class AppContainer(private val context: Context) {
         listening = { Listening(music, lyrics).line() },
     )
     val stickers = Stickers(context, db, images)
+
+    /** 探一个配置到底会不会看图（见 [com.cleo.cleos.ai.CapabilityProbe]）。放在 chatClient 之后。 */
+    val capabilityTester = com.cleo.cleos.ai.CapabilityTester(images, secrets, chatClient)
+
     val groupChat = com.cleo.cleos.ai.GroupChatRepository(db, settings, secrets, chatClient, images, appScope,
         groupTools = com.cleo.cleos.ai.GroupTools(tools) { settings.current() },
         diagnostic = { toolDiagnostics.record(it) }) { id ->

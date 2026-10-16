@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.data.ApiPresets
+import com.cleo.cleos.data.needs
 import com.cleo.cleos.data.db.Feature
 import com.cleo.cleos.data.db.FeatureModel
 import com.cleo.cleos.glass.GlassShape
@@ -227,6 +232,9 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
 
     Feature.entries.forEach { feature ->
         val picked = vm.featureModel(feature)
+        // 这个功能配的模型，缺不缺它要的能力（见 Capability）。
+        // **配错了要当场说出来** —— 之前是等人发了图发现没用，再回来一个字段一个字段猜。
+        val missing = vm.missingFor(feature, picked)
         ListCard {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -238,6 +246,55 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (missing.isNotEmpty()) {
+                        Row(
+                            Modifier.padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = palette.error, modifier = Modifier.size(14.dp))
+                            Text(
+                                "这个模型没有声明「${missing.joinToString("、") { it.label }}」能力 —— 用之前先测一下",
+                                color = palette.error,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                            )
+                        }
+                    }
+                    // 需要特殊能力的功能，给一个「测一下」：照 Operit 的做法，
+                    // **每个功能测它真实要干的那件事**（图像识别就画张带随机码的图让它认）。
+                    // 测过了才把能力记到配置上 —— 不是"我猜它会"。
+                    if (feature.needs.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = { vm.testCapability(feature) },
+                                enabled = vm.probing == null,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                modifier = Modifier.heightIn(min = 28.dp),
+                            ) {
+                                if (vm.probing == feature) {
+                                    CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text("测一下", fontSize = 12.sp)
+                                }
+                            }
+                            vm.probeResult?.takeIf { it.first == feature }?.let { (_, result) ->
+                                Icon(
+                                    if (result.passed) Icons.Rounded.CheckCircle else Icons.Rounded.WarningAmber,
+                                    contentDescription = null,
+                                    tint = if (result.passed) palette.accentContent else palette.error,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                                Text(
+                                    result.message,
+                                    color = if (result.passed) palette.accentContent else palette.error,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            }
+                        }
+                    }
                 }
                 Chip(if (picked == null) "选择" else "已选 · 改", selected = picked != null) {
                     filling = null

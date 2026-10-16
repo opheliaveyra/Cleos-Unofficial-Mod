@@ -32,6 +32,7 @@ import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.GlassMode
 import com.cleo.cleos.data.ImportException
 import com.cleo.cleos.data.Pats
+import com.cleo.cleos.data.needs
 import com.cleo.cleos.data.WorkspaceEntry
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.LaterEntity
@@ -784,6 +785,81 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         profiles = modelProfiles.value,
         nameOf = { url -> com.cleo.cleos.data.ApiPresets.at(url)?.name },
     )
+
+    /**
+     * 这个功能配的模型，缺哪些它需要的能力。
+     *
+     * 一边是**功能要什么**（`Feature.needs`），一边是**配置声明有什么**（`ModelProfile.direct*`），
+     * 两边对不上就在这里返回 —— 界面拿它画红字。
+     *
+     * 没单独配（跟着主模型走）时，就检查主模型那条配置。
+     */
+    fun missingFor(
+        feature: com.cleo.cleos.data.db.Feature,
+        picked: com.cleo.cleos.data.db.FeatureModel?,
+    ): Set<com.cleo.cleos.data.Capability> {
+        if (feature.needs.isEmpty()) return emptySet()
+        val profile = profileFor(feature, picked)
+        // 找不到那条配置（比如手填的地址）→ 当作"没声明过"，也提醒一句。
+        if (profile == null) return feature.needs
+        return com.cleo.cleos.data.missingCapabilities(feature, profile)
+    }
+
+    /** 这个功能实际用的是哪条配置。 */
+    private fun profileFor(
+        feature: com.cleo.cleos.data.db.Feature,
+        picked: com.cleo.cleos.data.db.FeatureModel?,
+    ): com.cleo.cleos.data.ModelProfile? {
+        val url = picked?.baseUrl?.trim().orEmpty().ifEmpty { chat.activeUrl.trim() }
+        val model = picked?.model?.trim().orEmpty().ifEmpty { chat.activeModel.trim() }
+        return modelProfiles.value.firstOrNull {
+            it.baseUrl.trim() == url && it.model.trim() == model && !it.forgotten
+        }
+    }
+
+    /** 正在测哪个功能；null 表示没在测。 */
+    var probing by mutableStateOf<com.cleo.cleos.data.db.Feature?>(null)
+        private set
+
+    /** 上一次测试的结果，带着是哪个功能测的；显示一下就消失。 */
+    var probeResult by mutableStateOf<Pair<com.cleo.cleos.data.db.Feature, com.cleo.cleos.ai.ProbeResult>?>(null)
+        private set
+
+    fun clearProbeResult() { probeResult = null }
+
+    /**
+     * 测这个功能配的模型**能不能干这个活**。
+     *
+     * 照 Operit 的做法：**每个功能测它真实要干的那件事**，不是发一句 "Hi" 就算通。
+     * 图像识别就画一张印着随机码的图让它认 —— **码不在提示词里，蒙不了**；
+     * 认出来了才把 [com.cleo.cleos.data.Capability.Image] 记到那条配置上。
+     *
+     * **验过才记**，不是"我猜它会" —— 这就是之前"在图像识别配了不会看图的模型"
+     * 那种事不会再发生的原因。
+     */
+    fun testCapability(feature: com.cleo.cleos.data.db.Feature) {
+        val need = feature.needs
+        if (need.isEmpty() || probing != null) return
+        val profile = profileFor(feature, featureModel(feature))
+        if (profile == null) {
+            probeResult = feature to com.cleo.cleos.ai.ProbeResult(false, "这条配置还没保存成一条「模型配置」—— 先在「连接」里点一次「保存当前配置」，再回来测。")
+            return
+        }
+        probing = feature
+        viewModelScope.launch {
+            var last = com.cleo.cleos.ai.ProbeResult(false, "没有可测的能力")
+            for (capability in need) {
+                last = when (capability) {
+                    com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(profile)
+                    com.cleo.cleos.data.Capability.Video ->
+                        com.cleo.cleos.ai.ProbeResult(false, "视频能力要真发一条视频才知道 —— 这个探针还没做，先在聊天里发一条短的试试。")
+                }
+                if (last.passed) c.modelProfiles.setCapability(profile.id, capability, true)
+            }
+            probeResult = feature to last
+            probing = null
+        }
+    }
 
     /**
      * 已经保存过的模型配置（主模型页那份），给"按功能换模型"当选项用。
