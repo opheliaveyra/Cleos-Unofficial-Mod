@@ -250,6 +250,7 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
     // 选一个
     open?.let { feature ->
         val picked = vm.featureModel(feature)
+        val choices = vm.modelChoices()
         Dialog(onDismissRequest = { open = null }) {
             GlassSurface(
                 modifier = Modifier.fillMaxWidth(),
@@ -267,17 +268,17 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
                         chosen = picked == null,
                     ) { vm.setFeatureModel(feature, null); open = null }
 
-                    profiles.forEach { profile ->
+                    choices.forEach { choice ->
                         ListRow(
-                            title = profile.name.ifBlank { profile.model },
-                            detail = "${profile.model} · ${profile.baseUrl}",
-                            chosen = picked?.baseUrl == profile.baseUrl && picked?.model == profile.model,
-                        ) { vm.setFeatureModel(feature, FeatureModel(profile.baseUrl, profile.model)); open = null }
+                            title = choice.label,
+                            detail = "${choice.model} · ${choice.where}",
+                            chosen = choice.sameAs(picked),
+                        ) { vm.setFeatureModel(feature, FeatureModel(choice.baseUrl, choice.model)); open = null }
                     }
 
-                    if (profiles.isEmpty()) {
+                    if (choices.isEmpty()) {
                         Text(
-                            "你还没保存过别的模型配置。去上面「连接」那一节配好一个、点保存，这里就能选了。",
+                            "还没有配过任何模型。先去上面「连接」那一节填好地址和 Key，保存之后这里就有得选了。",
                             color = palette.contentSecondary,
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
