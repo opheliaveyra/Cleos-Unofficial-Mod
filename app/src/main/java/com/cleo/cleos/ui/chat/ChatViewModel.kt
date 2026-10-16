@@ -73,6 +73,8 @@ data class ChatUiState(
     val speechReady: Boolean = false,
     /** Whether the TA may search the web; the switch for it sits in the input bar. */
     val webSearch: Boolean = false,
+    /** 这个 TA 主模型用的接口地址；顶栏那个"换模型"列表靠它判断哪一项正在用。 */
+    val modelUrl: String = "",
     /** 对话里的小玩意儿：它写的 HTML 直接在气泡里跑起来（设置里的开关，默认关）。 */
     val liveWidgets: Boolean = false,
     /** 它写的卡片：只说"要什么"、样式由 App 画，没有代码在跑（默认开）。 */
@@ -154,6 +156,7 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 patSuffix = s.patSuffix,
                 patBuzz = s.patBuzz,
                 model = ta.apiModel,
+                modelUrl = ta.apiBaseUrl,
                 recap = conversation?.recap,
                 recapUntil = conversation?.let { cv -> cv.recapUntilAt?.let { at -> at to (cv.recapUntilId ?: Long.MAX_VALUE) } },
                 transcribing = transcribing,
@@ -499,6 +502,42 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch {
             if (state.value.messages.isEmpty() && conversationId.value != null) return@launch
             c.settings.setCurrentConversation(c.chat.newConversation(c.companions.current.first().id))
+        }
+    }
+
+    /**
+     * 点顶部那个模型名能选的东西：主模型、语音模型、保存过的配置。
+     *
+     * 和设置页那份用的是同一个 `ModelChoices.of`，免得两处各列一套、越走越不一样。
+     * 当前是哪个 TA，用和 [state] 一样的办法找（会话 → TA），别另起一套。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val modelChoices: StateFlow<List<com.cleo.cleos.data.ModelChoices.Choice>> =
+        conversationId.filterNotNull().flatMapLatest { id ->
+            combine(c.db.conversations().observe(id), c.companions.all, c.modelProfiles.profiles) { conversation, list, profiles ->
+                val ta = list.firstOrNull { it.id == conversation?.companionId } ?: list.firstOrNull()
+                if (ta == null) emptyList() else com.cleo.cleos.data.ModelChoices.of(
+                    chatBaseUrl = ta.apiBaseUrl,
+                    chatModel = ta.apiModel,
+                    spokenOn = ta.spokenModelOn,
+                    spokenBaseUrl = ta.spokenApiBaseUrl,
+                    spokenModel = ta.spokenApiModel,
+                    profiles = profiles,
+                    nameOf = { url -> com.cleo.cleos.data.ApiPresets.at(url)?.name },
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * 换个模型接着聊 —— 顶部那个模型名点一下就能换。
+     *
+     * 改的是**这个 TA 的主模型**，和设置页里改的是同一处。切完立刻生效：
+     * 下一条消息就用新模型，不用重新进设置。
+     */
+    fun switchModel(companionId: Long, baseUrl: String, model: String) {
+        if (companionId <= 0) return
+        viewModelScope.launch {
+            c.companions.update(companionId) { it.copy(apiBaseUrl = baseUrl.trim(), apiModel = model.trim()) }
         }
     }
 

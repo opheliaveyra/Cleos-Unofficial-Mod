@@ -767,38 +767,23 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun featureModel(feature: com.cleo.cleos.data.db.Feature) = featureModels[feature]
 
     /** 选模型时给出的一项：用谁家的、哪个型号。 */
-    data class ModelChoice(val label: String, val where: String, val baseUrl: String, val model: String) {
-        /** 和某个功能现在配的是不是同一个。 */
-        fun sameAs(picked: com.cleo.cleos.data.db.FeatureModel?) =
-            picked != null && picked.baseUrl == baseUrl && picked.model == model
-    }
+    typealias ModelChoice = com.cleo.cleos.data.ModelChoices.Choice
 
     /**
-     * 选模型时能选的东西，按"她实际有什么"排出来。
+     * 选模型时能选的东西 —— **从实际在用的出发**（主模型 → 语音 → 保存过的配置）。
      *
-     * **从实际在用的出发，不是从"手动保存过的"出发。** 上一版只列了保存过的配置，
-     * 结果她主模型明明配好了，这里却是空的 —— 那还选什么。
-     *
-     * 顺序：主模型 → 语音模型（开着的话）→ 保存过的配置（去掉重的）。
+     * 逻辑在 `ModelChoices.of` 里，聊天页那个"点模型名切换"用的是同一份，
+     * 免得两处各列一套、越走越不一样。
      */
-    fun modelChoices(): List<ModelChoice> {
-        val out = mutableListOf<ModelChoice>()
-        fun add(label: String, where: String, url: String, model: String) {
-            val u = url.trim()
-            val m = model.trim()
-            if (u.isBlank() || m.isBlank()) return
-            if (out.any { it.baseUrl == u && it.model == m }) return
-            out += ModelChoice(label, where, u, m)
-        }
-        val name = com.cleo.cleos.data.ApiPresets.at(chat.activeUrl)?.name ?: "主模型"
-        add(name, "主模型正在用", chat.activeUrl, chat.activeModel)
-        if (spokenOn) {
-            val spokenName = com.cleo.cleos.data.ApiPresets.at(spoken.activeUrl)?.name ?: "语音模型"
-            add(spokenName, "电话和语音在用", spoken.activeUrl, spoken.activeModel)
-        }
-        modelProfiles.value.forEach { p -> add(p.name.ifBlank { p.model }, "保存过的配置", p.baseUrl, p.model) }
-        return out
-    }
+    fun modelChoices(): List<ModelChoice> = com.cleo.cleos.data.ModelChoices.of(
+        chatBaseUrl = chat.activeUrl,
+        chatModel = chat.activeModel,
+        spokenOn = spokenOn,
+        spokenBaseUrl = spoken.activeUrl,
+        spokenModel = spoken.activeModel,
+        profiles = modelProfiles.value,
+        nameOf = { url -> com.cleo.cleos.data.ApiPresets.at(url)?.name },
+    )
 
     /**
      * 已经保存过的模型配置（主模型页那份），给"按功能换模型"当选项用。

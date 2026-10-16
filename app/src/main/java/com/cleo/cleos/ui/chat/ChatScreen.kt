@@ -697,6 +697,9 @@ fun ChatTab(
     val feedDraft by c.chat.feedDraft.collectAsStateWithLifecycle()
     var inputHeight by remember { mutableIntStateOf(0) }
     var pickingAttachment by remember { mutableStateOf(false) }
+    // 顶部那个模型名点一下能换模型（见 ChatViewModel.modelChoices）。
+    val modelChoices by vm.modelChoices.collectAsStateWithLifecycle()
+    var modelMenu by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)) {
         pickingAttachment = false
         vm.attach(it)
@@ -911,8 +914,41 @@ fun ChatTab(
             // The title is the TA; tapping it switches to another one or adds one.
             GlassTopBar(
                 title = if (selecting) "已选 ${selected.size} 条" else state.aiName.ifBlank { "聊天" },
+                // 点模型名 → 换模型；点名字 → 换 TA。两件事分开，不用再进设置翻页。
                 subtitle = state.model.takeIf { !selecting }?.takeIf { it.isNotBlank() }?.let { "$it ▾" },
                 backdrop = page,
+                onSubtitleClick = if (selecting || modelChoices.isEmpty()) null else ({ modelMenu = true }),
+                subtitleMenu = {
+                    DropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
+                        modelChoices.forEach { choice ->
+                            val here = choice.baseUrl == state.modelUrl && choice.model == state.model
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            choice.label,
+                                            fontWeight = if (here) FontWeight.SemiBold else FontWeight.Normal,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            "${choice.model} · ${choice.where}",
+                                            color = palette.contentSecondary,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                },
+                                trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = "正在用") }) else null,
+                                onClick = {
+                                    modelMenu = false
+                                    if (!here) vm.switchModel(state.companionId, choice.baseUrl, choice.model)
+                                },
+                            )
+                        }
+                    }
+                },
                 leading = {
                     if (selecting) TextButton(onClick = { selecting = false; selected = emptySet() }) { Text("取消") }
                     else GlassIconButton(Icons.Rounded.Forum, "对话记录", onOpenConversations, page)

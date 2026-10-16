@@ -76,6 +76,15 @@ fun GlassTopBar(
     /** Makes the title a button; [titleMenu] is drawn next to it, e.g. a menu it opens. */
     onTitleClick: (() -> Unit)? = null,
     titleMenu: @Composable () -> Unit = {},
+    /**
+     * 副标题（模型名那一行）点一下干什么。
+     *
+     * 单独给副标题一个点击区，是因为它和标题是**两件事**：标题是"跟谁聊"（切 TA），
+     * 副标题是"用哪个脑子"（切模型）。原来副标题后面画了个 ▾ 却点不动，
+     * 那个箭头等于骗人。
+     */
+    onSubtitleClick: (() -> Unit)? = null,
+    subtitleMenu: @Composable () -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
     CompositionLocalProvider(LocalGlassChrome provides palette.topBar) {
@@ -108,10 +117,22 @@ fun GlassTopBar(
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (subtitle != null) {
-                        Text(subtitle, color = palette.contentSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            subtitle,
+                            color = palette.contentSecondary,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (onSubtitleClick == null) Modifier else Modifier.clickable(
+                                interactionSource = null,
+                                indication = null,
+                                onClick = onSubtitleClick,
+                            ),
+                        )
                     }
                 }
                 titleMenu()
+                subtitleMenu()
             }
         }
         Spacer(Modifier.width(10.dp))
