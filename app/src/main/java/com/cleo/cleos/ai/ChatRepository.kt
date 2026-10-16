@@ -800,12 +800,16 @@ class ChatRepository(
         // The person's stickers in what came before, told in words: none are sent on the phone.
         val stickers = StickerBook(db.stickers().all())
         val calls = callsOutside(history)
+        // 唤醒也可能是"人发了一张图、然后走开"——图照样要能送到。
+        // 这里以前写死 false，配了「图像识别」模型也白搭。
         fun build() = Prompt.messages(
-            s, ta, history, ZonedDateTime.now(), groups, false, memories, conversation.recap, stickers = stickers, call = callId, calls = calls,
+            s, ta, history, ZonedDateTime.now(), groups,
+            history.any { it.role == "user" && it.images != null } && (visionSeparate(ta) || endpointKey !in refusesImages),
+            memories, conversation.recap, stickers = stickers, call = callId, calls = calls,
             lore = lore,
             preserveReasoning = Thinking.keepsToolReasoning(use.model),
         ).let { if (instruction != null) Prompt.withWake(it, instruction) else it }
-        var messages = build()
+        var messages = prepare(build(), ta)
         val said = StringBuilder()
         var rounds = 0
         while (true) {
@@ -1196,7 +1200,15 @@ class ChatRepository(
             if (ToolGroup.Search in groups && !searchReady(s)) groups = groups - ToolGroup.Search
             // The tools of the MCP services switched on come along whenever tools do.
             var outside = mcp.tools()
-            var withImages = endpointKey !in refusesImages && history.any { it.role == "user" && it.images != null }
+            // 图片挂不挂上去，有三条路：
+            //
+            //   1. **配了「图像识别」模型** → **一定挂** —— 图片先交给它转述成文字，再给聊天模型
+            //      （见 prepare / Feature.Vision）。这正是"主模型不会看图也能收到图"的路子，
+            //      所以**不能被下面那个"主模型拒过图"拦住** —— 那是给"没人转述"的情况用的。
+            //   2. 没配转述的 → 试着直接发；模型要是拒了，refusesImages 记住它，以后不发了。
+            //   3. 都不行 → Prompt 会在话里写"你这边看不到图片"。
+            var withImages = history.any { it.role == "user" && it.images != null } &&
+                (visionSeparate(ta) || endpointKey !in refusesImages)
             var thinking = ta.deepThinking && endpointKey !in refusesThinking
             // What the TA remembers, read once for this reply.
             val memories = if (ToolGroup.Memory in s.tools) db.memories().allFor(ta.id) else emptyList()
@@ -1315,13 +1327,27 @@ class ChatRepository(
     }
 
     /**
+     * 这个 TA 配了"把图说成话"的模型吗（见 [Feature.Vision]）。
+     *
+     * 配了的话，**图片一定要挂上去** —— 由 [prepare] 交给它转述，再把文字给聊天的模型。
+     * 这条和"聊天的模型自己会不会看图"无关：**不会看也照样收得到**。
+     *
+     * 这正是玖玖那个用法：主模型不会看图，就在「图像识别」里单配一个会看的。
+     * 以前这里漏了一层 —— 图片挂不挂只看"主模型拒没拒过图"，配了转述模型也白搭。
+     */
+    private fun visionSeparate(ta: CompanionEntity): Boolean =
+        VisionRules.separate(ta.modelFor(Feature.Vision), ta.modelFor(heard = false))
+
+    /**
      * Pictures become data: URLs just before sending; one that can't be read is left out.
      *
      * **专门配了看图模型的时候**，图片先交给它转述成文字，再把那段文字交给聊天的模型 ——
      * 这样聊天模型不会看图也没关系（见 [Feature.Vision]）。
      *
-     * 转述失败就退回"直接把图发过去"：**宁可让聊天模型自己试着看，也别把图片弄丢** ——
-     * 人发出来的东西，不能因为一个配角模型抽风就凭空没了。
+     * **配了却转述不出来时必须说话。** 以前这里是"静默退回直接发图"，
+     * 结果是：主模型不会看图 → 图发过去它看不懂 → 人只看到一篇答非所问的回复，
+     * **完全不知道是自己那个识别模型没配好**（没 Key、模型名写错、服务不通……）。
+     * 现在改成把原因写在话里，让人一眼看出问题出在哪。
      */
     private suspend fun prepare(messages: List<ApiMessage>, ta: CompanionEntity): List<ApiMessage> {
         val vision = ta.modelFor(Feature.Vision)
@@ -1334,8 +1360,15 @@ class ChatRepository(
             if (withVideo.images.isEmpty()) return@map withVideo
             if (!separate) return@map withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
             val described = describeImages(withVideo.images, vision)
-            if (described.isBlank()) withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
-            else withVideo.copy(images = emptyList(), content = withVideo.content + "\n\n" + VisionRules.NOTE + "\n" + described)
+            if (described.isNotBlank()) {
+                return@map withVideo.copy(images = emptyList(), content = withVideo.content + "\n\n" + VisionRules.NOTE + "\n" + described)
+            }
+            // 说不出话来：**告诉人为什么**，而不是假装没事。
+            val why = VisionRules.whyNotDescribed(vision, secrets.key(vision.baseUrl)?.isNotBlank() == true)
+            withVideo.copy(
+                images = withVideo.images.mapNotNull { images.dataUrl(it) },
+                content = withVideo.content + "\n\n" + why,
+            )
         }
     }
 

@@ -37,4 +37,27 @@ class VisionRulesTest {
         assertTrue(VisionRules.NOTE.isNotBlank())
         assertTrue(VisionRules.NOTE.contains("转述"))
     }
+
+    @Test
+    fun aMissingKeyIsNamedAsTheReason() {
+        // 配了模型但没 Key —— 得**指名道姓**说清楚，不然人只会看到主模型答非所问，
+        // 根本想不到是识别模型那一步没过（这正是玖玖遇到的那个）。
+        val why = VisionRules.whyNotDescribed(TaModel("https://a/v1", "glm-4.6v", forHeard = false), hasKey = false)
+        assertTrue("要说没配 Key", why.contains("Key"))
+        assertTrue("要点出是哪个模型", why.contains("glm-4.6v"))
+    }
+
+    @Test
+    fun noModelAtAllIsToldDifferently() {
+        val why = VisionRules.whyNotDescribed(TaModel("", "", forHeard = false), hasKey = false)
+        assertTrue("要说没配模型", why.contains("图像识别"))
+        assertTrue("要告诉人去哪儿配", why.contains("设置"))
+    }
+
+    @Test
+    fun aModelThatJustFailedPointsAtWhatToCheck() {
+        val why = VisionRules.whyNotDescribed(TaModel("https://b/v1", "some-vl", forHeard = false), hasKey = true)
+        assertTrue("模型名和服务都可能有问题", why.contains("模型名") && why.contains("通不通"))
+        assertTrue("要把地址带出来", why.contains("https://b/v1"))
+    }
 }
