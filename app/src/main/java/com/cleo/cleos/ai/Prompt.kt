@@ -505,7 +505,14 @@ object Prompt {
             userText(canSee, attach, words, fileText).takeIf { it.isNotBlank() }?.let { text ->
                 // What they stuck on the TA's messages before writing this, first: it happened first.
                 val before = reacted[id]?.joinToString("\n")?.let { "$it\n" }.orEmpty()
-                ApiMessage("user", (if (id > 0) "（消息编号 #$id）\n" else "") + before + text + diaryRequestId?.let { "\n（这条消息关联到你的小秘密：日记 #$it。用户可自由改写询问；愿意分享请使用 share_my_secret，不愿意可以拒绝。）" }.orEmpty(), images = if (attach) MessageImages.decode(images).map { it.file } else emptyList())
+                ApiMessage(
+                    "user",
+                    (if (id > 0) "（消息编号 #$id）\n" else "") + before + text + diaryRequestId?.let { "\n（这条消息关联到你的小秘密：日记 #$it。用户可自由改写询问；愿意分享请使用 share_my_secret，不愿意可以拒绝。）" }.orEmpty(),
+                    images = if (attach) MessageImages.decode(images).map { it.file } else emptyList(),
+                    // 视频只在**能看视频的时候**才挂上去（attach）—— 由 ChatRepository.prepare 决定，
+                    // 它会把不该发的摘掉。这里先把名字带上，不然半路没人知道这条消息带了视频。
+                    videos = if (attach) com.cleo.cleos.data.MessageVideos.decode(videos).map { it.file } else emptyList(),
+                )
             }
         }
         "assistant" -> {

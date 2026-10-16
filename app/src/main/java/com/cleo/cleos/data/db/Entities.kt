@@ -443,6 +443,15 @@ data class MessageEntity(
     /** "user": the pictures sent with it, a JSON array of MessageImage, in order. */
     val images: String? = null,
     /**
+     * "user": 一起发出去的视频（MessageVideo 的 JSON，Videos 表里的名字）。
+     *
+     * **只存名字，视频本体在 VideoStore 的目录里** —— 和图片一个路子。
+     * 发给谁由 `ChatRepository.prepare` 决定：配了「视频理解」模型就发原片
+     * （`video_url` + base64），没配才退回抽帧。
+     */
+    @ColumnInfo(defaultValue = "")
+    val videos: String? = null,
+    /**
      * "user": the files sent with it, a JSON array of MessageFile, in order. Only what was
      * read off them is kept here (name, size, kind, length); the text itself stays in
      * FileStore, where read_file goes back for it turn after turn.

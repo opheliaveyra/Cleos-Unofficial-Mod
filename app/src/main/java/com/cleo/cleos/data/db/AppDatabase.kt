@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 39,
+    version = 40,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -106,6 +106,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // （三个带默认值的 TEXT 列）。**只是加列，这一版不动任何已有数据** ——
         // 搬家在启动时做一次（见 ModelConfigs.ensure），那时候才有得测。
         AutoMigration(from = 38, to = 39),
+        // 39 -> 40: 消息带上一起发出去的视频（一个带默认值的 TEXT 列，存 VideoStore 里的名字）。
+        // **还是只加列** —— 视频本体在文件目录里，这一列只记"这条消息带了哪条视频"。
+        AutoMigration(from = 39, to = 40),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

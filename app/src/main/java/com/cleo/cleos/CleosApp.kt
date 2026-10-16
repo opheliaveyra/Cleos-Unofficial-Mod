@@ -93,6 +93,8 @@ class AppContainer(private val context: Context) {
     val secrets = SecretStore(context)
     val modelProfiles = com.cleo.cleos.data.ModelProfiles(secrets)
     val images = ImageStore(context)
+    /** 视频：存原片，配了「视频理解」的模型就真的发过去（见 [VideoStore]）。 */
+    val videos = com.cleo.cleos.data.VideoStore(context)
     /** Files sent in the chat, kept as they came; the text read out of them sits beside them. */
     val files = FileStore(context)
 
@@ -210,7 +212,9 @@ class AppContainer(private val context: Context) {
     val ear = EarVoice(context, images)
     val wakeActivities = com.cleo.cleos.ai.WakeActivities(db)
     val chat: ChatRepository = ChatRepository(
-        db, settings, secrets, chatClient, tools, images, files, companions, recaps, mcp, transcriber, speaker, appScope,
+        db, settings, secrets, chatClient, tools, images, videos, files, companions, recaps, mcp, transcriber, speaker, appScope,
+        // 没配「视频理解」模型时的退路：从视频里抽几帧顶上（见 ChatRepository.prepareVideo）。
+        videoFrames = { path, count -> com.cleo.cleos.data.VideoFrames.frames(path, count) },
         // A reply finished where the person isn't looking (they left, or went to another page): as a notification.
         replied = { ta, conversationId, said ->
             if (!(visible && chatOnScreen == conversationId)) notifier.messages(ta, conversationId, said)

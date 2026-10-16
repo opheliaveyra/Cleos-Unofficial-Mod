@@ -45,6 +45,15 @@ data class ApiMessage(
      * data: URLs just before sending.
      */
     val images: List<String> = emptyList(),
+    /**
+     * 视频：`VideoStore` 名字，发之前转成 `data:video/mp4;base64,...`。
+     *
+     * **只发给真的能看视频的模型** —— 格式是
+     * `{"type":"video_url","video_url":{"url":...},"fps":2}`（小米 MiMo 和 SambaNova 都是这个）。
+     * 别的模型收到会报错，所以给谁发由 `ChatRepository.prepare` 决定：
+     * **配了「视频理解」模型就走这条**，没配才退回抽帧。
+     */
+    val videos: List<String> = emptyList(),
     /** An assistant message that went as a voice message: Prompt gives it back as the send_voice it was. Not sent. */
     val spoken: Boolean = false,
     /** An assistant message that quoted one of the person's: the words, for the send_message it was. Not sent. */
@@ -597,7 +606,7 @@ internal fun requestBody(
         for (m in messages) {
             addJsonObject {
                 put("role", m.role)
-                if (m.images.isNotEmpty()) {
+                if (m.images.isNotEmpty() || m.videos.isNotEmpty()) {
                     // With pictures the content becomes a list of parts, the text first.
                     putJsonArray("content") {
                         if (m.content.isNotEmpty()) {
@@ -610,6 +619,17 @@ internal fun requestBody(
                             addJsonObject {
                                 put("type", "image_url")
                                 putJsonObject("image_url") { put("url", url) }
+                            }
+                        }
+                        for (url in m.videos) {
+                            // 视频和图片是对称的，只是多两个可调项：
+                            // fps 是"每秒抽几帧"（默认 2），media_resolution 是单帧清晰度。
+                            // 都用默认值 —— 调高了 token 涨得很快，而默认那档已经够看懂内容。
+                            addJsonObject {
+                                put("type", "video_url")
+                                putJsonObject("video_url") { put("url", url) }
+                                put("fps", 2)
+                                put("media_resolution", "default")
                             }
                         }
                     }

@@ -173,6 +173,15 @@ object ApiPresets {
         ApiPreset("硅基流动", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V3"),
         ApiPreset("Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k"),
         ApiPreset("OpenRouter", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini"),
+        // 小米 MiMo：**能看视频**，而且听得见声音 —— 它的用量里 video_tokens 和 audio_tokens 是分开算的
+        // （见 mimo.mi.com 的视频理解文档）。这几款是文档里点名支持视频的。
+        // 视频一个 50 MB（base64 之后），所以短片子才发得动，长的会明确报出来。
+        ApiPreset(
+            "小米 MiMo",
+            "https://api.xiaomimimo.com/v1",
+            "mimo-v2.6-pro",
+            models = listOf("mimo-v2.6-pro", "mimo-v2.6-flash", "mimo-v2.6-pro-ultraspeed", "mimo-v2.5"),
+        ),
     )
 
     /** The preset whose address [baseUrl] is, if any. */

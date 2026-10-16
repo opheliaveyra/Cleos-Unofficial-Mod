@@ -100,6 +100,8 @@ class ChatRepository(
     private val client: ChatClient,
     private val tools: ToolBox,
     private val images: ImageStore,
+    /** 视频本体存在这儿；配了「视频理解」模型时从这里取出去发（见 prepare）。 */
+    private val videos: com.cleo.cleos.data.VideoStore,
     /** Files sent in the chat, and the text read out of them (FileStore). */
     private val files: FileStore,
     private val companions: Companions,
@@ -117,6 +119,16 @@ class ChatRepository(
     private val listening: suspend () -> String? = { null },
     private val interrupted: (Long) -> Unit = {},
     private val activities: WakeActivities = WakeActivities(db),
+    /**
+     * 没配能看视频的模型时，临场从视频里抽几帧顶上 —— 需要 Context，所以由 AppContainer 提供
+     * （见 [com.cleo.cleos.data.VideoFrames]）。
+     *
+     * **这只是退路，不是主路**：抽帧没有声音、动作也会漏，
+     * 但总比把视频悄悄丢掉强。抽帧之后当图片发给聊天的模型。
+     *
+     * 放在最后是因为它有默认值：位置参数不能跳过带默认值的参数。
+     */
+    private val videoFrames: suspend (String, Int) -> List<android.graphics.Bitmap> = { _, _ -> emptyList() },
 ) : FileShelf {
     /** The replies being written, by conversation. */
     private val _streaming = MutableStateFlow<Map<Long, StreamingReply>>(emptyMap())
@@ -429,10 +441,10 @@ class ChatRepository(
      * stopped for a moment ([answerSoon]). [quote]: the message this one answers. False only
      * when there is nothing to send.
      */
-    fun send(conversationId: Long, text: String, pictures: List<MessageImage> = emptyList(), quote: MessageQuote? = null, diaryRequestId: Long? = null, feedShare: FeedShare? = null, files: List<MessageFile> = emptyList()): Boolean {
+    fun send(conversationId: Long, text: String, pictures: List<MessageImage> = emptyList(), quote: MessageQuote? = null, diaryRequestId: Long? = null, feedShare: FeedShare? = null, files: List<MessageFile> = emptyList(), videos: List<com.cleo.cleos.data.MessageVideo> = emptyList()): Boolean {
         val shared = feedShare?.copy(caption = text.trim())
         val content = shared?.let(FeedShares::text) ?: text.trim()
-        if (content.isEmpty() && pictures.isEmpty() && files.isEmpty()) return false
+        if (content.isEmpty() && pictures.isEmpty() && files.isEmpty() && videos.isEmpty()) return false
         val at = stamp()
         scope.launch {
             val request = diaryRequestId?.let { id ->
@@ -448,6 +460,7 @@ class ChatRepository(
                     diaryRequestId = request,
                     createdAt = at,
                     images = MessageImages.encode(shared?.images.orEmpty() + pictures),
+                    videos = com.cleo.cleos.data.MessageVideos.encode(videos),
                     files = MessageFiles.encode(files),
                     quote = quote?.let(MessageQuotes::encode),
                     feedShare = shared?.let(FeedShares::encode),
@@ -1296,12 +1309,53 @@ class ChatRepository(
         val vision = ta.modelFor(Feature.Vision)
         val chat = ta.modelFor(heard = false)
         val separate = VisionRules.separate(vision, chat)
+        val videoModel = ta.modelFor(Feature.Video)
+        val videoSeparate = VisionRules.separate(videoModel, chat)
         return messages.map { m ->
-            if (m.images.isEmpty()) return@map m
-            if (!separate) return@map m.copy(images = m.images.mapNotNull { images.dataUrl(it) })
-            val described = describeImages(m.images, vision)
-            if (described.isBlank()) m.copy(images = m.images.mapNotNull { images.dataUrl(it) })
-            else m.copy(images = emptyList(), content = m.content + "\n\n" + VisionRules.NOTE + "\n" + described)
+            val withVideo = if (m.videos.isEmpty()) m else prepareVideo(m, videoModel, videoSeparate)
+            if (withVideo.images.isEmpty()) return@map withVideo
+            if (!separate) return@map withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
+            val described = describeImages(withVideo.images, vision)
+            if (described.isBlank()) withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
+            else withVideo.copy(images = emptyList(), content = withVideo.content + "\n\n" + VisionRules.NOTE + "\n" + described)
+        }
+    }
+
+    /**
+     * 一条消息带的视频怎么办。
+     *
+     * **配了「视频理解」模型就真的把视频发过去**（`video_url` + base64，见 [Feature.Video]）——
+     * 那个模型自己会按 fps 抽帧，**而且听得见声音**，这是抽帧做不到的。
+     *
+     * 没配就看聊天模型自己会不会看图：会的话抽几帧当图片顶上，不会的话算它没看见，
+     * 但**在话里说清楚**（"对方发了一条视频，你看不到"），别让 TA 装作收到了。
+     */
+    private suspend fun prepareVideo(m: ApiMessage, videoModel: TaModel, separate: Boolean): ApiMessage {
+        if (separate) {
+            val urls = m.videos.mapNotNull { videos.dataUrl(it) }
+            if (urls.isNotEmpty()) return m.copy(videos = urls)
+            // 说有视频但一个都转不出来（太大了 / 文件没了）：别静默地把它摘掉。
+            return m.copy(
+                videos = emptyList(),
+                content = m.content + "\n\n（对方发了一条视频，但这条视频发不出去——太大或者文件已不在。）",
+            )
+        }
+        // 没配视频模型：抽几帧当图片，交给聊天的模型（它得自己能看图）。
+        val frames = mutableListOf<String>()
+        for (name in m.videos) {
+            val file = videos.file(name)
+            if (!file.isFile) continue
+            val bitmaps = runCatching { videoFrames(file.absolutePath, com.cleo.cleos.data.VideoFrames.DEFAULT_COUNT) }
+                .getOrDefault(emptyList())
+            for (frame in bitmaps) {
+                runCatching { images.save(frame, prefix = "video-") }.onSuccess { frames += it }
+                frame.recycle()
+            }
+        }
+        return if (frames.isEmpty()) {
+            m.copy(videos = emptyList(), content = m.content + "\n\n（对方发了一条视频，但这里没法看视频——在「按功能换模型」里给「视频理解」挑一个能看视频的模型就行。）")
+        } else {
+            m.copy(videos = emptyList(), images = m.images + frames)
         }
     }
 

@@ -30,11 +30,26 @@ object VideoFrames {
      * 取点用 **5% ~ 95%** 而不是 0 ~ 100%：**首帧经常是黑的**（有些相机和应用会先给一帧全黑），
      * **末帧也常常取不到**（`OPTION_CLOSEST_SYNC` 只能给到最后一个关键帧之前）。
      */
-    fun frames(context: Context, uri: Uri, count: Int = DEFAULT_COUNT): List<Bitmap> {
+    fun frames(context: Context, uri: Uri, count: Int = DEFAULT_COUNT): List<Bitmap> = frames(uri, count, context)
+
+    /**
+     * 从**文件路径**抽帧 —— 退路那条路走的是这条路。
+     *
+     * `MediaMetadataRetriever` 有个 `setDataSource(path)` 的重载，比喂一个 `file://` URI 稳：
+     * 后者要看系统的 URI 处理，某些机型上直接不认。
+     */
+    fun frames(path: String, count: Int = DEFAULT_COUNT): List<Bitmap> = frames(null, count, null, path)
+
+    private fun frames(
+        uri: Uri?,
+        count: Int,
+        context: Context? = null,
+        path: String? = null,
+    ): List<Bitmap> {
         if (count <= 0) return emptyList()
         val retriever = MediaMetadataRetriever()
         return try {
-            retriever.setDataSource(context, uri)
+            if (path != null) retriever.setDataSource(path) else retriever.setDataSource(context, uri)
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 ?.trim()?.toLongOrNull() ?: 0L
             if (durationMs <= 0L) return emptyList()

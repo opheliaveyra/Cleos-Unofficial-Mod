@@ -198,31 +198,36 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
 
     fun clearVideoProblem() { videoProblem = null }
 
+    /** 这次要一起发出去的视频。 */
+    val videoAttachments = mutableStateListOf<com.cleo.cleos.data.MessageVideo>()
+
+    fun dropVideo(video: com.cleo.cleos.data.MessageVideo) {
+        videoAttachments.remove(video)
+        c.appScope.launch { c.videos.delete(listOf(video.file)) }
+    }
+
     /**
-     * 一条视频：**本地抽几帧，当成几张图片**发过去（见 [com.cleo.cleos.data.VideoFrames]）。
+     * 一条视频：**存原片，真的发过去**。
      *
-     * 为什么不把视频本身发给模型：没有几个模型直接吃视频，而且视频几十上百 MB，
-     * 塞进请求里不现实。抽帧是本地干的，抽出来的帧走的就是现成的图片管线 ——
-     * 配了"看图模型"的话，那些帧会先被转述成文字再交给聊天的模型。
+     * **不再是抽帧了。** 抽帧只有几张静图、而且**完全没有声音**；
+     * 小米 MiMo 那类模型能自己按 fps 抽帧、还能听见声音（它的用量里
+     * `video_tokens` 和 `audio_tokens` 是分开算的）。所以配了「视频理解」模型就走原片那条路。
      *
-     * 抽不出帧就明说，**别让人以为发出去了**。
+     * 太大（超过 [com.cleo.cleos.data.VideoStore.MAX_BYTES]）会**明确说超了**，
+     * 不偷偷拿几帧糊弄过去 —— 那样人以为视频发过去了，其实模型只看到五张图。
      */
     fun attachVideo(uri: Uri) {
         viewModelScope.launch {
             attaching = true
-            val frames = runCatching { c.videoFrames(uri) }.getOrDefault(emptyList())
-            if (frames.isEmpty()) {
-                videoProblem = "这条视频读不出画面（可能不是视频，或者系统解不了），没有发出去"
-            } else {
-                val room = (Prompt.MAX_IMAGES - attachments.size).coerceAtLeast(0)
-                for (frame in frames.take(room)) {
-                    val width = frame.width
-                    val height = frame.height
-                    runCatching { c.images.save(frame, prefix = "video-") }
-                        .onSuccess { name -> attachments += MessageImage(name, width, height) }
-                    frame.recycle()
+            val outcome = runCatching { c.videos.import(uri) }
+                .getOrElse { com.cleo.cleos.data.StoredVideo.Unreadable(it.message ?: "读不了") }
+            when (outcome) {
+                is com.cleo.cleos.data.StoredVideo.Ok -> {
+                    val length = runCatching { c.videoLength(uri) }.getOrDefault(0L)
+                    videoAttachments += com.cleo.cleos.data.MessageVideo(outcome.name, length, outcome.bytes)
                 }
-                if (room <= 0) videoProblem = "这次已经带够 ${Prompt.MAX_IMAGES} 张图了，视频的帧没放进来"
+                is com.cleo.cleos.data.StoredVideo.TooBig -> videoProblem = outcome.why
+                is com.cleo.cleos.data.StoredVideo.Unreadable -> videoProblem = "这条视频读不了：${outcome.why}"
             }
             attaching = false
         }
@@ -273,9 +278,13 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
      */
     private fun clearAttachments() {
         val files = fileAttachments.map { it.file }
+        // 视频也一样：切走的时候别把上一条没发出去的留着，不然会跟着发给**另一个人**。
+        val videos = videoAttachments.map { it.file }
         attachments.clear()
         fileAttachments.clear()
+        videoAttachments.clear()
         if (files.isNotEmpty()) c.appScope.launch { c.files.delete(files) }
+        if (videos.isNotEmpty()) c.appScope.launch { c.videos.delete(videos) }
     }
 
     /**
@@ -325,8 +334,9 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
     /** False when nothing went out: the text, pictures and files stay where they are. */
     fun send(text: String, diaryRequestId: Long? = null, feedShare: com.cleo.cleos.data.FeedShare? = null): Boolean {
         val id = conversationId.value ?: return false
-        if (!c.chat.send(id, text, attachments.toList(), quoting, diaryRequestId, feedShare, fileAttachments.toList())) return false
+        if (!c.chat.send(id, text, attachments.toList(), quoting, diaryRequestId, feedShare, fileAttachments.toList(), videoAttachments.toList())) return false
         attachments.clear()
+        videoAttachments.clear()
         fileAttachments.clear()
         quoting = null
         return true
