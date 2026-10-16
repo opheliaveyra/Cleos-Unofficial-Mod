@@ -87,6 +87,7 @@ import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.VideoLibrary
@@ -1620,6 +1621,13 @@ private fun MessageBubble(
                     if (pictures.isNotEmpty()) {
                         PictureGroup(pictures, onOpen = onOpenImage, onLongPress = { menu = true })
                     }
+                    // 发出去的视频：**得看得见**，不然翻记录时对不上。
+                    val sentVideos = remember(message.videos) { com.cleo.cleos.data.MessageVideos.decode(message.videos) }
+                    if (sentVideos.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            sentVideos.forEach { sent -> SentVideoCard(sent) }
+                        }
+                    }
                     // Files sent with this message, above the words the way attachments read.
                     val sentFiles = remember(message.files) { MessageFiles.decode(message.files) }
                     if (sentFiles.isNotEmpty()) {
@@ -1876,6 +1884,56 @@ internal fun PictureGroup(pictures: List<MessageImage>, onOpen: (String) -> Unit
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 消息里的一段视频：**封面 + 时长 + 一个播放标记**。
+ *
+ * 为什么不是一行"发了一段视频"的文字：翻记录的时候对不上 ——
+ * 三周前发的那条视频和今天这条，只靠一行字分不出是哪个。
+ * 封面是发的时候顺手抽的第一帧（`ChatViewModel.attachVideo`），
+ * **不是每次渲染都去解一遍视频** —— 那太贵了。
+ */
+@Composable
+private fun SentVideoCard(video: com.cleo.cleos.data.MessageVideo) {
+    val c = appContainer()
+    val palette = LocalGlassPalette.current
+    Box(
+        Modifier
+            .width(minOf(bubbleMaxWidth(), 240.dp))
+            .aspectRatio(16f / 10f)
+            .clip(RoundedCornerShape(18.dp)),
+    ) {
+        if (video.poster.isNotBlank()) {
+            AsyncImage(
+                model = c.images.file(video.poster),
+                contentDescription = "视频",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            // 抽帧失败（编码器挑食）时不装作有封面，给一块安静的底。
+            Box(Modifier.fillMaxSize().background(palette.content.copy(alpha = 0.10f)))
+        }
+        Icon(
+            Icons.Rounded.PlayCircle,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.92f),
+            modifier = Modifier.align(Alignment.Center).size(44.dp),
+        )
+        if (video.durationMs > 0) {
+            Text(
+                com.cleo.cleos.data.VideoFrames.clock(video.durationMs),
+                color = Color.White,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
         }
     }
 }

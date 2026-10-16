@@ -113,6 +113,10 @@ class AppContainer(private val context: Context) {
     suspend fun videoFrames(uri: android.net.Uri, count: Int = VideoFrames.DEFAULT_COUNT) =
         withContext(Dispatchers.IO) { VideoFrames.frames(context, uri, count) }
 
+    /** 同上，但按**文件路径**取（库里存好的视频走这条）。 */
+    suspend fun videoFrames(path: String, count: Int = VideoFrames.DEFAULT_COUNT) =
+        withContext(Dispatchers.IO) { VideoFrames.frames(path, count) }
+
     /** 视频多长，用来在聊天里显示 `1:23`；读不出来是 0。 */
     suspend fun videoLength(uri: android.net.Uri) =
         withContext(Dispatchers.IO) { VideoFrames.durationMs(context, uri) }

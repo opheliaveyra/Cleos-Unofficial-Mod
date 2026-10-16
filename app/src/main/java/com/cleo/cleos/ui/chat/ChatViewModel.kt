@@ -232,7 +232,14 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
             when (outcome) {
                 is com.cleo.cleos.data.StoredVideo.Ok -> {
                     val length = runCatching { c.videoLength(uri) }.getOrDefault(0L)
-                    videoAttachments += com.cleo.cleos.data.MessageVideo(outcome.name, length, outcome.bytes)
+                    // 顺手抽一帧当封面：**聊天里得能看出"这儿有段视频"**。
+                    // 抽不到（编码器挑食 / 读到一半没电）不影响发送，封面空着而已。
+                    val poster = runCatching {
+                        c.videoFrames(c.videos.file(outcome.name).absolutePath, 1)
+                            .firstOrNull()
+                            ?.let { c.images.save(it, prefix = "poster-") }
+                    }.getOrNull().orEmpty()
+                    videoAttachments += com.cleo.cleos.data.MessageVideo(outcome.name, length, outcome.bytes, poster)
                 }
                 is com.cleo.cleos.data.StoredVideo.TooBig -> videoProblem = outcome.why
                 is com.cleo.cleos.data.StoredVideo.Unreadable -> videoProblem = "这条视频读不了：${outcome.why}"
