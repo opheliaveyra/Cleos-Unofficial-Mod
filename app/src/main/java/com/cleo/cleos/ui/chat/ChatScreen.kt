@@ -427,6 +427,13 @@ fun ChatTab(
     val recorder = remember { VoiceRecorder(c.images.dir) }
     var recording by remember { mutableStateOf(false) }
     var cancelling by remember { mutableStateOf(false) }
+    /**
+     * 按住说话时，手指现在停在哪个目标上。
+     *
+     * **左滑 = 转文字，右滑 = 直接发语音**，上滑 = 取消。
+     * 一个"按住说话"里塞两件事，所以要让手指去指 —— 不然只能二选一。
+     */
+    var holdTarget by remember { mutableStateOf<HoldTarget?>(null) }
     var recordedMs by remember { mutableLongStateOf(0L) }
     var loudness by remember { mutableFloatStateOf(0f) }
     var voiceHint by remember { mutableStateOf<String?>(null) }
@@ -609,11 +616,12 @@ fun ChatTab(
         return false
     }
 
-    fun endVoice(cancel: Boolean) {
+    fun endVoice(target: HoldTarget?) {
         if (!recording) return
         recording = false
         cancelling = false
-        if (cancel) {
+        holdTarget = null
+        if (target == null) {
             recorder.cancel()
             return
         }
@@ -625,6 +633,13 @@ fun ChatTab(
         if (clip == null) {
             transcribingVoice = false
             voiceHint = "说话时间太短了"
+            return
+        }
+        if (target == HoldTarget.Voice) {
+            // 往右滑松手：**原样发出去**，变成语音气泡。转文字是"我要先看看再发"，
+            // 这条是"就这样发"，两件事不该混在一个动作里。
+            transcribingVoice = false
+            vm.sendVoice(clip)
             return
         }
         // Heard, then read: the words go into the input box to be looked over, not sent.
@@ -640,7 +655,7 @@ fun ChatTab(
             recordedMs = System.currentTimeMillis() - t0
             loudness = recorder.level
             // A minute is as long as one goes; it is sent as it is.
-            if (recordedMs >= Voice.MAX_MS) endVoice(cancel = false)
+            if (recordedMs >= Voice.MAX_MS) endVoice(HoldTarget.Text)
             delay(100)
         }
     }
@@ -674,7 +689,7 @@ fun ChatTab(
     LaunchedEffect(pageShown) {
         if (!pageShown) {
             stopPlaying()
-            endVoice(cancel = true)
+            endVoice(null)
         }
     }
     val palette = LocalGlassPalette.current
@@ -1065,6 +1080,8 @@ fun ChatTab(
                     filePicker.launch(arrayOf("*/*"))
                 },
                 onRemoveFile = vm::dropFile,
+                videos = if (editingMessage == null) vm.videoAttachments else emptyList(),
+                onRemoveVideo = vm::dropVideo,
                 onPickVideo = {
                     attachOpen = false
                     pickingAttachment = true
@@ -1107,7 +1124,7 @@ fun ChatTab(
                 },
                 onStop = vm::stop,
                 onHoldToTalk = { startVoice() },
-                onHoldMove = { cancelling = it },
+                onHoldMove = { holdTarget = it; cancelling = it == null },
                 onHoldEnd = { endVoice(it) },
                 transcribingVoice = transcribingVoice,
                 drawerOpen = drawerOpen,
@@ -1149,6 +1166,7 @@ fun ChatTab(
                     ms = recordedMs,
                     level = loudness,
                     cancelling = cancelling,
+                    target = holdTarget,
                     hint = if (transcribingVoice) "正在转成文字…" else voiceHint,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -1816,11 +1834,15 @@ private fun RecordingPill(
     recording: Boolean,
     ms: Long,
     level: Float,
+    /** 手指现在指着哪边：左边转文字、右边直接发语音；null 是上滑取消。 */
+    target: HoldTarget?,
     cancelling: Boolean,
     hint: String?,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalGlassPalette.current
+    // 手指没动时算指着"转文字"（和原来那个行为一样），所以这里不看 null。
+    val aimed = target ?: HoldTarget.Text
     Row(
         modifier
             .liquidGlass(backdrop, palette.input, GlassShape.Capsule)
@@ -1839,8 +1861,27 @@ private fun RecordingPill(
         val s = ms / 1000
         Text("${s / 60}:%02d".format(s % 60), color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         Spacer(Modifier.width(12.dp))
-        Text(if (cancelling) "松开取消" else "松手变文字，上滑取消", color = if (cancelling) palette.error else palette.contentSecondary, fontSize = 14.sp)
+        // 一个"按住说话"里塞两件事，所以要让手指去指：**往左是转文字，往右是原样发**。
+        // 上滑取消还是老规矩。
+        if (cancelling) {
+            Text("松开取消", color = palette.error, fontSize = 14.sp)
+        } else {
+            HoldAim("← 转文字", aimed == HoldTarget.Text, palette.accentContent, palette.contentSecondary)
+            Spacer(Modifier.width(10.dp))
+            HoldAim("直接发 →", aimed == HoldTarget.Voice, palette.accentContent, palette.contentSecondary)
+        }
     }
+}
+
+/** 两个目标中的一个：指到它了就亮起来。 */
+@Composable
+private fun HoldAim(text: String, aimed: Boolean, on: androidx.compose.ui.graphics.Color, off: androidx.compose.ui.graphics.Color) {
+    Text(
+        text,
+        color = if (aimed) on else off,
+        fontSize = 14.sp,
+        fontWeight = if (aimed) FontWeight.SemiBold else FontWeight.Normal,
+    )
 }
 
 /**
@@ -1887,6 +1928,9 @@ internal fun PictureGroup(pictures: List<MessageImage>, onOpen: (String) -> Unit
         }
     }
 }
+
+/** 按住说话松手时，这段录音去哪儿。`null`（没指任何一边）表示取消。 */
+internal enum class HoldTarget { Text, Voice }
 
 /**
  * 消息里的一段视频：**封面 + 时长 + 一个播放标记**。
@@ -1935,6 +1979,54 @@ private fun SentVideoCard(video: com.cleo.cleos.data.MessageVideo) {
                     .padding(horizontal = 6.dp, vertical = 2.dp),
             )
         }
+    }
+}
+
+/**
+ * 选好、还没发出去的视频：**一张缩略图 + 时长 + 一个 ×**。
+ *
+ * 没有它的时候，选完视频界面上什么都没有 —— 人不知道选上没有，
+ * 只有等 TA 回了话才知道"哦，它收到了"。发之前必须看得见。
+ */
+@Composable
+private fun VideoThumb(file: File, durationMs: Long, onRemove: (() -> Unit)?) {
+    val palette = LocalGlassPalette.current
+    Box(Modifier.size(64.dp).clip(RoundedCornerShape(14.dp))) {
+        // 直接解文件的缩略图会卡主线程；这里交给 Coil，它有缓存也异步。
+        AsyncImage(
+            model = file,
+            contentDescription = "视频",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().background(palette.content.copy(alpha = 0.10f)),
+        )
+        Icon(
+            Icons.Rounded.PlayCircle,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.align(Alignment.Center).size(22.dp),
+        )
+        if (durationMs > 0) {
+            Text(
+                com.cleo.cleos.data.VideoFrames.clock(durationMs),
+                color = Color.White,
+                fontSize = 9.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        }
+        if (onRemove != null) Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable(onClick = onRemove),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(14.dp)) }
     }
 }
 
@@ -2618,6 +2710,9 @@ private fun ChatInputBar(
     /** 选一条视频：本地抽几帧当图片发（见 VideoFrames）。 */
     onPickVideo: () -> Unit = {},
     onRemoveFile: (MessageFile) -> Unit = {},
+    /** 这次要一起发出去的视频（发之前得看得见）。 */
+    videos: List<com.cleo.cleos.data.MessageVideo> = emptyList(),
+    onRemoveVideo: (com.cleo.cleos.data.MessageVideo) -> Unit = {},
     quote: String?,
     onDropQuote: () -> Unit,
     focus: FocusRequester,
@@ -2633,8 +2728,9 @@ private fun ChatInputBar(
     sendEnabled: Boolean = true,
     /** 按住说话 on the input box itself: records, and puts the words in the box to be edited. */
     onHoldToTalk: () -> Boolean = { false },
-    onHoldMove: (Boolean) -> Unit = {},
-    onHoldEnd: (Boolean) -> Unit = {},
+    /** 手指移动到哪个目标上了（左：转文字 / 右：直接发语音 / null：上滑取消）。 */
+    onHoldMove: (HoldTarget?) -> Unit = {},
+    onHoldEnd: (HoldTarget?) -> Unit = {},
     /** A 按住说话 recording is being turned into text. */
     transcribingVoice: Boolean = false,
     drawerOpen: Boolean = false,
@@ -2697,13 +2793,15 @@ private fun ChatInputBar(
                 }
             }
         }
-        if (attachments.isNotEmpty() || attaching) {
+        if (attachments.isNotEmpty() || videos.isNotEmpty() || attaching) {
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
                     .padding(start = 10.dp, end = 10.dp, top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // 视频排在前面：它比图片大、也更"重"，**发之前得先看得见自己选了什么**。
+                videos.forEach { v -> VideoThumb(c.videos.file(v.file), v.durationMs, if (editing) null else ({ onRemoveVideo(v) })) }
                 attachments.forEach { img -> AttachmentThumb(c.images.file(img.file), if (editing) null else ({ onRemove(img) })) }
                 if (attaching) {
                     Box(Modifier.size(64.dp).background(palette.content.copy(alpha = 0.08f), RoundedCornerShape(14.dp)))
@@ -2803,6 +2901,7 @@ private fun ChatInputBar(
                             .matchParentSize()
                             .pointerInput(Unit) {
                                 val away = 72.dp.toPx()
+                                val sideways = 72.dp.toPx()
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = false)
                                     val long = awaitLongPressOrCancellation(down.id)
@@ -2814,18 +2913,28 @@ private fun ChatInputBar(
                                     }
                                     long.consume()
                                     if (!start.value()) return@awaitEachGesture
-                                    var cancel = false
+                                    // **上滑取消、左滑转文字、右滑直接发。**
+                                    // 没怎么动的默认还是转文字 —— 和原来那个行为一样，
+                                    // 这样老习惯不用改，新用法是"想清楚要哪样就滑过去"。
+                                    var target: HoldTarget? = HoldTarget.Text
                                     while (true) {
                                         val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                                         if (!change.pressed) break
-                                        val awayNow = down.position.y - change.position.y > away
-                                        if (awayNow != cancel) {
-                                            cancel = awayNow
-                                            move.value(cancel)
+                                        val up = down.position.y - change.position.y > away
+                                        val dx = change.position.x - down.position.x
+                                        val now = when {
+                                            up -> null
+                                            dx <= -sideways -> HoldTarget.Text
+                                            dx >= sideways -> HoldTarget.Voice
+                                            else -> HoldTarget.Text
+                                        }
+                                        if (now != target) {
+                                            target = now
+                                            move.value(now)
                                         }
                                         change.consume()
                                     }
-                                    end.value(cancel)
+                                    end.value(target)
                                 }
                             },
                     )
