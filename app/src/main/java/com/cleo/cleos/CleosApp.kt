@@ -117,6 +117,9 @@ class AppContainer(private val context: Context) {
 
     val feed = com.cleo.cleos.data.FeedRepository(db, images)
 
+    /** 把"模型设置存在 TA 身上"搬成"独立配置 + TA 只指向它"（见 [ModelConfigs]）。 */
+    val modelConfigs = com.cleo.cleos.data.ModelConfigs(db, modelProfiles)
+
     init {
         // 老版本的工作区是大家共用一个文件夹（filesDir/workspace 底下直接放文件）。
         // 现在按 TA 分开，把那些直接躺在那儿的归给第一个 TA —— 只有一个 TA 时就是他的。
@@ -128,6 +131,10 @@ class AppContainer(private val context: Context) {
             val into = File(root, owner.toString()).apply { mkdirs() }
             strays.forEach { runCatching { it.renameTo(File(into, it.name)) } }
         }
+        // 模型配置搬家：跑一次就够（三个 id 字段有值就跳过）。
+        // **外面套 runCatching**：这一步失败了，那几个 TA 还是老样子能用 ——
+        // 旧字段这一版都留着，没必要因为它一个把整个 App 拖垮。
+        appScope.launch { runCatching { modelConfigs.ensure() } }
     }
 
     private val http = OkHttpClient.Builder()

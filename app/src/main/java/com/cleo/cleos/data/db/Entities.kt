@@ -69,6 +69,22 @@ data class CompanionEntity(
      */
     @ColumnInfo(defaultValue = "")
     val featureModels: String = "",
+    /**
+     * 主模型**指向哪条配置**（`ModelProfile.id`）。
+     *
+     * 这是"配置只有一份，别处只指向它"的落点。空 = 还没搬过来，
+     * 这时候 [apiBaseUrl]/[apiModel] 仍然是准的；搬完就有值了。
+     * 搬家在启动时做一次（见 `ModelConfigs.ensure`），旧字段暂时留着不删 ——
+     * 迁移这种东西，出问题时能回头查比省几个字节重要得多。
+     */
+    @ColumnInfo(defaultValue = "")
+    val chatProfileId: String = "",
+    /** 语音模型指向哪条配置；空 = 没开，或者还没搬。 */
+    @ColumnInfo(defaultValue = "")
+    val spokenProfileId: String = "",
+    /** 每个功能指向哪条配置，JSON：`{"Recap":"<id>", ...}`（见 [Feature]）。 */
+    @ColumnInfo(defaultValue = "")
+    val featureProfileIds: String = "",
 ) {
     /**
      * The model for this TA's words: its own, or, for words that will be heard, the other one when
@@ -95,6 +111,30 @@ data class CompanionEntity(
         } else {
             TaModel(apiBaseUrl, apiModel, forHeard = false)
         }
+    }
+}
+
+/**
+ * 某个功能指向的配置 id，整份存成一条 JSON（`{"Recap":"<id>"}`）。
+ *
+ * 和 [FeatureModels] 一个路子：**解不出来就当没配**（退回主模型），
+ * 不能让一个存坏的字符串把整个 TA 弄哑。
+ */
+object FeatureProfileIds {
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    fun decode(raw: String): Map<Feature, String> {
+        if (raw.isBlank()) return emptyMap()
+        val parsed = runCatching { json.decodeFromString<Map<String, String>>(raw) }.getOrNull() ?: return emptyMap()
+        return parsed.mapNotNull { (name, id) ->
+            Feature.entries.firstOrNull { it.name == name }?.let { it to id }.takeIf { id.isNotBlank() }
+        }.toMap()
+    }
+
+    fun encode(map: Map<Feature, String>): String {
+        val clean = map.filterValues { it.isNotBlank() }
+        if (clean.isEmpty()) return ""
+        return json.encodeToString(clean.mapKeys { it.key.name })
     }
 }
 

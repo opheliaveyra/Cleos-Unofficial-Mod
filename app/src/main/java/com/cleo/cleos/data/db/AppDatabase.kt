@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 38,
+    version = 39,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -102,6 +102,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // 只是个字符串，里面装的是 JSON（FeatureModels）；解析不了就退回主模型，
         // 所以这一列的默认值本身不会影响任何已有数据。
         AutoMigration(from = 37, to = 38),
+        // 38 -> 39: 模型配置从"存在 TA 身上"改成"独立一份、TA 只指向它"
+        // （三个带默认值的 TEXT 列）。**只是加列，这一版不动任何已有数据** ——
+        // 搬家在启动时做一次（见 ModelConfigs.ensure），那时候才有得测。
+        AutoMigration(from = 38, to = 39),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {
