@@ -116,6 +116,22 @@ enum class Feature(val label: String, val hint: String) {
 @Serializable
 data class FeatureModel(val baseUrl: String = "", val model: String = "")
 
+/** 看图这件事的规矩，抽出来是为了能单独测。 */
+object VisionRules {
+    /**
+     * 图片要不要先交给另一个模型转述？
+     *
+     * **只有配了、而且和聊天模型不一样，才转述。** 地址和模型名都相同（或者压根没配，
+     * [CompanionEntity.modelFor] 已经把没配的退成了主模型）的时候，直接发图就行 ——
+     * 多绕一道反而更慢，还可能把图里的细节丢在转述里。
+     */
+    fun separate(vision: TaModel, chat: TaModel): Boolean =
+        vision.baseUrl != chat.baseUrl || vision.model != chat.model
+
+    /** 转述出来的东西和原消息拼在一起时用的抬头，让人一眼看出这段不是 TA 自己说的。 */
+    const val NOTE = "（图片内容，由看图模型转述）"
+}
+
 /**
  * 功能和它的模型，整份存成一条 JSON 挂在 TA 身上。
  *

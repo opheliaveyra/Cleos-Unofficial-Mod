@@ -285,8 +285,10 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
             check(!privateBusy(target)) { "${slot.speakerName}正在私聊或通话，稍后可以重试" }
             check(dao.members(slot.groupId).any { it.companionId == target && it.active }) { "这位 TA 已不在群里，不能继续回复" }
             val ta = db.companions().get(target) ?: error("这位 TA 已离开，不能继续回复")
-            model = com.cleo.cleos.diagnostics.ToolDiagnosticStore.label(ta.apiModel)
-            val key = secrets.key(ta.apiBaseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为${slot.speakerName}保存模型和 Key")
+            // 群里说话可以单独配一个模型（见 Feature.Groups）；没配就跟着主模型。
+            val use = ta.modelFor(Feature.Groups)
+            model = com.cleo.cleos.diagnostics.ToolDiagnosticStore.label(use.model)
+            val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为${slot.speakerName}保存模型和 Key")
             val group = dao.group(slot.groupId) ?: error("这个群已不存在")
             val turn = dao.turn(requireNotNull(slot.turnId)) ?: error("这一轮已不存在")
             val s = settings.current()
@@ -303,7 +305,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                 GroupMemoryRules.context(slot.groupId, notes, query, sources), specs)
             _progress.update { it + (slot.id to GroupReplyProgress(System.nanoTime())) }
             val text = GroupToolReply.reply(messages, specs, ta.deepThinking,
-                stream = { context, offered, thinking -> client.stream(ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel), context, offered, thinking) },
+                stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking) },
                 execute = { call ->
                     currentCoroutineContext().ensureActive()
                     check(dao.members(slot.groupId).any { it.companionId == target && it.active } && db.companions().get(target) != null) { "这位 TA 已不在群里" }
@@ -321,7 +323,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                             }, commit = { added ->
                                 db.withTransaction {
                                     val current = db.companions().get(target)
-                                    check(current != null && current.apiBaseUrl == ta.apiBaseUrl && current.apiModel == ta.apiModel && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，没有发送图片" }
+                                    check(current != null && current.modelFor(Feature.Groups) == use && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，没有发送图片" }
                                     val next = sentPhotos + added
                                     check(GroupPhotoRules.valid(MessageImages.encode(next))) { "图片记录不完整" }
                                     check(dao.saveImages(slot.id, slot.groupId, target, turn.id, requireNotNull(MessageImages.encode(next))) == 1) { "这一轮已结束，没有发送图片" }
@@ -344,7 +346,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
             db.withTransaction {
                 val current = db.companions().get(target)
                 check(dao.members(slot.groupId).any { it.companionId == target && it.active }) { "这位 TA 已不在群里，不能继续回复" }
-                check(current != null && current.apiBaseUrl == ta.apiBaseUrl && current.apiModel == ta.apiModel && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，请重试" }
+                check(current != null && current.modelFor(Feature.Groups) == use && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，请重试" }
                 if (dao.finishReply(slot.id, turn.id, text, "sent", null) == 1) dao.touch(slot.groupId, System.currentTimeMillis())
             }
         } catch (e: CancellationException) {
