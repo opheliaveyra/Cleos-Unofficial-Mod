@@ -116,6 +116,8 @@ class ChatRepository(
     private val transcriber: Transcriber,
     private val speaker: Speaker,
     private val scope: CoroutineScope,
+    /** 视频理解的状态：视频气泡下面那行小字靠它（见 [VideoStatusStore]）。 */
+    private val videoStatus: com.cleo.cleos.data.VideoStatusStore,
     /**
      * A reply has been written: what the TA said in it, in order. The app shows it as a
      * notification unless that chat is on screen (AppContainer).
@@ -865,7 +867,7 @@ class ChatRepository(
             lore = lore,
             preserveReasoning = Thinking.keepsToolReasoning(use.model),
         ).let { if (instruction != null) Prompt.withWake(it, instruction) else it }
-        var messages = prepare(build())
+        var messages = prepare(build(), ta.name)
         val said = StringBuilder()
         var rounds = 0
         while (true) {
@@ -1331,7 +1333,7 @@ class ChatRepository(
                 preserveReasoning = Thinking.keepsToolReasoning(endpoint.model),
                 fileText = { name -> inlineFiles[name] },
             )
-            var messages = prepare(build())
+            var messages = prepare(build(), ta.name)
             var rounds = 0
             // What the last refusal made this reply leave out, and when.
             var leftOut: LeftOut? = null
@@ -1367,7 +1369,7 @@ class ChatRepository(
                                 outside = emptyList()
                             }
                         }
-                        messages = prepare(build())
+                        messages = prepare(build(), ta.name)
                     }
                     is Step.Called -> {
                         if (rounds == MAX_TOOL_ROUNDS) {
@@ -1446,7 +1448,7 @@ class ChatRepository(
      * **完全不知道是自己那个识别模型没配好**（没 Key、模型名写错、服务不通……）。
      * 现在改成把原因写在话里，让人一眼看出问题出在哪。
      */
-    private suspend fun prepare(messages: List<ApiMessage>): List<ApiMessage> {
+    private suspend fun prepare(messages: List<ApiMessage>, taName: String): List<ApiMessage> {
         val chat = modelFor(Feature.Chat)?.asTa()
         // 没单独绑「看图」的功能继承的就是聊天那条 —— 同一条就没什么可转述的（见 [VisionRules.separate]）。
         val vision = modelFor(Feature.Vision)?.asTa()
@@ -1455,7 +1457,7 @@ class ChatRepository(
         val videoSeparate = chat != null && video != null && VisionRules.separate(video.asTa(), chat)
         return messages.map { m ->
             // 配了「视频理解」这一条就用它读视频（结果换成文字）；没配才抽帧。
-            val withVideo = if (m.videos.isEmpty()) m else prepareVideo(m, if (videoSeparate) video else null)
+            val withVideo = if (m.videos.isEmpty()) m else prepareVideo(m, if (videoSeparate) video else null, taName)
             if (withVideo.images.isEmpty()) return@map withVideo
             val visionFor = vision
             if (!separate || visionFor == null) return@map withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
@@ -1484,9 +1486,11 @@ class ChatRepository(
      *
      * 没配（或配的就是聊天那条）才退回抽帧。
      */
-    private suspend fun prepareVideo(m: ApiMessage, video: ResolvedModel?): ApiMessage {
+    private suspend fun prepareVideo(m: ApiMessage, video: ResolvedModel?, taName: String): ApiMessage {
         if (video != null) {
-            val readings = m.videos.map { understandVideo(it, video) }
+            // 先把"已转交"这个事实落下来：**真的开始走这条模型了**，不是因为存了配置。
+            m.videos.forEach { videoStatus.set(it, com.cleo.cleos.data.VideoStatus.Delegated(video.label)) }
+            val readings = m.videos.map { understandVideo(it, video, taName) }
             val good = readings.filter { it.ok && it.description.isNotBlank() }
             val bad = readings.filter { !it.ok }
             val note = buildString {
@@ -1514,6 +1518,8 @@ class ChatRepository(
             }
         }
         return if (frames.isEmpty()) {
+            // 没配视频理解、抽帧也读不出画面：这才叫「没有能看视频的模型」——不是能力未知。
+            m.videos.forEach { videoStatus.set(it, com.cleo.cleos.data.VideoStatus.NoModel) }
             m.copy(videos = emptyList(), content = m.content + "\n\n（对方发了一条视频，但这里没法看视频——在「按功能换模型」里给「视频理解」挑一个能看视频的模型就行。）")
         } else {
             m.copy(videos = emptyList(), images = m.images + frames)
@@ -1531,12 +1537,14 @@ class ChatRepository(
      *
      * 诊断只写模型名、状态和错误（截断 80 字），**不写 Key，也不写 base64**。
      */
-    private suspend fun understandVideo(name: String, model: ResolvedModel): VideoReading {
+    private suspend fun understandVideo(name: String, model: ResolvedModel, taName: String): VideoReading {
         val config = model.baseUrl + "|" + model.model
         val cached = runCatching { db.videoUnderstanding().get(name, config) }.getOrNull()
         if (cached != null && cached.ok && cached.description.isNotBlank()) {
+            videoStatus.set(name, com.cleo.cleos.data.VideoStatus.Done(taName))
             return VideoReading(true, cached.description, "")
         }
+        videoStatus.set(name, com.cleo.cleos.data.VideoStatus.Understanding)
         suspend fun failed(why: String): VideoReading {
             runCatching {
                 db.videoUnderstanding().put(
@@ -1546,6 +1554,7 @@ class ChatRepository(
                 )
             }
             android.util.Log.w("CleosVideo", "understand model=${model.label} status=failed reason=${why.take(80)}")
+            videoStatus.set(name, com.cleo.cleos.data.VideoStatus.Failed(why))
             return VideoReading(false, "", why)
         }
         val file = videos.file(name)
@@ -1580,12 +1589,24 @@ class ChatRepository(
                     )
                 }
                 android.util.Log.i("CleosVideo", "understand model=${model.label} status=ok chars=${out.length}")
+                videoStatus.set(name, com.cleo.cleos.data.VideoStatus.Done(taName))
                 VideoReading(true, out, "")
             }
         } catch (e: Exception) {
             failed("视频没解析成功（${model.label}）：${e.message ?: e.javaClass.simpleName}")
         }
     }
+    /**
+     * 手动重新解析一条视频（视频气泡下面「视频理解失败 · 点击重试」用）。
+     * 先清掉这条视频的缓存再走一遍；成功返回描述，失败返回 null（原因已经在状态里）。
+     */
+    suspend fun reparseVideo(name: String, taName: String): String? {
+        val model = modelFor(Feature.Video) ?: return null
+        runCatching { db.videoUnderstanding().deleteFor(name) }
+        val reading = understandVideo(name, model, taName)
+        return if (reading.ok) reading.description else null
+    }
+
     /** 让看图模型把图片说成文字；说不了（没 Key、报错、空话）就返回空串。 */
     private suspend fun describeImages(files: List<String>, vision: TaModel): String {
         val key = secrets.key(vision.baseUrl)?.takeIf { it.isNotBlank() } ?: return ""

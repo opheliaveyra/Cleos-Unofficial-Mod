@@ -170,6 +170,8 @@ class AppContainer(private val context: Context) {
 
     /** Searching the web, for web_search: whichever service the person set up in settings. */
     val searcher: com.cleo.cleos.ai.WebSearcher = com.cleo.cleos.ai.WebSearch(http, secrets)
+    /** 视频理解的状态：视频气泡下面那行小字订阅它（见 [com.cleo.cleos.data.VideoStatusStore]）。 */
+    val videoStatus = com.cleo.cleos.data.VideoStatusStore()
     val toolDiagnostics = com.cleo.cleos.diagnostics.ToolDiagnostics(context)
     // 用量落库：每次请求结束记一条（成功、失败、被停都记），服务商没给 usage 就标 missing。
     val chatClient = ChatClient(http, diagnostic = { toolDiagnostics.record(it) }, onUsage = { tag, endpoint, usage, ok ->
@@ -251,7 +253,7 @@ class AppContainer(private val context: Context) {
     val ear = EarVoice(context, images)
     val wakeActivities = com.cleo.cleos.ai.WakeActivities(db)
     val chat: ChatRepository = ChatRepository(
-        db, settings, secrets, registry, chatClient, tools, images, videos, files, companions, recaps, mcp, transcriber, speaker, appScope,
+        db, settings, secrets, registry, chatClient, tools, images, videos, files, companions, recaps, mcp, transcriber, speaker, appScope, videoStatus,
         // 没配「视频理解」模型时的退路：从视频里抽几帧顶上（见 ChatRepository.prepareVideo）。
         videoFrames = { path, count -> com.cleo.cleos.data.VideoFrames.frames(path, count) },
         // A reply finished where the person isn't looking (they left, or went to another page): as a notification.

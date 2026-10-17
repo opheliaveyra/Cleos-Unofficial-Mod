@@ -475,6 +475,15 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         conversationId.value?.let { c.chat.stop(it) }
     }
 
+    /**
+     * 视频气泡下面「点击重试」：清掉这条视频的缓存，再用「视频理解」模型重新读一遍。
+     * 状态由 ChatRepository 更新（界面订阅 VideoStatusStore）。
+     */
+    fun retryVideo(file: String) {
+        val role = state.value.aiName
+        c.appScope.launch { runCatching { c.chat.reparseVideo(file, role) } }
+    }
+
     fun retry(messageId: Long) {
         conversationId.value?.let { c.chat.retry(it, messageId) }
     }

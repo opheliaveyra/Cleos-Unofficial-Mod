@@ -1353,6 +1353,9 @@ fun ChatTab(
                                             editingMessage = m; input = FeedShares.decode(m.feedShare)?.caption ?: m.content; editProblem = null; drawerOpen = false
                                         }) else null,
                                         onOpenImage = onOpenImage,
+                                        // 视频理解状态：失败重试、没配模型时去设置。
+                                        onRetryVideo = { file -> vm.retryVideo(file) },
+                                        onOpenVideoSettings = { onOpenSettingsPage(SettingsPage.Model) },
                                         transcribing = m.id in state.transcribing,
                                         expandVoiceText = appSettings.expandVoiceText,
                                         playingFile = playing,
@@ -1631,8 +1634,12 @@ private fun MessageBubble(
     onFavorite: () -> Unit = {},
     onSelect: () -> Unit = {},
     onEdit: (() -> Unit)? = null,
+    /** 视频理解失败时重试；未配置时打开设置。 */
+    onRetryVideo: (String) -> Unit = {},
+    onOpenVideoSettings: () -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
+    val c = appContainer()
     val mine = message.role == "user"
     val glow by animateColorAsState(if (highlighted) palette.accent.copy(alpha = 0.14f) else Color.Transparent, label = "found")
     val audio = remember(message.audio) { MessageAudios.decode(message.audio) }
@@ -1681,8 +1688,17 @@ private fun MessageBubble(
                     // 发出去的视频：**得看得见**，不然翻记录时对不上。
                     val sentVideos = remember(message.videos) { com.cleo.cleos.data.MessageVideos.decode(message.videos) }
                     if (sentVideos.isNotEmpty()) {
+                        // 视频理解的状态：**只写真实执行过的事**（见 VideoStatusStore）。
+                        val videoStatuses by c.videoStatus.states.collectAsStateWithLifecycle(emptyMap())
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            sentVideos.forEach { sent -> SentVideoCard(sent) }
+                            sentVideos.forEach { sent ->
+                                SentVideoCard(
+                                    sent,
+                                    status = videoStatuses[sent.file],
+                                    onRetry = { onRetryVideo(sent.file) },
+                                    onOpenSettings = onOpenVideoSettings,
+                                )
+                            }
                         }
                     }
                     // Files sent with this message, above the words the way attachments read.
@@ -1923,9 +1939,15 @@ internal fun PictureGroup(pictures: List<MessageImage>, onOpen: (String) -> Unit
  * **不是每次渲染都去解一遍视频** —— 那太贵了。
  */
 @Composable
-private fun SentVideoCard(video: com.cleo.cleos.data.MessageVideo) {
+private fun SentVideoCard(
+    video: com.cleo.cleos.data.MessageVideo,
+    status: com.cleo.cleos.data.VideoStatus?,
+    onRetry: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val c = appContainer()
     val palette = LocalGlassPalette.current
+    Column {
     Box(
         Modifier
             .width(minOf(bubbleMaxWidth(), 240.dp))
@@ -1959,6 +1981,59 @@ private fun SentVideoCard(video: com.cleo.cleos.data.MessageVideo) {
                     .padding(8.dp)
                     .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
+    }
+        status?.let { VideoUnderstandLine(it, onRetry = onRetry, onOpenSettings = onOpenSettings) }
+    }
+}
+
+/**
+ * 视频气泡下面那行小字：**只写真实发生过的事**，不占角色回复的位置，也不弹 Toast。
+ * 失败时点一下展开原因，展开后再点「再试一次」；没配视频理解模型时点它去设置。
+ */
+@Composable
+private fun VideoUnderstandLine(
+    status: com.cleo.cleos.data.VideoStatus,
+    onRetry: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    val palette = LocalGlassPalette.current
+    var showReason by remember(status) { mutableStateOf(false) }
+    val failed = status is com.cleo.cleos.data.VideoStatus.Failed
+    val text = when (status) {
+        is com.cleo.cleos.data.VideoStatus.Delegated -> "当前模型不支持视频，已转交视频理解模型 · ${status.model}"
+        com.cleo.cleos.data.VideoStatus.Understanding -> "正在理解视频…"
+        is com.cleo.cleos.data.VideoStatus.Done -> "视频理解完成，已交给 ${status.role}"
+        is com.cleo.cleos.data.VideoStatus.Failed -> "视频理解失败 · 点击重试"
+        com.cleo.cleos.data.VideoStatus.NoModel -> "当前模型不支持视频，请设置视频理解模型"
+    }
+    Column(Modifier.padding(top = 2.dp)) {
+        Text(
+            text,
+            color = if (failed) palette.error else palette.contentSecondary,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .clickable {
+                    when (status) {
+                        is com.cleo.cleos.data.VideoStatus.Failed -> showReason = !showReason
+                        com.cleo.cleos.data.VideoStatus.NoModel -> onOpenSettings()
+                        else -> Unit
+                    }
+                }
+                .padding(vertical = 2.dp),
+        )
+        if (failed && showReason) {
+            Text(
+                (status as com.cleo.cleos.data.VideoStatus.Failed).reason,
+                color = palette.contentSecondary, fontSize = 11.sp, lineHeight = 15.sp,
+            )
+            Text(
+                "再试一次",
+                color = palette.accentContent, fontSize = 11.sp,
+                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onRetry).padding(vertical = 2.dp),
             )
         }
     }
