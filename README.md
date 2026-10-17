@@ -1,6 +1,6 @@
 # Cleos 二次开发版（社区修改版）
 
-> **非官方衍生版本**。本仓库由 [1553673952-cloud](https://github.com/1553673952-cloud) 维护，基于 [jqzhang921-sudo/cleos](https://github.com/jqzhang921-sudo/cleos) 修改，不代表原作者发布或背书。感谢原项目及贡献者。
+> **非官方衍生版本**。本仓库由 [opheliaveyra](https://github.com/opheliaveyra) 维护，基于 [jqzhang921-sudo/cleos](https://github.com/jqzhang921-sudo/cleos) 修改，不代表原作者发布或背书。感谢原项目及贡献者。
 
 ## 本仓库是什么
 
@@ -15,11 +15,11 @@
 
 本仓库采用独立的 `0.x-mod` 版本号，以区别于上游 Cleos 的版本线。二改工作的方向包括聊天附件与交互体验的扩展、功能调整及修复。**具体哪些功能已完成、已发布、可在设备上稳定使用，应以本仓库的提交记录、实际构建与测试结果为准**；不要直接把下方上游说明当作本二改版的完整已验收功能清单。
 
-查看：[本仓库提交历史](https://github.com/1553673952-cloud/Cleos/commits/feature/chat-file-upload-and-hold-to-talk) · [原版项目](https://github.com/jqzhang921-sudo/cleos)
+查看：[本仓库提交历史](https://github.com/opheliaveyra/Cleos-Unofficial-Mod/commits/feature/chat-file-upload-and-hold-to-talk) · [原版项目](https://github.com/jqzhang921-sudo/cleos)
 
 ## 下载、安装与更新
 
-请优先查看本仓库的 [Releases](https://github.com/1553673952-cloud/Cleos/releases)。若暂无发布资产，说明当前未在 GitHub Releases 提供可直接下载的 APK，不能将原版的下载渠道视为本二改版的更新地址。
+请优先查看本仓库的 [Releases](https://github.com/opheliaveyra/Cleos-Unofficial-Mod/releases)。若暂无发布资产，说明当前未在 GitHub Releases 提供可直接下载的 APK，不能将原版的下载渠道视为本二改版的更新地址。
 
 **更新前请备份应用内数据。** Android 安装包需要匹配应用包名和签名证书；签名不同可能无法覆盖安装，卸载会清除本地应用数据。不要仅凭文件名或版本号判断可以无损升级。
 
