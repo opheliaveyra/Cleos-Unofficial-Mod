@@ -46,6 +46,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -126,6 +127,12 @@ class AppContainer(private val context: Context) {
     /** 把"模型设置存在 TA 身上"搬成"独立配置 + TA 只指向它"（见 [ModelConfigs]）。 */
     val modelConfigs = com.cleo.cleos.data.ModelConfigs(db, modelProfiles)
 
+    /**
+     * 三层结构：服务商 / 模型配置 / 功能绑定（见 [com.cleo.cleos.data.ModelRegistry]）。
+     * **所有调用都从这里拿模型**，不再各写各的"配了就用配的"。
+     */
+    val registry = com.cleo.cleos.data.ModelRegistry(secrets)
+
     init {
         // 老版本的工作区是大家共用一个文件夹（filesDir/workspace 底下直接放文件）。
         // 现在按 TA 分开，把那些直接躺在那儿的归给第一个 TA —— 只有一个 TA 时就是他的。
@@ -141,6 +148,9 @@ class AppContainer(private val context: Context) {
         // **外面套 runCatching**：这一步失败了，那几个 TA 还是老样子能用 ——
         // 旧字段这一版都留着，没必要因为它一个把整个 App 拖垮。
         appScope.launch { runCatching { modelConfigs.ensure() } }
+        // 三层结构搬家：老那份"地址+型号"配置、主模型、语音、功能绑定，一次性搬进
+        // 服务商 / 模型配置 / 功能绑定。**迁过就跳过**（有配置了说明迁过了）。
+        appScope.launch { runCatching { migrateRegistry() } }
     }
 
     private val http = OkHttpClient.Builder()
@@ -229,6 +239,39 @@ class AppContainer(private val context: Context) {
         activities = wakeActivities,
         listening = { Listening(music, lyrics).line() },
     )
+    /**
+     * 把老结构搬进三层（服务商 / 模型配置 / 功能绑定）。
+     *
+     * **迁过就跳过**：已经有配置了就说明搬过了 —— 这个函数每次启动都会走到，
+     * 不幂等的话配置会越攒越多，人看到的是"怎么冒出来一堆一样的"。
+     */
+    private suspend fun migrateRegistry() {
+        if (registry.current().configs.isNotEmpty()) return
+        val all = db.companions().all()
+        // 主模型取第一个 TA 的（老结构里 TA 各有一份，但用起来基本都是同一个）。
+        val chat = all.firstOrNull()
+        val featureModels = chat?.let { com.cleo.cleos.data.db.FeatureModels.decode(it.featureModels) }.orEmpty()
+        val plan = com.cleo.cleos.data.ModelRegistryMigration.plan(
+            legacyProfiles = modelProfiles.profiles.first() + modelProfiles.legacy.first(),
+            chatBaseUrl = chat?.apiBaseUrl,
+            chatModel = chat?.apiModel,
+            spokenOn = chat?.spokenModelOn == true,
+            spokenBaseUrl = chat?.spokenApiBaseUrl,
+            spokenModel = chat?.spokenApiModel,
+            legacyFeatures = featureModels,
+            nameOf = { url -> com.cleo.cleos.data.ApiPresets.at(url)?.name },
+        )
+        if (plan.isEmpty) return
+        registry.edit {
+            com.cleo.cleos.data.ModelRegistryData(
+                providers = plan.providers,
+                configs = plan.configs,
+                routes = plan.routes,
+                defaultConfigId = plan.defaultConfigId,
+            )
+        }
+    }
+
     val stickers = Stickers(context, db, images)
 
     /** 探一个配置到底会不会看图 / 看视频（见 [com.cleo.cleos.ai.CapabilityProbe]）。放在 chatClient 之后。 */
