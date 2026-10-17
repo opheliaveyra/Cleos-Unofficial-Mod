@@ -2,6 +2,7 @@ package com.cleo.cleos.data
 
 import com.cleo.cleos.data.db.ChatGroupEntity
 import com.cleo.cleos.data.db.CompanionEntity
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -53,5 +54,27 @@ class UserFacesTest {
     fun withNothingSetThereIsNoFace() {
         assertNull(UserFaces.forCompanion(ta(null), AppSettings()))
         assertNull(UserFaces.forGroup(null, AppSettings()))
+    }
+
+    // ---- 旧数据 / 备份往返 ----
+
+    @Test
+    fun anOlderRecordWithoutTheFieldFallsBackToTheGlobalFace() {
+        // 旧版本存下来的 TA（备份里也是这个形状）：没有 userAvatar 这个字段 —— 读出来是空，
+        // 于是继续用全局头像。
+        val old = Json { ignoreUnknownKeys = true }
+            .decodeFromString<CompanionEntity>("""{"apiBaseUrl":"https://a/v1","apiModel":"m","createdAt":1}""")
+        assertNull(old.userAvatar)
+        assertEquals("global.png", UserFaces.forCompanion(old, AppSettings(userAvatar = "global.png")))
+    }
+
+    @Test
+    fun theFacesSurviveASaveAndLoad() {
+        // 备份就是把实体写成 JSON 再读回来：专属头像得原样回来（不然恢复完就丢了）。
+        val json = Json
+        val a = ta("mine-a.png")
+        val g = group("group-1.png")
+        assertEquals("mine-a.png", json.decodeFromString<CompanionEntity>(json.encodeToString(a)).userAvatar)
+        assertEquals("group-1.png", json.decodeFromString<ChatGroupEntity>(json.encodeToString(g)).userAvatar)
     }
 }
