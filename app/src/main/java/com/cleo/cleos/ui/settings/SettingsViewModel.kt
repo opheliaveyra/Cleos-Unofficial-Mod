@@ -1103,6 +1103,28 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     var canUndoRestore by mutableStateOf(c.backup.hasSnapshot)
         private set
 
+    /** 导入前的只读概览：解析、校验、数一数，**不写任何东西**（见 BackupService.preview）。 */
+    var backupPreview by mutableStateOf<com.cleo.cleos.data.BackupPreview?>(null)
+        private set
+    var previewBusy by mutableStateOf(false)
+        private set
+
+    fun previewBackup(uri: Uri) {
+        if (previewBusy) return
+        previewBusy = true
+        viewModelScope.launch {
+            try {
+                backupPreview = withContext(Dispatchers.IO) { c.backup.preview(uri) }
+            } catch (e: Exception) {
+                backupPreview = com.cleo.cleos.data.BackupPreview(false, error = e.message ?: "读不出来")
+            } finally {
+                previewBusy = false
+            }
+        }
+    }
+
+    fun clearBackupPreview() { backupPreview = null }
+
     fun exportBackup(uri: Uri) = runBackup("导出了") { c.backup.export(uri) }
 
     // A reply still running would write into conversations that are about to be replaced.
@@ -1169,7 +1191,11 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         backupMessage = null
         c.appScope.launch {
             val message = try {
-                "$done ${action()}"
+                // 恢复/导出成功后，如果带了兼容提示（备份格式比本版新之类），一起说清楚。
+                when (val result = action()) {
+                    is com.cleo.cleos.data.BackupSummary -> listOfNotNull("$done $result", result.note).joinToString("\n")
+                    else -> "$done $result"
+                }
             } catch (e: Exception) {
                 (e as? com.cleo.cleos.data.BackupException)?.message ?: "出错了：${e.message ?: e.javaClass.simpleName}"
             }

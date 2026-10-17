@@ -541,6 +541,8 @@ internal fun DataPage(vm: SettingsViewModel) {
     }
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         pendingRestore = uri
+        // 先解析、校验、数一数，给出概览再让人决定（见 BackupService.preview）。
+        uri?.let { vm.previewBackup(it) }
     }
     val memoryPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.importMemoryFile(uri)
@@ -587,20 +589,36 @@ internal fun DataPage(vm: SettingsViewModel) {
         Section(null) { Text(message, color = palette.content, fontSize = 13.sp, lineHeight = 19.sp) }
     }
 
-    pendingRestore?.let { uri ->
+    // 导入前先给概览：解析 + 校验完才让点「恢复」。
+    val preview = vm.backupPreview
+    if (preview != null) {
         AlertDialog(
-            onDismissRequest = { pendingRestore = null },
-            title = { Text("用这份备份替换现在的内容？") },
+            onDismissRequest = { vm.clearBackupPreview(); pendingRestore = null },
+            title = { Text(if (preview.ok) "用这份备份替换现在的内容？" else "这份备份导入不了") },
             text = {
-                Text("现在的 TA、聊天、日记、信、记忆、收藏和待办会被备份里的内容替换掉。恢复之前会自动把现在的留一份，恢复完可以撤销。")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (preview.ok) {
+                        Text("现在的 TA、聊天、日记、信、记忆、收藏和待办会被备份里的内容替换掉。恢复之前会自动把现在的留一份，恢复完可以撤销。")
+                        preview.counts?.let { Text(it, color = palette.content, fontSize = 13.sp) }
+                        preview.warning?.let { Text(it, color = palette.error, fontSize = 12.sp, lineHeight = 17.sp) }
+                        Text("不认识的字段会跳过；恢复完会显示实际恢复的数量。", color = palette.contentSecondary, fontSize = 12.sp)
+                    } else {
+                        Text(preview.error ?: "读不出来", color = palette.error)
+                        Text("现有数据没有动。", color = palette.contentSecondary, fontSize = 12.sp)
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = {
+                if (preview.ok) TextButton(onClick = {
+                    val uri = pendingRestore
+                    vm.clearBackupPreview()
                     pendingRestore = null
-                    vm.restoreBackup(uri)
+                    if (uri != null) vm.restoreBackup(uri)
                 }) { Text("恢复") }
             },
-            dismissButton = { TextButton(onClick = { pendingRestore = null }) { Text("取消") } },
+            dismissButton = {
+                TextButton(onClick = { vm.clearBackupPreview(); pendingRestore = null }) { Text(if (preview.ok) "取消" else "知道了") }
+            },
         )
     }
 

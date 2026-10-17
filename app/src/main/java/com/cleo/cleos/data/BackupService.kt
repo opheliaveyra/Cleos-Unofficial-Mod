@@ -140,6 +140,16 @@ data class BackupFile(
     }
 }
 
+/** 导入前的**只读**概览：解析、校验、数一数里面有什么，不写任何东西。 */
+data class BackupPreview(
+    val ok: Boolean,
+    val error: String? = null,
+    /** 兼容提示（格式比本版新等，见 [BackupCompat]）。 */
+    val warning: String? = null,
+    /** 「将恢复：…」那行。 */
+    val counts: String? = null,
+)
+
 data class BackupSummary(
     val tas: Int,
     val conversations: Int,
@@ -156,6 +166,8 @@ data class BackupSummary(
     val groups: Int = 0,
     val groupMessages: Int = 0,
     val groupMemories: Int = 0,
+    /** 兼容提示（比如"备份格式比本版新，会尽量导入"）；正常导入时为 null。 */
+    val note: String? = null,
 ) {
     override fun toString() =
         "$tas 个 TA、$conversations 段对话（$messages 条消息）、$diary 篇日记、$letters 封信、$todos 条待办、$images 张图" +
@@ -214,6 +226,52 @@ class BackupService(
     suspend fun restore(uri: Uri): BackupSummary = withContext(Dispatchers.IO) {
         val input = resolver.openInputStream(uri) ?: throw BackupException("打不开这个文件")
         input.use { restoreFrom(it, takeSnapshot = true) }
+    }
+
+    /**
+     * 导入前的只读概览：解析、校验、数一数里面有什么，**一个字都不写**。
+     * 格式比本版新时带一句 warning（见 [BackupCompat]），而不是直接拒绝。
+     */
+    suspend fun preview(uri: Uri): BackupPreview = withContext(Dispatchers.IO) {
+        try {
+            val input = resolver.openInputStream(uri) ?: return@withContext BackupPreview(false, error = "打不开这个文件")
+            val (d, note) = input.use { readOnly(it) }
+            BackupPreview(
+                ok = true,
+                warning = note,
+                counts = "将恢复：${d.companions.size} 个 TA、" +
+                    "${d.conversations.size} 段对话、${d.messages.size} 条消息、${d.diary.size} 篇日记、" +
+                    "${d.memories.size} 条记忆、${d.groups.size} 个群聊、${d.groupMessages.size} 条群消息",
+            )
+        } catch (e: BackupException) {
+            BackupPreview(false, error = e.message)
+        } catch (e: Exception) {
+            BackupPreview(false, error = e.message ?: "读不出来")
+        }
+    }
+
+    /** 只读 JSON 条目并解析，不解图片、不写数据库。 */
+    private fun readOnly(input: InputStream): Pair<BackupFile, String?> {
+        var data: BackupFile? = null
+        var note: String? = null
+        ZipInputStream(BufferedInputStream(input)).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.name == JSON_NAME) {
+                    val raw = zip.readBytes().decodeToString()
+                    val verdict = BackupCompat.check(BackupCompat.header(raw))
+                    if (!verdict.ok) throw BackupException(verdict.reason ?: "这不是 Cleos 的备份文件")
+                    note = verdict.warning
+                    data = runCatching { json.decodeFromString<BackupFile>(raw) }
+                        .getOrElse { throw BackupException("备份的格式和这一版对不上（${it.message?.take(120) ?: "读不出来"}）") }
+                    break
+                }
+            }
+        }
+        val d = data ?: throw BackupException("这不是 Cleos 的备份文件")
+        try { GroupBackupRules.validate(d.groups, d.groupMembers, d.groupTurns, d.groupMessages, d.groupMemories) }
+        catch (e: IllegalArgumentException) { throw BackupException(e.message ?: "群聊备份不完整") }
+        return d to note
     }
 
     /** Puts back what was there before the last restore. */
@@ -364,13 +422,24 @@ class BackupService(
         val stagingFiles = File(cacheDir, "restore-files-${System.nanoTime()}").apply { mkdirs() }
         try {
             var data: BackupFile? = null
+            /** 版本兼容提示：格式比本版新时带一句，最后随摘要给出去（见 BackupCompat）。 */
+            var note: String? = null
             ZipInputStream(BufferedInputStream(input)).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     when {
                         entry.name == JSON_NAME -> {
-                            data = runCatching { json.decodeFromString<BackupFile>(zip.readBytes().decodeToString()) }
-                                .getOrElse { throw BackupException("备份文件坏了，读不出来") }
+                            val raw = zip.readBytes().decodeToString()
+                            // 先只读 format/version 判断兼容（见 BackupCompat）——**不拿数字大小直接拒绝**。
+                            val verdict = BackupCompat.check(BackupCompat.header(raw))
+                            if (!verdict.ok) throw BackupException(verdict.reason ?: "这不是 Cleos 的备份文件")
+                            note = verdict.warning
+                            data = runCatching { json.decodeFromString<BackupFile>(raw) }
+                                .getOrElse {
+                                    throw BackupException(
+                                        "备份的格式和这一版对不上（${it.message?.take(120) ?: "读不出来"}）。没有改动现有的数据。",
+                                    )
+                                }
                         }
                         entry.name.startsWith("images/") && !entry.isDirectory -> {
                             // Only the bare file name is used: a crafted archive with
@@ -391,7 +460,8 @@ class BackupService(
             }
             val d = data ?: throw BackupException("这不是 Cleos 的备份文件")
             if (d.format != BackupFile.FORMAT) throw BackupException("这不是 Cleos 的备份文件")
-            if (d.version > BackupFile.VERSION) throw BackupException("这份备份来自更新版本的 Cleos，先更新 App 再恢复")
+            // 注意：这里**不再**比较 d.version > BackupFile.VERSION —— 两条谱系的版本号不可比，
+            // 判断挪到了 BackupCompat（新格式先尝试导入，不直接拒绝）。
             try { GroupBackupRules.validate(d.groups, d.groupMembers, d.groupTurns, d.groupMessages, d.groupMemories) }
             catch (e: IllegalArgumentException) { throw BackupException(e.message ?: "群聊备份不完整") }
 
@@ -533,6 +603,7 @@ class BackupService(
                 stickers = stickers.size, favorites = d.favorites.size, lore = d.lore.size, feedPosts = d.feedPosts.size,
                 groups = d.groups.size, groupMessages = d.groupMessages.count { it.content.isNotBlank() || it.images != null },
                 groupMemories = d.groupMemories.size,
+                note = note,
             )
         } finally {
             staging.deleteRecursively()
