@@ -150,7 +150,30 @@ class ChatException(
     val rejectedFeature: RequestFeature? = null,
     /** Only an allowlisted schema keyword, never the raw response or a secret. */
     val rejectedSchemaKeyword: String? = null,
+    /**
+     * 服务端回的原文（**脱敏 + 截断**，见 [redactForDiagnostics]），只给「排查」用：
+     * 能力测试失败时把它显示出来，才知道到底是格式错、鉴权错还是模型不支持。
+     * **不放进 [message] 当主文案** —— 那是给人看的，不该是一段 JSON。
+     */
+    val responseBody: String? = null,
 ) : Exception(message), EndpointFailure
+
+/**
+ * 把服务端回的原文处理成能给人看、能存日志的样子。
+ *
+ * 两条硬规矩：
+ * 1. **不放过 base64**（视频/图片的 data URL 动辄几 MB）—— 整段换成 `[已省略 N 字符]`。
+ * 2. **截断**：排查用不着全文，长响应只留前面一段。
+ *
+ * Key 本身不在响应里（它在请求头），所以这里只需要防 base64。
+ */
+internal fun redactForDiagnostics(raw: String, max: Int = 1200): String {
+    var text = raw
+    text = Regex("data:[A-Za-z0-9.+-]+/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=]{100,}")
+        .replace(text) { m -> "[data URL 已省略 ${m.value.length} 字符]" }
+    text = Regex("[A-Za-z0-9+/=]{400,}").replace(text) { m -> "[base64 已省略 ${m.value.length} 字符]" }
+    return if (text.length <= max) text else text.take(max) + "…（后面还有 ${text.length - max} 字符）"
+}
 
 /** Whether [code] is one of the two that say the path itself is not there. */
 internal fun noSuchPath(code: Int): Boolean = code == 404 || code == 405
@@ -479,6 +502,7 @@ class ChatClient(
     private fun httpFailure(code: Int, body: String) = ChatException(
         describeHttpError(code, body),
         code,
+        responseBody = redactForDiagnostics(body),
         wrongEndpoint = noSuchPath(code),
         // An error code with a complaint written into it is a service that was found
         // ("no such model: …"); the same code with a page for a body is not.

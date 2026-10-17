@@ -17,6 +17,9 @@ import kotlin.random.Random
  *
  * 这套东西是为了治一个具体的毛病：**在「图像识别」配了一个不会看图的模型**，
  * 而且要到人发了图、发现没用，才知道配错了。
+ *
+ * 0.1.46 又加了两件必须分开的事：**「接口明确说不支持」和「这次没验成」**，
+ * 以及**厂商文档声明过支持**的型号不能因为一次失败就被判成不会。
  */
 class CapabilityProbeTest {
     @Test
@@ -85,5 +88,29 @@ class CapabilityProbeTest {
     fun nothingIsMissingWhenTheFeatureIsFollowingTheMainModel() {
         // 没单独配（picked = null）时不算"配错"，那种情况由调度那边按主模型的声明处理。
         assertTrue(missingCapabilities(Feature.Vision, null).isEmpty())
+    }
+
+    // ---- 0.1.46：四种状态要分开 ----
+
+    @Test
+    fun anExplicitNoSupportIsNotTheSameAsAFailedRequest() {
+        // 只有「接口明确说不支持」才等于"没有这个能力"。
+        assertTrue(probeSaysUnsupported("""{"error":{"message":"model does not support video input"}}""", null))
+        assertTrue(probeSaysUnsupported(null, "这个模型不支持视频"))
+        assertTrue(probeSaysUnsupported("""{"error":{"code":"Unsupported","message":"unsupported content type"}}""", null))
+        // 下面这些都是**请求**的问题，不能拿来判定模型不会看图/看视频。
+        assertFalse(probeSaysUnsupported("""{"error":{"message":"no such model: mimo-v9"}}""", null))
+        assertFalse(probeSaysUnsupported("""{"error":{"message":"invalid api key"}}""", null))
+        assertFalse(probeSaysUnsupported("""{"error":{"message":"insufficient balance"}}""", null))
+        assertFalse(probeSaysUnsupported("", ""))
+    }
+
+    @Test
+    fun theVendorDeclarationIsRecognised() {
+        // 官方文档写明 V2.6 系列支持视频理解：测试失败时不能顺势说"它不会"。
+        assertTrue(vendorDeclaresVideo("mimo-v2.6-pro"))
+        assertTrue(vendorDeclaresVideo("MiMo-V2.6-Flash"))
+        assertFalse(vendorDeclaresVideo("deepseek-v4-flash"))
+        assertFalse(vendorDeclaresVideo(""))
     }
 }

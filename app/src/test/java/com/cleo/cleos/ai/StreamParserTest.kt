@@ -301,4 +301,52 @@ class RequestBodyTest {
         val off = requestBody("deepseek-flash", messages, listOf(ToolSpecs.addTodo), thinking = false)["messages"]!!.jsonArray
         assertTrue(off.none { "reasoning_content" in it.jsonObject })
     }
+
+    // ---- JSON 里"键在、值是 null"的情况 ----
+    //
+    // 小米 MiMo 的视频流会发 `"usage": null`。以前 `obj["usage"]?.jsonObject` 直接抛
+    // "Element class kotlinx.serialization.json.JsonNull is not a JsonObject" ——
+    // 能力测试报的错就是这个，跟"模型会不会看视频"一点关系都没有。
+
+    /** 只关心事件的写法（不用上面那个 run：在这里会被解析成 stdlib 的重载）。 */
+    private fun eventsOf(vararg payloads: String): List<ChatEvent> {
+        val parser = StreamParser()
+        return payloads.flatMap { parser.feed(it) } + parser.finish()
+    }
+
+    @Test
+    fun aNullUsageDoesNotThrowAndYieldsNoUsageEvent() {
+        assertEquals(listOf(ChatEvent.Delta("你好")), eventsOf("""{"choices":[{"delta":{"content":"你好"}}],"usage":null}"""))
+    }
+
+    @Test
+    fun aNullPromptTokensCountsAsNoUsage() {
+        assertEquals(
+            listOf(ChatEvent.Delta("好")),
+            eventsOf("""{"choices":[{"delta":{"content":"好"}}],"usage":{"prompt_tokens":null,"completion_tokens":null}}"""),
+        )
+    }
+
+    @Test
+    fun aRealUsageStillComesThrough() {
+        assertEquals(listOf(ChatEvent.Usage(4321, 12)), eventsOf("""{"choices":[],"usage":{"prompt_tokens":4321,"completion_tokens":12}}"""))
+    }
+
+    @Test
+    fun nullChoicesAndEmptyChoicesAreSkipped() {
+        assertEquals(emptyList<ChatEvent>(), eventsOf("""{"choices":null}"""))
+        assertEquals(emptyList<ChatEvent>(), eventsOf("""{"choices":[]}"""))
+        assertEquals(emptyList<ChatEvent>(), eventsOf("""{"choices":[null]}"""))
+    }
+
+    @Test
+    fun aNullErrorIsNotAnError() {
+        assertEquals(listOf(ChatEvent.Delta("在")), eventsOf("""{"error":null,"choices":[{"delta":{"content":"在"}}]}"""))
+    }
+
+    @Test
+    fun aNullDeltaIsSkippedRatherThanThrown() {
+        assertEquals(emptyList<ChatEvent>(), eventsOf("""{"choices":[{"delta":null}]}"""))
+        assertEquals(emptyList<ChatEvent>(), eventsOf("""{"choices":[{"message":null}]}"""))
+    }
 }

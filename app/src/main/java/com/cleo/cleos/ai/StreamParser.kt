@@ -3,6 +3,7 @@ package com.cleo.cleos.ai
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -36,16 +37,24 @@ internal class StreamParser {
         val obj = runCatching { json.parseToJsonElement(data).jsonObject }.getOrNull()
             ?: return emptyList<ChatEvent>().also { structure.invalidChunk() }
         structure.record(obj)
-        obj["error"]?.let { throw ChatException("服务端报错：" + errorText(it)) }
+        // `"error": null` 不是报错（不少服务每帧都带这个键）。
+        obj["error"]?.takeUnless { it is JsonNull }?.let { throw ChatException("服务端报错：" + errorText(it)) }
         // 用量帧**没有 choices**（服务在流的最后单独发一帧），所以得在那句"没有 choices 就返回"
         // **之前**读掉，不然它永远到不了上层 —— 而它是判断"视频有没有真的进去"的唯一信号。
-        val usage = obj["usage"]?.jsonObject?.let { u ->
-            u["prompt_tokens"]?.jsonPrimitive?.intOrNull?.let { prompt ->
-                ChatEvent.Usage(prompt, u["completion_tokens"]?.jsonPrimitive?.intOrNull ?: 0)
+        // **JsonNull 不是 JsonObject。**
+        //
+        // 以前这里写的是 `obj["usage"]?.jsonObject` —— 键在、值是 `null` 的时候，
+        // `jsonObject` 会抛 `Element class kotlinx.serialization.json.JsonNull is not a JsonObject`，
+        // 一句人话都没有（小米 MiMo 的视频流就是这么崩的，见 CapabilityTester）。
+        // 现在一律先用 as? 取，取不到就算这一帧没有它。
+        val usage = (obj["usage"] as? JsonObject)?.let { u ->
+            numberOrNull(u["prompt_tokens"])?.let { prompt ->
+                ChatEvent.Usage(prompt, numberOrNull(u["completion_tokens"]) ?: 0)
             }
         }
         // A relay that ignores stream:true sends the whole reply as one JSON, under "message".
-        val choice = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject
+        // choices 也可能是 null / 空数组（keep-alive 帧），或者第一个元素是 null。
+        val choice = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject
         val delta = (choice?.get("delta") ?: choice?.get("message")) as? JsonObject
             ?: return listOfNotNull(usage)
         val events = ArrayList<ChatEvent>(3)
@@ -95,6 +104,10 @@ internal class StreamParser {
     fun toolCalls(): List<ToolCall> = calls.values
         .filter { it.name.isNotEmpty() }
         .mapIndexed { i, p -> ToolCall(p.id.ifEmpty { "call_$i" }, p.name, p.arguments.toString()) }
+
+    /** JSON null 也是 [JsonPrimitive] 的子类 —— 这里必须排除，否则 intOrNull 会读出 0 或者抛。 */
+    private fun numberOrNull(e: JsonElement?): Int? =
+        (e as? JsonPrimitive)?.takeIf { it !is JsonNull }?.intOrNull
 
     private fun addPiece(piece: JsonObject) {
         val id = (piece["id"] as? JsonPrimitive)?.contentOrNull.orEmpty()

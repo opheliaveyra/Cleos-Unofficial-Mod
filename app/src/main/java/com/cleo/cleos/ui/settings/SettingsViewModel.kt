@@ -55,6 +55,22 @@ import kotlinx.coroutines.withContext
 const val PERSONA_LIMIT = Companions.PERSONA_LIMIT
 
 /**
+ * 手动粘贴的型号：**每行一个**，去空行、去重，保持原顺序。
+ *
+ * 抽成纯函数是为了能单独测 —— 这一处写错，人粘十行只会加进去一行。
+ */
+internal fun parseModelIds(text: String): List<String> =
+    text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.distinct().toList()
+
+/**
+ * 这次真正要新增的型号：已有的**不覆盖**（按「服务商 + 型号」去重），保持原顺序。
+ *
+ * 界面那边拿它算「已添加」标记和批量保存的清单，两处用同一套判断。
+ */
+internal fun modelsToAdd(existing: Set<String>, wanted: List<String>): List<String> =
+    wanted.map { it.trim() }.filter { it.isNotEmpty() }.distinct().filterNot { it in existing }
+
+/**
  * Text fields are edited locally and written back after a short pause (and once more
  * on leaving), so typing does not hit the disk on every keystroke. The API key is the
  * exception: it is only ever written, encrypted, and never read back into a field.
@@ -1194,8 +1210,17 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     var testing by mutableStateOf<String?>(null)
         private set
 
-    /** 上一次测试的结果：id → 那句人话。 */
+    /** 上一次连接测试的结果：id → 那句人话。 */
     var testResult by mutableStateOf<Pair<String, String>?>(null)
+        private set
+
+    /**
+     * 上一次「测一下」的结果（模型配置 id → 结果）。
+     *
+     * **带四态**（[com.cleo.cleos.ai.ProbeResult.outcome]）和脱敏细节：
+     * 网络/鉴权/格式出错**不能**算成「这个模型不会看」。
+     */
+    var capabilityResult by mutableStateOf<Pair<String, com.cleo.cleos.ai.ProbeResult>?>(null)
         private set
 
     fun clearTestResult() { testResult = null }
@@ -1286,7 +1311,11 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         if (testing != null) return
         val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
         if (provider == null) {
-            testResult = config.id to "这条配置指向的服务商已经不在了 —— 先修好它再测。"
+            capabilityResult = config.id to com.cleo.cleos.ai.ProbeResult(
+                passed = false,
+                message = "这条配置指向的服务商已经不在了 —— 先修好它再测。",
+                outcome = com.cleo.cleos.ai.ProbeOutcome.FAILED,
+            )
             return
         }
         testing = config.id
@@ -1297,7 +1326,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
                 com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
             }
             if (result.passed) c.registry.setCapability(config.id, capability, true)
-            testResult = config.id to result.message
+            capabilityResult = config.id to result
             testing = null
         }
     }
@@ -1326,6 +1355,168 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         )
     }
 
+    // ---- 批量添加模型 ----
+
+    /** 批量面板在给哪条服务商拉型号。 */
+    var batchProviderId by mutableStateOf("")
+        private set
+    /** 拉到的型号（null = 还没拉）。 */
+    var batchModels by mutableStateOf<List<String>?>(null)
+        private set
+    var batchLoading by mutableStateOf(false)
+        private set
+    /** 拉取结果 / 失败说明。 */
+    var batchMessage by mutableStateOf<String?>(null)
+        private set
+    /** 勾着的型号。 */
+    var batchPicked by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var batchSearch by mutableStateOf("")
+        private set
+    var batchSaving by mutableStateOf(false)
+        private set
+    /** 上一次批量保存的结果（成功/失败分开列）。 */
+    var batchResult by mutableStateOf<String?>(null)
+        private set
+    /** 上一次没保存成功的型号（重试用）。 */
+    var batchFailed by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    /** 这条服务商名下已经有哪些型号（用来标「已添加」、默认不勾、去重）。 */
+    fun configsOfProvider(providerId: String): Set<String> =
+        registry.value.configs.filter { it.providerId == providerId }.map { it.model }.toSet()
+
+    fun openBatch(providerId: String) {
+        batchProviderId = providerId
+        batchModels = null
+        batchMessage = null
+        batchPicked = emptySet()
+        batchSearch = ""
+        batchResult = null
+        batchFailed = emptyList()
+    }
+
+    fun closeBatch() {
+        batchProviderId = ""
+        batchModels = null
+        batchMessage = null
+        batchPicked = emptySet()
+        batchSearch = ""
+        batchResult = null
+        batchFailed = emptyList()
+    }
+
+    fun updateBatchSearch(text: String) { batchSearch = text }
+
+    /**
+     * 从服务商拉型号列表。
+     *
+     * **只更新这一屏的候选**：不碰已有配置、参数、功能绑定 ——
+     * 接口列表里没了的型号也**不会**被删掉。
+     */
+    fun fetchBatchModels(providerId: String = batchProviderId) {
+        if (providerId.isBlank() || batchLoading) return
+        batchLoading = true
+        batchMessage = null
+        batchResult = null
+        viewModelScope.launch {
+            try {
+                val provider = registry.value.providers.firstOrNull { it.id == providerId }
+                if (provider == null) {
+                    batchMessage = "这条服务商已经不在了"
+                    return@launch
+                }
+                val key = c.secrets.key(provider.baseUrl).orEmpty()
+                if (key.isBlank()) {
+                    batchMessage = "这个地址还没有 Key —— 先在「服务商」里填上，或者用下面的手动添加"
+                    return@launch
+                }
+                val list = c.chatClient.models(com.cleo.cleos.ai.ApiEndpoint(provider.baseUrl, key, "probe"))
+                val clean = list.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+                batchModels = clean
+                val existing = configsOfProvider(providerId)
+                // 已添加的不勾；其余默认勾上（人还能自己改）。
+                batchPicked = clean.filterNot { it in existing }.toSet()
+                batchMessage = if (clean.isEmpty()) {
+                    "接口没给型号列表 —— 用下面的「手动添加」粘贴型号"
+                } else {
+                    "拉到 ${clean.size} 个型号；其中 ${existing.count { it in clean }} 个已经加过了。"
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                batchModels = null
+                batchMessage = "拉取失败：${e.message?.take(200) ?: "没有说明"} —— 可以手动添加"
+            } finally {
+                batchLoading = false
+            }
+        }
+    }
+
+    fun toggleBatchModel(model: String) {
+        batchPicked = if (model in batchPicked) batchPicked - model else batchPicked + model
+    }
+
+    fun selectAllBatch() {
+        batchPicked = (batchModels.orEmpty() - configsOfProvider(batchProviderId).toSet()).toSet()
+    }
+
+    fun clearBatchSelection() { batchPicked = emptySet() }
+
+    /**
+     * 一次保存多个型号：**一个型号一条配置**（之后能分别改名、改参数、绑功能）。
+     *
+     * 按「服务商 + 型号」去重，**不覆盖已有的**；某一条失败只列出来，成功的不再重复添加。
+     */
+    fun addBatchModels(models: List<String>) {
+        if (batchSaving || batchProviderId.isBlank()) return
+        val wanted = modelsToAdd(emptySet(), models)
+        if (wanted.isEmpty()) return
+        batchSaving = true
+        batchResult = null
+        viewModelScope.launch {
+            val providerId = batchProviderId
+            val existing = configsOfProvider(providerId).toMutableSet()
+            val added = mutableListOf<String>()
+            val failed = mutableListOf<String>()
+            for (model in wanted) {
+                if (model in existing) continue
+                try {
+                    c.registry.addConfig(providerId, model, "")
+                    existing += model
+                    added += model
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    failed += model
+                }
+            }
+            batchFailed = failed
+            batchResult = buildString {
+                if (added.isNotEmpty()) append("已添加 ${added.size} 个：").append(added.joinToString("、")).append("。")
+                if (failed.isNotEmpty()) {
+                    if (added.isNotEmpty()) append("\n")
+                    append("没保存成功 ${failed.size} 个：").append(failed.joinToString("、"))
+                    append(" —— 可以点「重试失败的」。")
+                }
+                if (added.isEmpty() && failed.isEmpty()) append("没有新增：勾的都已经在列表里了。")
+            }
+            batchPicked = batchPicked - added.toSet()
+            batchSaving = false
+        }
+    }
+
+    fun addBatchPicked() = addBatchModels(batchPicked.toList())
+
+    fun retryFailedBatch() {
+        if (batchFailed.isEmpty()) return
+        addBatchModels(batchFailed)
+    }
+
+    /** 手动粘贴多个型号（每行一个）：接口不给列表、或者拉取失败时的退路。 */
+    fun addManualModels(text: String) {
+        addBatchModels(parseModelIds(text))
+    }
     override fun onCleared() {
         speechPlayer?.release()
         speechPlayer = null

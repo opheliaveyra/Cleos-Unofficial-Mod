@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -243,6 +244,44 @@ private fun ProviderDialog(
     )
 }
 
+/**
+ * 「测一下」的结果：**先把状态说清楚**，再把排查信息收起来。
+ *
+ * 四种状态分开显示 —— 尤其「没验成」和「接口说不支持」不能混成一句
+ * 「测试失败」（那会让人以为模型不会看图，其实是 Key 或格式的问题）。
+ */
+@Composable
+private fun ProbeResultLine(result: com.cleo.cleos.ai.ProbeResult) {
+    val palette = LocalGlassPalette.current
+    var open by remember { mutableStateOf(false) }
+    val tone = when (result.outcome) {
+        com.cleo.cleos.ai.ProbeOutcome.PASSED -> palette.accentContent
+        com.cleo.cleos.ai.ProbeOutcome.UNSUPPORTED -> palette.error
+        com.cleo.cleos.ai.ProbeOutcome.FAILED -> palette.error
+        com.cleo.cleos.ai.ProbeOutcome.UNVERIFIED -> palette.contentSecondary
+    }
+    val lead = when (result.outcome) {
+        com.cleo.cleos.ai.ProbeOutcome.PASSED -> "通过 · "
+        com.cleo.cleos.ai.ProbeOutcome.UNSUPPORTED -> "接口明确说不支持 · "
+        com.cleo.cleos.ai.ProbeOutcome.FAILED -> "没验成（不是「它不会」） · "
+        com.cleo.cleos.ai.ProbeOutcome.UNVERIFIED -> "待验证 · "
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(lead + result.message, color = tone, fontSize = 12.sp, lineHeight = 17.sp)
+        val detail = result.detail
+        if (!detail.isNullOrBlank()) {
+            TextButton(
+                onClick = { open = !open },
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+                modifier = Modifier.heightIn(min = 24.dp),
+            ) {
+                Text(if (open) "收起排查信息" else "看排查信息（状态码 / 服务端原文 / 请求结构）", fontSize = 11.sp)
+            }
+            if (open) Text(detail, color = palette.contentSecondary, fontSize = 10.sp, lineHeight = 14.sp)
+        }
+    }
+}
+
 // ---------------- ② 模型配置 ----------------
 
 /** 模型配置：某家服务商的某个型号 + 默认参数 + **验过的能力**。功能绑定指向它。 */
@@ -252,6 +291,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     val data by vm.registry.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ModelConfig?>(null) }
+    var batchOpen by remember { mutableStateOf(false) }
 
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
@@ -281,15 +321,27 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                     Busy("测看视频", vm.testing == config.id) { vm.testConfig(config, Capability.Video) }
                     TextButton(onClick = { editing = config }) { Text("编辑", fontSize = 12.sp) }
                 }
-                vm.testResult?.takeIf { it.first == config.id }?.let { (_, said) -> MessageLine(said) }
+                vm.capabilityResult?.takeIf { it.first == config.id }?.let { (_, result) -> ProbeResultLine(result) }
             }
             RowDivider(inset = 0.dp)
         }
-        TextButton(
-            onClick = { adding = true },
-            enabled = !vm.registryBusy && data.providers.isNotEmpty(),
-        ) { Text(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置") }
+        // **入口永远在**：加过多少条也不藏。批量那条是从服务商拉列表、一次加多个。
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(
+                onClick = { adding = true },
+                enabled = !vm.registryBusy && data.providers.isNotEmpty(),
+            ) { Text(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置", fontSize = 12.sp) }
+            TextButton(
+                onClick = {
+                    batchOpen = true
+                    vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
+                },
+                enabled = !vm.registryBusy && data.providers.isNotEmpty(),
+            ) { Text("＋ 批量添加模型", fontSize = 12.sp) }
+        }
     }
+
+    if (batchOpen) BatchAddDialog(data, vm) { batchOpen = false }
 
     if (adding || editing != null) {
         val config = editing
@@ -390,6 +442,119 @@ private fun ConfigDialog(
     )
 }
 
+/** 「添加模型」：从服务商拉列表，搜索、多选、全选，一次加多个；拉不到就手动粘贴。 */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BatchAddDialog(data: ModelRegistryData, vm: SettingsViewModel, onDismiss: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    var manual by remember { mutableStateOf("") }
+    val providerId = vm.batchProviderId
+    val existing = remember(data.configs, providerId) { vm.configsOfProvider(providerId) }
+    val query = vm.batchSearch.trim().lowercase()
+    val filtered = vm.batchModels.orEmpty().filter { query.isBlank() || it.lowercase().contains(query) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.96f).widthIn(max = 520.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        title = { Text("添加模型") },
+        text = {
+            Column(
+                Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    "选服务商：地址、Key、接口类型都复用它，不用重填。",
+                    color = palette.contentSecondary, fontSize = 11.sp, lineHeight = 15.sp,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    data.providers.forEach { p ->
+                        Chip(p.name.ifBlank { p.baseUrl }, selected = providerId == p.id) { vm.openBatch(p.id) }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Busy("从接口拉型号", vm.batchLoading) { vm.fetchBatchModels() }
+                    Text(
+                        "刷新只重拉列表，不动已有配置。",
+                        color = palette.contentSecondary, fontSize = 11.sp, lineHeight = 15.sp,
+                    )
+                }
+                vm.batchMessage?.let { Text(it, color = palette.contentSecondary, fontSize = 11.sp, lineHeight = 15.sp) }
+
+                if (vm.batchModels != null) {
+                    OutlinedTextField(
+                        vm.batchSearch,
+                        { vm.updateBatchSearch(it) },
+                        label = { Text("搜索型号") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton({ vm.selectAllBatch() }) { Text("全选", fontSize = 12.sp) }
+                        TextButton({ vm.clearBatchSelection() }) { Text("取消全选", fontSize = 12.sp) }
+                        Text("已选 ${vm.batchPicked.size}", color = palette.contentSecondary, fontSize = 11.sp)
+                    }
+                    LazyColumn(Modifier.heightIn(max = 240.dp)) {
+                        items(filtered) { model ->
+                            val added = model in existing
+                            Row(
+                                Modifier.fillMaxWidth().clickable(enabled = !added) { vm.toggleBatchModel(model) }.padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = model in vm.batchPicked,
+                                    onCheckedChange = { if (!added) vm.toggleBatchModel(model) },
+                                    enabled = !added,
+                                )
+                                Text(model, color = palette.content, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (added) {
+                                    Text(
+                                        "已添加",
+                                        color = palette.contentSecondary,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(start = 6.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (filtered.isEmpty()) Text("没有匹配的型号", color = palette.contentSecondary, fontSize = 12.sp)
+                    TextButton(
+                        enabled = !vm.batchSaving && vm.batchPicked.isNotEmpty(),
+                        onClick = { vm.addBatchPicked() },
+                    ) { Text(if (vm.batchSaving) "正在保存…" else "添加所选模型（${vm.batchPicked.size}）") }
+                }
+
+                Text(
+                    "手动添加：每行一个型号（接口不给列表、或者拉取失败时也能用）。",
+                    color = palette.contentSecondary, fontSize = 11.sp, lineHeight = 15.sp,
+                )
+                OutlinedTextField(
+                    manual,
+                    { manual = it },
+                    label = { Text("型号 ID，每行一个") },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    enabled = !vm.batchSaving && manual.isNotBlank(),
+                    onClick = { vm.addManualModels(manual); manual = "" },
+                ) { Text("手动添加", fontSize = 12.sp) }
+
+                vm.batchResult?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp) }
+                if (vm.batchFailed.isNotEmpty()) {
+                    TextButton(enabled = !vm.batchSaving, onClick = { vm.retryFailedBatch() }) {
+                        Text("重试失败的（${vm.batchFailed.size}）", fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.closeBatch(); onDismiss() }) { Text("完成") } },
+    )
+}
 // ---------------- ③ 功能绑定 ----------------
 
 /** 每个功能选一条模型配置；没选就跟着全局默认。能力对不上当场红字，用之前就能看见。 */

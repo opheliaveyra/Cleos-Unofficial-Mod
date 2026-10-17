@@ -86,28 +86,39 @@ object CapabilityProbe {
     }
 }
 
+/**
+ * 一次探测的结论。
+ *
+ * **四种状态必须分开**，混在一起会骗人：
+ * - [PASSED]：答对了暗号 —— 这个能力是真的
+ * - [UNSUPPORTED]：**接口明确说**不支持这种输入 —— 这才是「没有这个能力」
+ * - [FAILED]：请求没走通（网络、Key、地址、请求格式）—— **不能**据此说模型不支持
+ * - [UNVERIFIED]：请求成功，但它没答对 / 什么都没答 —— 待验证
+ */
+enum class ProbeOutcome { PASSED, UNSUPPORTED, FAILED, UNVERIFIED }
+
 /** 一次探测的结果。 */
-data class ProbeResult(val passed: Boolean, val message: String)
+data class ProbeResult(
+    val passed: Boolean,
+    val message: String,
+    /** 排查用的脱敏细节：HTTP 状态、服务端回的原文、请求结构。**不含 Key 和完整 base64**。 */
+    val detail: String? = null,
+    val outcome: ProbeOutcome = if (passed) ProbeOutcome.PASSED else ProbeOutcome.FAILED,
+)
+
 class CapabilityTester(
     private val images: ImageStore,
     private val videos: com.cleo.cleos.data.VideoStore,
     private val secrets: SecretStore,
     private val client: ChatClient,
 ) {
-    /**
-     * 测这个配置会不会看视频。
-     *
-     * 和看图那条同一个套路，只是把"画一张图"换成"**现造一小段视频**"
-     * （见 [TestVideo]：四帧灰度图，MediaCodec 编码 + MediaMuxer 封成 mp4，几 KB）。
-     * **发的就是真的视频**（`video_url` + base64），走的就是聊天时那条路 ——
-     * 测通了才算数，不是拿一帧图片糊弄过去。
-     */
+
     suspend fun testVideo(profile: ModelProfile): ProbeResult = testVideo(profile.baseUrl, profile.model)
 
     /** 同上，但按「地址 + 型号」来 —— 三层结构里这两件事拆开了，见 [ModelConfig]。 */
     suspend fun testVideo(baseUrl: String, model: String): ProbeResult {
         val key = secrets.key(baseUrl)?.takeIf { it.isNotBlank() }
-            ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「连接」那里填上")
+            ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「服务商」里填上", outcome = ProbeOutcome.FAILED)
         val code = CapabilityProbe.newCode()
         val probe = java.io.File(videos.dir, "probe-${java.util.UUID.randomUUID()}.mp4")
         val made = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -117,71 +128,188 @@ class CapabilityTester(
             probe.delete()
             return ProbeResult(
                 false,
-                "测试视频没能造出来 —— 这台机器的视频编码器挑食（模拟器上常见）。" +
-                    "换个办法：在聊天里真发一条几秒的视频，一样能看出它会不会看。",
+                "测试视频没能造出来 —— 这台机器的视频编码器挑食（模拟器上常见）。换个办法：在聊天里真发一条几秒的视频。",
+                outcome = ProbeOutcome.FAILED,
             )
         }
+        val url = videos.dataUrl(probe.name)
+        if (url == null) {
+            probe.delete()
+            return ProbeResult(false, "测试视频读不出来", outcome = ProbeOutcome.FAILED)
+        }
+        val shape = videoRequestShape(baseUrl, model, url.length)
+        val declared = vendorDeclaresVideo(model)
         return try {
-            val url = videos.dataUrl(probe.name) ?: return ProbeResult(false, "测试视频读不出来")
             val said = StringBuilder()
             client.stream(
                 ApiEndpoint(baseUrl, key, model),
                 listOf(ApiMessage("user", CapabilityProbe.PROMPT_VIDEO, videos = listOf(url))),
             ).collect { if (it is ChatEvent.Delta) said.append(it.text) }
             val text = said.toString().trim()
-            if (CapabilityProbe.matches(text, code)) {
-                ProbeResult(true, "看得见视频：画面里的码是 $code，它答对了")
-            } else {
-                ProbeResult(
+            when {
+                CapabilityProbe.matches(text, code) -> ProbeResult(
+                    true,
+                    "看得见视频：画面里的码是 $code，它答对了",
+                    detail = shape,
+                    outcome = ProbeOutcome.PASSED,
+                )
+                text.isEmpty() -> ProbeResult(
                     false,
-                    "它没能认出视频里的码（正确答案 $code，它回的是「${text.take(60)}」）——" +
-                        "这个模型多半看不了视频，换一个（豆包 Seed、通义 Qwen、小米 MiMo、Gemini 都行）。",
+                    "请求成功了，但它一个字都没回 —— 这次不算数，再测一次。" +
+                        if (declared) "（小米官方文档写明这个型号支持视频理解，所以更像这次没送进去。）" else "",
+                    detail = shape,
+                    outcome = ProbeOutcome.UNVERIFIED,
+                )
+                else -> ProbeResult(
+                    false,
+                    "请求成功，但它没认出视频里的码（正确答案 $code，它回的是「${text.take(60)}」）—— " +
+                        if (declared) {
+                            "官方文档说这个型号支持视频理解，这更像请求格式或这次没送进去的问题，不是它不会。"
+                        } else {
+                            "这个模型多半看不了视频，换一个（豆包 Seed、通义 Qwen、小米 MiMo、Gemini 都行）。"
+                        },
+                    detail = shape,
+                    outcome = ProbeOutcome.UNVERIFIED,
                 )
             }
+        } catch (e: ChatException) {
+            val unsupported = looksUnsupported(e)
+            ProbeResult(
+                false,
+                if (unsupported) {
+                    "接口明确说它不支持视频输入：${e.message?.take(160)}"
+                } else {
+                    "请求没走通（不是「模型不会看」）：${e.message?.take(160)}" +
+                        if (declared) " —— 官方文档写明这个型号支持视频，先查网络 / Key / 格式。" else ""
+                },
+                detail = diagnostics(e, shape),
+                outcome = if (unsupported) ProbeOutcome.UNSUPPORTED else ProbeOutcome.FAILED,
+            )
         } catch (e: Exception) {
-            ProbeResult(false, "连不上或报错了：${e.message?.take(120) ?: "没有说明"}")
+            ProbeResult(
+                false,
+                "解析或网络出错（不是「模型不会看」）：${e.message?.take(160) ?: e.javaClass.simpleName}",
+                detail = diagnostics(e, shape),
+                outcome = ProbeOutcome.FAILED,
+            )
         } finally {
             probe.delete()
         }
     }
-
     /**
      * 测这个配置会不会看图。
      *
-     * 每一条失败路径都**说清楚是什么问题**（没 Key / 服务不通 / 答错），
-     * 因为"测试失败"三个字帮不了任何人。
+     * 每一条失败路径都**说清楚是什么问题**（没 Key / 服务不通 / 答错 / 解析失败），
+     * 因为「测试失败」三个字帮不了任何人。
      */
     suspend fun testImage(profile: ModelProfile): ProbeResult = testImage(profile.baseUrl, profile.model)
 
     /** 同上，但按「地址 + 型号」来（见 [testVideo]）。 */
     suspend fun testImage(baseUrl: String, model: String): ProbeResult {
         val key = secrets.key(baseUrl)?.takeIf { it.isNotBlank() }
-            ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「连接」那里填上")
+            ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「服务商」里填上", outcome = ProbeOutcome.FAILED)
         val code = CapabilityProbe.newCode()
         val name = runCatching { images.save(CapabilityProbe.image(code), prefix = "probe-") }.getOrNull()
-            ?: return ProbeResult(false, "测试图没能存下来（存储空间不够？）")
+            ?: return ProbeResult(false, "测试图没能存下来（存储空间不够？）", outcome = ProbeOutcome.FAILED)
+        val shape = imageRequestShape(baseUrl, model)
         return try {
             val url = images.dataUrl(name)
-                ?: return ProbeResult(false, "测试图没能读出来")
+            if (url == null) return ProbeResult(false, "测试图没能读出来", outcome = ProbeOutcome.FAILED)
             val said = StringBuilder()
             client.stream(
                 ApiEndpoint(baseUrl, key, model),
                 listOf(ApiMessage("user", CapabilityProbe.PROMPT, images = listOf(url))),
             ).collect { if (it is ChatEvent.Delta) said.append(it.text) }
             val text = said.toString().trim()
-            if (CapabilityProbe.matches(text, code)) {
-                ProbeResult(true, "看得见图：图里的码是 $code，它答对了")
-            } else {
-                ProbeResult(
+            when {
+                CapabilityProbe.matches(text, code) -> ProbeResult(true, "看得见图：图里的码是 $code，它答对了", detail = shape, outcome = ProbeOutcome.PASSED)
+                text.isEmpty() -> ProbeResult(false, "请求成功了，但它一个字都没回 —— 再测一次。", detail = shape, outcome = ProbeOutcome.UNVERIFIED)
+                else -> ProbeResult(
                     false,
-                    "它没能认出图里的码（正确答案 $code，它回的是「${text.take(60)}」）——" +
-                        "这个模型多半只看文字，换一个能看图的给它。",
+                    "它没能认出图里的码（正确答案 $code，它回的是「${text.take(60)}」）—— 这个模型多半只看文字，换一个能看图的给它。",
+                    detail = shape,
+                    outcome = ProbeOutcome.UNVERIFIED,
                 )
             }
+        } catch (e: ChatException) {
+            val unsupported = looksUnsupported(e)
+            ProbeResult(
+                false,
+                if (unsupported) "接口明确说它不支持图片输入：${e.message?.take(160)}" else "请求没走通（不是「模型不会看」）：${e.message?.take(160)}",
+                detail = diagnostics(e, shape),
+                outcome = if (unsupported) ProbeOutcome.UNSUPPORTED else ProbeOutcome.FAILED,
+            )
         } catch (e: Exception) {
-            ProbeResult(false, "连不上或报错了：${e.message?.take(120) ?: "没有说明"}")
+            ProbeResult(
+                false,
+                "解析或网络出错（不是「模型不会看」）：${e.message?.take(160) ?: e.javaClass.simpleName}",
+                detail = diagnostics(e, shape),
+                outcome = ProbeOutcome.FAILED,
+            )
         } finally {
             images.delete(listOf(name))
         }
     }
+
+    /**
+     * 请求长什么样 —— **只写结构，不写内容**。
+     *
+     * 视频那一大段 base64 只报长度（几 MB，也绝不该出现在日志里）；Key 在请求头里，这里根本没有。
+     */
+    private fun videoRequestShape(baseUrl: String, model: String, payloadChars: Int): String =
+        "POST https://${hostOf(baseUrl)}/chat/completions\n" +
+            "model=$model\n" +
+            "stream=true\n" +
+            "content=[{type=video_url, video_url={url=data:video/mp4;base64,[$payloadChars 字符，已省略]}},{type=text, text=<暗号提示>}]\n" +
+            "（只发 video_url；fps / media_resolution 是小米专有字段，按通用写法没放，免得别家 400）"
+
+    private fun imageRequestShape(baseUrl: String, model: String): String =
+        "POST https://${hostOf(baseUrl)}/chat/completions\n" +
+            "model=$model\n" +
+            "content=[{type=image_url, image_url={url=data:image/png;base64,[已省略]}},{type=text, text=<暗号提示>}]"
+
+    private fun hostOf(baseUrl: String): String =
+        runCatching { java.net.URI(baseUrl.trim()).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: baseUrl.trim()
+
+    /** 失败时留给排查的那一页：状态码 + 服务端原文（脱敏）+ 请求结构。 */
+    private fun diagnostics(e: Throwable, shape: String): String = buildString {
+        val ce = e as? ChatException
+        ce?.status?.let { append("HTTP ").append(it).append("\n") }
+        append(shape).append("\n")
+        val body = ce?.responseBody
+        if (!body.isNullOrBlank()) append("服务端回：").append(body) else append("错误：").append(e.message?.take(300) ?: e.javaClass.simpleName)
+    }
+
+    /**
+     * 服务端是不是**明确说**了「不支持这种输入」。
+     *
+     * 只看明确的措辞；「模型名不存在」「格式不对」「余额不足」都不算 ——
+     * 那些是请求的问题，不是能力的问题。
+     */
+    private fun looksUnsupported(e: Throwable): Boolean =
+        probeSaysUnsupported((e as? ChatException)?.responseBody, e.message)
+}
+
+/**
+ * 厂商文档明确写了「这个型号支持视频理解」吗（小米 MiMo V2.6 系列，见官方文档）。
+ *
+ * 用来把话说清楚：**测试失败 ≠ 模型不支持**。官方写明了的话，失败更像是
+ * 请求格式 / 网络 / 解析的问题，不能说成「它不会看」。
+ */
+internal fun vendorDeclaresVideo(model: String): Boolean =
+    model.trim().lowercase().startsWith("mimo-v2.6")
+
+/**
+ * 服务端是不是**明确说**了「不支持这种输入」。
+ *
+ * 只看明确的措辞；「模型名不存在」「格式不对」「余额不足」都不算 ——
+ * 那些是请求的问题，不是能力的问题。抽成纯函数是为了能单独测。
+ */
+internal fun probeSaysUnsupported(responseBody: String?, message: String?): Boolean {
+    val text = ((responseBody ?: "") + "\n" + (message ?: "")).lowercase()
+    if (text.isBlank()) return false
+    return listOf(
+        "not support", "unsupported", "does not support", "doesn't support", "not supported",
+        "不支持", "no video", "video not allowed",
+    ).any { it in text }
 }
