@@ -21,6 +21,8 @@ internal object PdfText {
     private const val MAX_STREAM = 32 * 1024 * 1024
     /** How many pages are walked; a 2000-page scan is not something to read on a phone. */
     private const val MAX_PAGES = 500
+    /** Form XObject 可以嵌套：限制深度，别让一个畸形文件把栈打穿。 */
+    private const val MAX_XOBJECT_DEPTH = 4
 
     fun read(bytes: ByteArray): ExtractedText {
         if (bytes.size < 8) throw FileException("这个 PDF 是空的")
@@ -32,18 +34,35 @@ internal object PdfText {
         val pages = pageDicts(objects, trailer)
         if (pages.isEmpty()) throw FileException("这个 PDF 里找不到页面")
         val out = StringBuilder()
-        var read = 0
+        var undecodable = false
+        var type0Unmapped = false
+        var imagePages = 0
         for (page in pages.take(MAX_PAGES)) {
-            val text = pageText(page, objects)
-            if (text.isNotBlank()) {
-                out.append(text.trim()).append("\n\n")
-                read++
+            val result = pageText(page, objects)
+            undecodable = undecodable || result.undecodable
+            type0Unmapped = type0Unmapped || result.type0Unmapped
+            if (result.hasImage) imagePages++
+            if (result.text.isNotBlank()) {
+                // 按页分段：模型能看出这是另一页，长文档也不用一次读成一大坨。
+                out.append(result.text.trim()).append("\n\n")
             }
             if (out.length > FileText.MAX_CHARS) break
         }
         val final = out.toString().trim()
-        if (final.isEmpty()) throw FileException("这个 PDF 里没有文字：可能是扫描件或整页图片，读不出内容")
+        // 一页没文字不拒绝整个文件；**整份**都没有时，说清楚是哪一种情况。
+        if (final.isEmpty()) throw FileException(whyNoText(undecodable, type0Unmapped, imagePages))
         return ExtractedText(final, pages.size)
+    }
+
+    /**
+     * 整份都读不出文字时的原因。**不要一律说"检测不到文字"**：
+     * 扫描件、字体没有 Unicode 映射、内容流压缩方式不支持，是三件事。
+     */
+    private fun whyNoText(undecodable: Boolean, type0Unmapped: Boolean, imagePages: Int): String = when {
+        undecodable -> "这个 PDF 里没有能读的文字：内容流用了不支持的压缩方式"
+        type0Unmapped -> "这个 PDF 有文字层，但字体缺少 Unicode 映射（常见于部分中文 PDF），读不出来"
+        imagePages > 0 -> "这个 PDF 是扫描件或图片版，没有文字层（本版不支持 OCR，需要先识别出文字，或换一个带文字层的 PDF）"
+        else -> "这个 PDF 里没有文字（可能是扫描件或整页图片）"
     }
 
     private fun looksLikePdf(bytes: ByteArray): Boolean {
@@ -636,7 +655,10 @@ internal object PdfText {
     // ---- fonts ------------------------------------------------------------------------------
 
     /** How one font's byte codes read as characters. */
-    private class Font(private val twoByte: Boolean, private val map: Map<Int, String>) {
+    private class Font(val twoByte: Boolean, private val map: Map<Int, String>) {
+        /** 复合字体但没有 ToUnicode：文字层存在，只是没法把编码还原成字。 */
+        val unmapped: Boolean get() = twoByte && map.isEmpty()
+
         fun decode(bytes: ByteArray): String {
             val out = StringBuilder(bytes.size)
             if (twoByte) {
@@ -661,13 +683,25 @@ internal object PdfText {
         }
     }
 
-    private fun pageFonts(page: PDict, objects: Map<Int, Value>): Map<String, Font> {
-        val resources = deref(page.map["Resources"], objects) as? PDict ?: return emptyMap()
+    /** 页面（或 Form XObject）的资源里的字体。 */
+    private fun fontsOf(resources: PDict?, objects: Map<Int, Value>): Map<String, Font> {
+        if (resources == null) return emptyMap()
         val fonts = deref(resources.map["Font"], objects) as? PDict ?: return emptyMap()
         val out = HashMap<String, Font>()
         for ((name, value) in fonts.map) {
             val dict = deref(value, objects) as? PDict ?: continue
             out[name] = readFont(dict, objects)
+        }
+        return out
+    }
+
+    /** 页面（或 Form XObject）的资源里的 XObject：图片用来判断"是不是扫描件"，Form 里可能装着文字。 */
+    private fun xobjectsOf(resources: PDict?, objects: Map<Int, Value>): Map<String, PStream> {
+        if (resources == null) return emptyMap()
+        val dict = deref(resources.map["XObject"], objects) as? PDict ?: return emptyMap()
+        val out = HashMap<String, PStream>()
+        for ((name, value) in dict.map) {
+            (deref(value, objects) as? PStream)?.let { out[name] = it }
         }
         return out
     }
@@ -738,27 +772,45 @@ internal object PdfText {
 
     // ---- a page's content stream --------------------------------------------------------------
 
-    private fun pageText(page: PDict, objects: Map<Int, Value>): String {
-        val fonts = pageFonts(page, objects)
+    /** 一页读出来的结果：文字，加上"为什么没文字"需要的线索。 */
+    private class PageText(
+        val text: String,
+        val undecodable: Boolean,
+        val type0Unmapped: Boolean,
+        val hasImage: Boolean,
+    )
+
+    private fun pageText(page: PDict, objects: Map<Int, Value>): PageText {
+        val resources = deref(page.map["Resources"], objects) as? PDict
+        val fonts = fontsOf(resources, objects)
+        val xobjects = xobjectsOf(resources, objects)
+        val hasImage = xobjects.values.any { it.dict.name("Subtype") == "Image" }
         val out = StringBuilder()
-        val contents = page.map["Contents"]
-        val streams = when (val value = deref(contents, objects)) {
+        var undecodable = false
+        val streams = when (val value = deref(page.map["Contents"], objects)) {
             is PStream -> listOf(value)
             is PArray -> value.items.mapNotNull { deref(it, objects) as? PStream }
             else -> emptyList()
         }
         for (stream in streams) {
-            val bytes = decodeStream(stream, objects) ?: continue
-            out.append(Content(fonts).run(bytes))
+            val bytes = decodeStream(stream, objects)
+            if (bytes == null) { undecodable = true; continue }
+            out.append(Content(fonts, xobjects, objects, 0).run(bytes))
         }
-        return out.toString()
+        return PageText(out.toString(), undecodable, fonts.values.any { it.unmapped }, hasImage)
     }
 
     /**
      * The text-showing part of a content stream: which font is in use, where the line sits,
      * and what each `Tj`, `TJ`, `'` and `"` puts on the page.
      */
-    private class Content(private val fonts: Map<String, Font>) {
+    private class Content(
+        private val fonts: Map<String, Font>,
+        /** 这一层能引用的 XObject：Form 里可能还有文字（很多排版软件就这么写）。 */
+        private val xobjects: Map<String, PStream>,
+        private val objects: Map<Int, Value>,
+        private val depth: Int,
+    ) {
         private val out = StringBuilder()
         private val operands = ArrayList<Value>()
         private var font: Font? = null
@@ -832,6 +884,18 @@ internal object PdfText {
                 "'" -> { textY -= leading; moveLine(); show(operands.getOrNull(0)) }
                 "\"" -> { textY -= leading; moveLine(); show(operands.getOrNull(2)) }
                 "TJ" -> show(operands.getOrNull(0))
+                // Do：画一个 XObject。图片跳过；Form 里可能装着整页文字，跟进去读。
+                "Do" -> {
+                    val key = (operands.lastOrNull() as? PName)?.name ?: return
+                    val xobject = xobjects[key] ?: return
+                    if (xobject.dict.name("Subtype") != "Form") return
+                    if (depth >= MAX_XOBJECT_DEPTH) return
+                    val formResources = deref(xobject.dict.map["Resources"], objects) as? PDict
+                    val formFonts = if (formResources != null) fontsOf(formResources, objects) else fonts
+                    val formXobjects = if (formResources != null) xobjectsOf(formResources, objects) else xobjects
+                    val body = decodeStream(xobject, objects) ?: return
+                    out.append(Content(formFonts, formXobjects, objects, depth + 1).run(body))
+                }
             }
         }
 
