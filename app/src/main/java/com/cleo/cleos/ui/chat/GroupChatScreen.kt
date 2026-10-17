@@ -35,6 +35,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +45,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -110,13 +113,23 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                 .onFailure { problem = "这张图没能读进来" }
         }
     }
-    // 按住说话：和私人聊天同一个录音器（16 kHz 单声道 WAV，转文字服务都认）。
+    // 按住说话：和单聊共用同一个层（VoiceHold.kt）与同一个录音器（16 kHz 单声道 WAV）。
+    val context = androidx.compose.ui.platform.LocalContext.current
     val recorder = remember { VoiceRecorder(c.images.dir) }
     var recording by remember { mutableStateOf(false) }
     var recordedMs by remember { mutableLongStateOf(0L) }
     var loudness by remember { mutableFloatStateOf(0f) }
+    /** 手指现在指着哪边：左转文字 / 右直接发 / null 上滑取消。 */
+    var holdTarget by remember { mutableStateOf<HoldTarget?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
+    /** 录音期间/转写中的一句话提示（"正在转成文字…"、失败原因）。 */
+    var voiceHint by remember { mutableStateOf<String?>(null) }
+    var transcribingVoice by remember { mutableStateOf(false) }
+    /** 轻点输入框要能把键盘叫出来（长按层会把轻点吃掉，见 [HoldToTalkLayer]）。 */
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) problem = "要给 Cleos 用话筒的权限，才能发语音"
+        if (!granted) voiceHint = "要给 Cleos 用话筒的权限，才能发语音"
     }
     val player = remember { arrayOfNulls<android.media.MediaPlayer>(1) }
     var playing by remember { mutableStateOf<String?>(null) }
@@ -139,6 +152,97 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
         }.onSuccess { player[0] = p }.onFailure { p.release(); playing = null; problem = "这段语音放不了" }
     }
     DisposableEffect(groupId) { onDispose { stopPlaying() } }
+
+    fun act(block: suspend () -> Unit) { scope.launch {
+        problem = null
+        try { block() } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { problem = e.message ?: "没有完成，请再试一次" }
+    } }
+
+    /**
+     * 长按开始录：**和单聊同一个检查顺序**（先看转文字服务配了没 → 权限 → 话筒开不开）。
+     * 任何一步没过都返回 false，并在界面上留一句为什么。
+     */
+    fun startVoice(): Boolean {
+        val s = settings
+        when {
+            s.voiceBaseUrl.isBlank() || s.voiceModel.isBlank() -> {
+                voiceHint = "还没接语音转文字的服务，去设置「发语音」里选一个"
+                return false
+            }
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                mic.launch(android.Manifest.permission.RECORD_AUDIO)
+                return false
+            }
+            !recorder.start() -> {
+                voiceHint = "话筒打不开，可能正被别的应用用着"
+                return false
+            }
+            else -> {
+                stopPlaying()
+                recordedMs = 0L
+                cancelling = false
+                holdTarget = HoldTarget.Text
+                recording = true
+                return true
+            }
+        }
+    }
+
+    /**
+     * 松手：**取消 / 直接发 / 转文字**，和单聊一致。
+     *
+     * 转文字进输入框（还能改）；直接发是语音消息 —— 它转写后照样进模型（见 GroupChatRepository.sendVoice）。
+     * **转写失败不动输入框里已经打好的字。**
+     */
+    fun finishVoice(target: HoldTarget?) {
+        if (!recording) return
+        recording = false
+        cancelling = false
+        holdTarget = null
+        if (target == null) {
+            recorder.cancel()
+            return
+        }
+        val clip = recorder.stop()
+        if (clip == null) {
+            voiceHint = "说话时间太短了"
+            return
+        }
+        if (target == HoldTarget.Voice) {
+            act { c.groupChat.sendVoice(groupId, clip, mentions); mentions = emptyList() }
+            return
+        }
+        transcribingVoice = true
+        val s = settings
+        scope.launch {
+            val text = runCatching {
+                c.transcriber.transcribe(s.voiceBaseUrl, s.voiceModel, c.images.file(clip.file)).trim()
+            }.getOrNull()
+            transcribingVoice = false
+            if (text.isNullOrBlank()) {
+                // 失败不动输入框：打好的字不能因为一次没听清就没了。
+                voiceHint = "没听清，再说一次？（打好的字还在）"
+            } else {
+                draft = text.take(GroupChatRules.MAX_TEXT)
+            }
+        }
+    }
+    LaunchedEffect(recording) {
+        if (!recording) return@LaunchedEffect
+        val t0 = System.currentTimeMillis()
+        while (recording) {
+            recordedMs = System.currentTimeMillis() - t0
+            loudness = recorder.level
+            if (recordedMs >= com.cleo.cleos.ai.Voice.MAX_MS) finishVoice(HoldTarget.Text)
+            delay(100)
+        }
+    }
+    LaunchedEffect(voiceHint) {
+        if (voiceHint != null) { delay(2400); voiceHint = null }
+    }
+    // ---- 下面这些是界面自己的状态（转写/录音只管上面那一层）----
     var selectedText by remember { mutableStateOf<String?>(null) }
     var actionMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
     var toolMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
@@ -159,20 +263,6 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
     val participating = members.filter { it.active }
     val availableMembers = participating.filter { it.companionId in active }.map { it.companionId }.toSet()
     LaunchedEffect(groupId) { c.settings.setCurrentGroup(groupId) }
-    fun act(block: suspend () -> Unit) { scope.launch {
-        problem = null
-        try { block() } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { problem = e.message ?: "没有完成，请再试一次" }
-    } }
-    /** 松手：录到了就发，太短或划走了就丢掉（转录在仓库那边做，见 [GroupChatRepository.sendVoice]）。 */
-    fun finishRecording(cancel: Boolean) {
-        if (!recording) return
-        recording = false
-        recordedMs = 0L
-        loudness = 0f
-        val clip = if (cancel) { recorder.cancel(); null } else recorder.stop()
-        if (clip != null) act { c.groupChat.sendVoice(groupId, clip, mentions); mentions = emptyList() }
-    }
     LaunchedEffect(group?.id, generation) {
         if (group != null) {
             val saved = dao.group(groupId)
@@ -215,6 +305,18 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             .padding(horizontal = 14.dp, vertical = 8.dp).onSizeChanged { composerHeight = it.height },
             verticalArrangement = Arrangement.spacedBy(7.dp)) {
             problem?.let { Text(it, color = palette.error, fontSize = 12.sp) }
+            // 录音中 / 转文字中 / 刚刚失败的那句话：和单聊一个样式、同一套状态（见 VoiceHold.kt）。
+            if (recording || transcribingVoice || voiceHint != null) {
+                RecordingPill(
+                    backdrop = page,
+                    recording = recording,
+                    ms = recordedMs,
+                    level = loudness,
+                    target = holdTarget,
+                    cancelling = cancelling,
+                    hint = if (transcribingVoice) "正在转成文字…" else voiceHint,
+                )
+            }
             if (mentions.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 mentions.forEach { id -> Chip("@${members.firstOrNull { it.companionId == id }?.name ?: "TA"} ×", false) { mentions = mentions - id } }
             }
@@ -248,49 +350,33 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                         pickingPicture = true
                         picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }
-                    // 按住说话：**松手才发**，压着不动就是还在录。
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.06f))
-                            .pointerInput(loaded, busy) {
-                                detectTapGestures(onPress = {
-                                    if (loaded && !busy && !recording) {
-                                        if (!recorder.start()) {
-                                            mic.launch(Manifest.permission.RECORD_AUDIO)
-                                        } else {
-                                            recording = true
-                                            recordedMs = 0L
-                                            loudness = recorder.level
-                                            val tick = scope.launch {
-                                                while (recording) {
-                                                    recordedMs += 100
-                                                    loudness = recorder.level
-                                                    kotlinx.coroutines.delay(100)
-                                                }
-                                            }
-                                            val released = tryAwaitRelease()
-                                            tick.cancel()
-                                            finishRecording(cancel = !released)
-                                        }
-                                    }
-                                })
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            Icons.Rounded.Mic,
-                            contentDescription = "按住说话",
-                            tint = if (recording) Color.White else palette.accentContent,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(
-                            if (recording) "松开发送 · ${(recordedMs / 1000).coerceAtLeast(1)} 秒" + if (loudness > 0.02f) " · 在说" else ""
-                            else "按住说话",
-                            color = if (recording) Color.White else palette.content,
-                            fontSize = 14.sp,
+                    // 按住说话：和输入框上是同一套（长按记录，左滑转文字 / 右滑直接发 / 上滑取消）。
+                    Box(Modifier.clip(RoundedCornerShape(14.dp))) {
+                        Row(
+                            Modifier
+                                .background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.06f))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                Icons.Rounded.Mic,
+                                contentDescription = "按住说话",
+                                tint = if (recording) Color.White else palette.accentContent,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                if (recording) "松手按方向发" else "按住说话",
+                                color = if (recording) Color.White else palette.content,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        HoldToTalkLayer(
+                            onTap = { attachOpen = false },
+                            onStart = ::startVoice,
+                            onMove = { holdTarget = it; cancelling = it == null },
+                            onEnd = ::finishVoice,
+                            modifier = Modifier.matchParentSize(),
                         )
                     }
                     PanelAction(Icons.Rounded.AlternateEmail, "点名成员") {
@@ -318,13 +404,28 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.weight(1f)
-                        .heightIn(min = 42.dp, max = 130.dp).semantics { contentDescription = "群聊消息" },
-                        textStyle = TextStyle(color = palette.content, fontSize = 16.sp), cursorBrush = SolidColor(palette.content),
-                        decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) {
-                            if (draft.isEmpty()) Text("说点什么…", color = palette.contentSecondary, fontSize = 16.sp)
-                            inner()
-                        } })
+                    Box(Modifier.weight(1f)) {
+                        BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.fillMaxWidth()
+                            .heightIn(min = 42.dp, max = 130.dp).focusRequester(focus).semantics { contentDescription = "群聊消息" },
+                            textStyle = TextStyle(color = palette.content, fontSize = 16.sp), cursorBrush = SolidColor(palette.content),
+                            decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) {
+                                if (draft.isEmpty()) Text("说点什么…", color = palette.contentSecondary, fontSize = 16.sp)
+                                inner()
+                            } })
+                        // **长按输入框**：和单聊同一个层 —— 左滑转文字、右滑直接发、上滑取消。
+                        if (draft.isEmpty() && !busy && loaded) {
+                            HoldToTalkLayer(
+                                onTap = {
+                                    focus.requestFocus()
+                                    keyboard?.show()
+                                },
+                                onStart = ::startVoice,
+                                onMove = { holdTarget = it; cancelling = it == null },
+                                onEnd = ::finishVoice,
+                                modifier = Modifier.matchParentSize(),
+                            )
+                        }
+                    }
                     if (busy) GlassIconButton(Icons.Rounded.Stop, "停止群聊回复", { act { c.groupChat.stop(groupId) } }, page)
                     else GlassIconButton(Icons.AutoMirrored.Rounded.Send, "发送群聊消息", {
                         // 只发图不写字也算一条 —— 群里发张图不用配文字。

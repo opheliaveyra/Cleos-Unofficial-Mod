@@ -1827,62 +1827,7 @@ private fun VoiceBubble(
     }
 }
 
-/** Above the input while recording: how long, how loud, and what letting go does; or a short hint. */
-@Composable
-private fun RecordingPill(
-    backdrop: Backdrop,
-    recording: Boolean,
-    ms: Long,
-    level: Float,
-    /** 手指现在指着哪边：左边转文字、右边直接发语音；null 是上滑取消。 */
-    target: HoldTarget?,
-    cancelling: Boolean,
-    hint: String?,
-    modifier: Modifier = Modifier,
-) {
-    val palette = LocalGlassPalette.current
-    // 手指没动时算指着"转文字"（和原来那个行为一样），所以这里不看 null。
-    val aimed = target ?: HoldTarget.Text
-    Row(
-        modifier
-            .liquidGlass(backdrop, palette.input, GlassShape.Capsule)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (!recording) {
-            Text(hint.orEmpty(), color = palette.content, fontSize = 14.sp)
-            return@Row
-        }
-        val tint = if (cancelling) palette.error else palette.accent
-        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(10.dp + 12.dp * level).background(tint, CircleShape))
-        }
-        Spacer(Modifier.width(8.dp))
-        val s = ms / 1000
-        Text("${s / 60}:%02d".format(s % 60), color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.width(12.dp))
-        // 一个"按住说话"里塞两件事，所以要让手指去指：**往左是转文字，往右是原样发**。
-        // 上滑取消还是老规矩。
-        if (cancelling) {
-            Text("松开取消", color = palette.error, fontSize = 14.sp)
-        } else {
-            HoldAim("← 转文字", aimed == HoldTarget.Text, palette.accentContent, palette.contentSecondary)
-            Spacer(Modifier.width(10.dp))
-            HoldAim("直接发 →", aimed == HoldTarget.Voice, palette.accentContent, palette.contentSecondary)
-        }
-    }
-}
 
-/** 两个目标中的一个：指到它了就亮起来。 */
-@Composable
-private fun HoldAim(text: String, aimed: Boolean, on: androidx.compose.ui.graphics.Color, off: androidx.compose.ui.graphics.Color) {
-    Text(
-        text,
-        color = if (aimed) on else off,
-        fontSize = 14.sp,
-        fontWeight = if (aimed) FontWeight.SemiBold else FontWeight.Normal,
-    )
-}
 
 /**
  * Pictures sent with a message, outside the bubble: a glass pane behind a photo would only
@@ -1929,8 +1874,6 @@ internal fun PictureGroup(pictures: List<MessageImage>, onOpen: (String) -> Unit
     }
 }
 
-/** 按住说话松手时，这段录音去哪儿。`null`（没指任何一边）表示取消。 */
-internal enum class HoldTarget { Text, Voice }
 
 /**
  * 消息里的一段视频：**封面 + 时长 + 一个播放标记**。
@@ -2889,54 +2832,18 @@ private fun ChatInputBar(
                         .onFocusChanged { if (it.isFocused) onFieldFocus() }
                         .semantics { contentDescription = "输入消息" },
                 )
-                // 按住说话: an empty box is only the placeholder, so a press here is the
-                // microphone — hold it and talk, let go and the words appear above for editing.
-                // A tap still belongs to the text box and opens the keyboard.
+                // 按住说话：**长按输入框**开始录，左滑转文字、右滑直接发，上滑取消。
+                // 这段和群聊用的是同一个 [HoldToTalkLayer]，见 VoiceHold.kt。
                 if (text.isEmpty() && !editing) {
-                    val start = rememberUpdatedState(onHoldToTalk)
-                    val move = rememberUpdatedState(onHoldMove)
-                    val end = rememberUpdatedState(onHoldEnd)
-                    Box(
-                        Modifier
-                            .matchParentSize()
-                            .pointerInput(Unit) {
-                                val away = 72.dp.toPx()
-                                val sideways = 72.dp.toPx()
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    val long = awaitLongPressOrCancellation(down.id)
-                                    if (long == null) {
-                                        down.consume()
-                                        focus.requestFocus()
-                                        keyboard?.show()
-                                        return@awaitEachGesture
-                                    }
-                                    long.consume()
-                                    if (!start.value()) return@awaitEachGesture
-                                    // **上滑取消、左滑转文字、右滑直接发。**
-                                    // 没怎么动的默认还是转文字 —— 和原来那个行为一样，
-                                    // 这样老习惯不用改，新用法是"想清楚要哪样就滑过去"。
-                                    var target: HoldTarget? = HoldTarget.Text
-                                    while (true) {
-                                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                                        if (!change.pressed) break
-                                        val up = down.position.y - change.position.y > away
-                                        val dx = change.position.x - down.position.x
-                                        val now = when {
-                                            up -> null
-                                            dx <= -sideways -> HoldTarget.Text
-                                            dx >= sideways -> HoldTarget.Voice
-                                            else -> HoldTarget.Text
-                                        }
-                                        if (now != target) {
-                                            target = now
-                                            move.value(now)
-                                        }
-                                        change.consume()
-                                    }
-                                    end.value(target)
-                                }
-                            },
+                    HoldToTalkLayer(
+                        onTap = {
+                            focus.requestFocus()
+                            keyboard?.show()
+                        },
+                        onStart = onHoldToTalk,
+                        onMove = onHoldMove,
+                        onEnd = onHoldEnd,
+                        modifier = Modifier.matchParentSize(),
                     )
                 }
             }
