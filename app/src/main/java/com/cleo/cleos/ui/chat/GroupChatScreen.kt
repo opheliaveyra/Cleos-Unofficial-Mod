@@ -410,7 +410,8 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             }
             GlassSurface(Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(26.dp),
                 contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // 底对齐：单行时按钮槽 44dp 和输入框同样高（同一条中心线），多行时按钮贴底、不跟着漂。
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // ＋：默认只有它、输入框、发送 —— 别的都收在展开的那层里。
                     // 视觉 34dp / 点击 44dp（和单聊同一套，见 ChatInputParts.kt）。
                     BarIconButton(
@@ -423,7 +424,8 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                     )
                     Box(Modifier.weight(1f)) {
                         BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.fillMaxWidth()
-                            .heightIn(min = 42.dp, max = 130.dp).focusRequester(focus).semantics { contentDescription = "群聊消息" },
+                            // 最小高度和按钮槽同高（44dp）：单行时文字中心和图标中心对齐。
+                            .heightIn(min = 44.dp, max = 130.dp).focusRequester(focus).semantics { contentDescription = "群聊消息" },
                             textStyle = TextStyle(color = palette.content, fontSize = 16.sp), cursorBrush = SolidColor(palette.content),
                             decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) {
                                 if (draft.isEmpty()) Text("说点什么…", color = palette.contentSecondary, fontSize = 16.sp)

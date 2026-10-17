@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -297,18 +298,24 @@ private fun TabLabel(tab: GlassTab, active: Boolean, modifier: Modifier = Modifi
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        // 每个项的**结构都一样**：24dp 的图标框 + 2dp 间距 + 一行文字（行高 15sp，单行）。
+        // 四个项因此图标中心、文字基线都在同一条线上；靠 Column 居中，不写死偏移。
+        // 文字给了固定行高和 maxLines，系统字体放大时不会换行、也不会把图标挤歪。
         Icon(
             if (active) tab.selectedIcon else tab.icon,
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(24.dp),
         )
+        Spacer(Modifier.height(2.dp))
         Text(
             tab.label,
             color = color,
             fontSize = 11.sp,
+            lineHeight = 15.sp,
             fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-            modifier = Modifier.padding(top = 2.dp),
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }

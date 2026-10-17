@@ -2807,43 +2807,29 @@ private fun ChatInputBar(
         // the squares stay at the bottom. (Padding the buttons by hand left them 4dp from
         // the top and 8dp from the bottom: the text row was 48dp in a 50dp bar.)
         Row(verticalAlignment = Alignment.Bottom) {
+            // 所有按钮都用同一个 [BarIconButton]：槽高和输入框那一行一样，
+            // 视觉圆 34dp、图标 20dp —— 单行时和文字在同一条中心线上。
             // One + instead of two buttons: the two ways of attaching something appear under the
             // bar when it is open, the way a chat app does it.
-            Box(Modifier.size(BarHeight), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(if (attachOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent)
-                        .clickable(enabled = !editing, onClick = onAttachToggle),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
-                        contentDescription = if (attachOpen) "收起" else "加号：发图片或文件",
-                        tint = palette.contentSecondary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
+            BarIconButton(
+                if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
+                if (attachOpen) "收起" else "加号：发图片或文件",
+                onClick = onAttachToggle,
+                enabled = !editing,
+                tint = palette.contentSecondary,
+                background = if (attachOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent,
+                slotHeight = BarHeight,
+            )
             // Where the file button used to be: whether the TA may search the web.
-            Box(Modifier.size(width = 34.dp, height = BarHeight), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(if (searching) palette.accent.copy(alpha = 0.18f) else Color.Transparent)
-                        .clickable(enabled = !editing, onClick = onSearchToggle),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Rounded.TravelExplore,
-                        contentDescription = if (searching) "联网搜索开着，点一下关掉" else "联网搜索关着，点一下打开",
-                        tint = if (searching) palette.accentContent else palette.contentSecondary,
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
-            }
+            BarIconButton(
+                Icons.Rounded.TravelExplore,
+                if (searching) "联网搜索开着，点一下关掉" else "联网搜索关着，点一下打开",
+                onClick = onSearchToggle,
+                enabled = !editing,
+                tint = if (searching) palette.accentContent else palette.contentSecondary,
+                background = if (searching) palette.accent.copy(alpha = 0.18f) else Color.Transparent,
+                slotHeight = BarHeight,
+            )
             Box(
                 Modifier
                     .weight(1f)
@@ -2897,9 +2883,10 @@ private fun ChatInputBar(
                 enabled = !editing,
                 tint = if (drawerOpen) palette.accentContent else palette.contentSecondary,
                 background = if (drawerOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent,
+                slotHeight = BarHeight,
             )
             if (busy && !canSend && !editing) {
-                BarIconButton(Icons.Rounded.Stop, "停止", onClick = onStop, tint = palette.content, background = palette.content.copy(alpha = 0.1f))
+                BarIconButton(Icons.Rounded.Stop, "停止", onClick = onStop, tint = palette.content, background = palette.content.copy(alpha = 0.1f), slotHeight = BarHeight)
             } else {
                 BarIconButton(
                     Icons.Rounded.ArrowUpward,
@@ -2908,6 +2895,7 @@ private fun ChatInputBar(
                     enabled = sendEnabled && canSend,
                     tint = Color.White,
                     background = palette.accent.copy(alpha = if (sendEnabled && canSend) 1f else 0.35f),
+                    slotHeight = BarHeight,
                 )
             }
         }

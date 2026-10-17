@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cleo.cleos.glass.LocalGlassPalette
@@ -112,10 +113,15 @@ internal fun BarIconButton(
     enabled: Boolean = true,
     tint: Color? = null,
     background: Color = Color.Transparent,
+    /**
+     * 按钮槽的高度。**和输入框那一行同高**时，单行状态下按钮和文字才会在同一条中心线上；
+     * 多行时这一行是底对齐的，槽高固定，所以按钮不会跟着文字上下漂。
+     */
+    slotHeight: Dp = 44.dp,
 ) {
     val palette = LocalGlassPalette.current
     Box(
-        Modifier.size(44.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick),
+        Modifier.height(slotHeight).width(44.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Box(
