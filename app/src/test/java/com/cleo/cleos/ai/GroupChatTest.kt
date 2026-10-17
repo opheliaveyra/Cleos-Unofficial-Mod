@@ -45,6 +45,32 @@ class GroupChatTest {
         assertFalse(sent.any { it.content.contains("半句话") })
         assertTrue(sent.first().content.contains("按顺序轮到你"))
     }
+    @Test fun picturesSentToTheGroupActuallyReachTheModel() {
+        // 上游的提交信息里写着"视觉理解尚未接入"—— 指的就是这个：
+        // 群里发过图，模型只收到一段"图里有几张"的文字，**从来没看见过画面**。
+        val photo = com.cleo.cleos.data.MessageImage(file = "p1.jpg", width = 800, height = 600)
+        val withPicture = row(1, "user").copy(images = com.cleo.cleos.data.MessageImages.encode(listOf(photo)))
+        val sent = GroupChatRules.request(group, members, ta, listOf(withPicture),
+            "用户", emptyList(), ZonedDateTime.parse("2026-10-11T12:00:00+08:00"))
+        val asUser = sent.first { it.role == "user" && it.images.isNotEmpty() }
+        assertEquals("图要挂在消息上，不是只写一句「有图」", listOf("p1.jpg"), asUser.images)
+    }
+    @Test fun severalPicturesStayInOrder() {
+        val photos = listOf(
+            com.cleo.cleos.data.MessageImage(file = "a.jpg", width = 1, height = 1),
+            com.cleo.cleos.data.MessageImage(file = "b.jpg", width = 1, height = 1),
+        )
+        val withPictures = row(1, "user").copy(images = com.cleo.cleos.data.MessageImages.encode(photos))
+        val sent = GroupChatRules.request(group, members, ta, listOf(withPictures),
+            "用户", emptyList(), ZonedDateTime.now())
+        assertEquals(listOf("a.jpg", "b.jpg"), sent.first { it.images.isNotEmpty() }.images)
+    }
+    @Test fun aRowWithNoPicturesStillCarriesNone() {
+        // 没图的消息别凭空多出一个空列表 —— 那会让下面的合并逻辑以为"这条有附件"。
+        val sent = GroupChatRules.request(group, members, ta, listOf(row(1, "user")),
+            "用户", emptyList(), ZonedDateTime.now())
+        assertTrue(sent.all { it.images.isEmpty() })
+    }
     @Test fun successfulMemberIsNeverRequestedAgainOnRetry() = runBlocking {
         val calls = mutableListOf<Long>()
         GroupReplyEngine.round(listOf(row(2, "assistant", 10), row(3, "assistant", 20, status = "failed")), 3,

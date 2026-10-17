@@ -1,16 +1,25 @@
 package com.cleo.cleos.ui.chat
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.AlternateEmail
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.Stop
@@ -19,7 +28,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -30,9 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.cleo.cleos.ai.GroupChatRules
 import com.cleo.cleos.ai.GroupMemoryRules
 import com.cleo.cleos.ai.GroupToolRules
+import com.cleo.cleos.data.MessageImage
 import com.cleo.cleos.data.MessageImages
 import com.cleo.cleos.data.BubbleSpacing
 import com.cleo.cleos.data.db.GroupMessageEntity
@@ -68,12 +82,23 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
     val list = rememberLazyListState()
     var draft by rememberSaveable(groupId) { mutableStateOf("") }
     var mentions by rememberSaveable(groupId) { mutableStateOf(listOf<Long>()) }
+    /** 这次要一起发到群里的图（发之前得看得见、能删）。 */
+    var pictures by remember(groupId) { mutableStateOf(emptyList<MessageImage>()) }
+    var pickingPicture by remember(groupId) { mutableStateOf(false) }
     var loaded by remember(groupId, generation) { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     var editingMembers by remember { mutableStateOf(false) }
     var savingMembers by remember { mutableStateOf(false) }
     var problem by remember { mutableStateOf<String?>(null) }
+    val picturePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        pickingPicture = false
+        if (uri != null) scope.launch {
+            runCatching { c.images.import(uri, maxEdge = 2048, prefix = "group-") }
+                .onSuccess { pictures = pictures + MessageImage(it.file, it.width, it.height) }
+                .onFailure { problem = "这张图没能读进来" }
+        }
+    }
     var selectedText by remember { mutableStateOf<String?>(null) }
     var actionMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
     var toolMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
@@ -138,9 +163,32 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             if (mentions.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 mentions.forEach { id -> Chip("@${members.firstOrNull { it.companionId == id }?.name ?: "TA"} ×", false) { mentions = mentions - id } }
             }
+            // 选了、还没发出去的图 —— **发之前得看得见自己选了什么**。
+            if (pictures.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                pictures.forEach { picture ->
+                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp))) {
+                        AsyncImage(
+                            model = c.images.file(picture.file),
+                            contentDescription = "群里要发的图",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Box(
+                            Modifier.align(Alignment.TopEnd).padding(2.dp).size(18.dp).clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f))
+                                .clickable { pictures = pictures - picture; c.appScope.launch { c.images.delete(listOf(picture.file)) } },
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp)) }
+                    }
+                }
+            }
             GlassSurface(Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(26.dp),
                 contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassIconButton(Icons.Rounded.AddPhotoAlternate, "发图片", {
+                        pickingPicture = true
+                        picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }, page)
                     GlassIconButton(Icons.Rounded.AlternateEmail, "点名成员", { picking = true }, page)
                     BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.weight(1f)
                         .heightIn(min = 42.dp, max = 130.dp).semantics { contentDescription = "群聊消息" },
@@ -151,11 +199,13 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                         } })
                     if (busy) GlassIconButton(Icons.Rounded.Stop, "停止群聊回复", { act { c.groupChat.stop(groupId) } }, page)
                     else GlassIconButton(Icons.AutoMirrored.Rounded.Send, "发送群聊消息", {
-                        if (draft.isNotBlank() && !posting && loaded) act {
+                        // 只发图不写字也算一条 —— 群里发张图不用配文字。
+                        if ((draft.isNotBlank() || pictures.isNotEmpty()) && !posting && loaded) act {
                             posting = true
+                            val sentPictures = pictures
                             try {
-                                c.groupChat.send(groupId, draft, mentions)
-                                draft = ""; mentions = emptyList()
+                                c.groupChat.send(groupId, draft, mentions, sentPictures)
+                                draft = ""; mentions = emptyList(); pictures = emptyList()
                                 if (rows.isNotEmpty()) list.scrollToItem(rows.lastIndex)
                             } finally { posting = false }
                         }

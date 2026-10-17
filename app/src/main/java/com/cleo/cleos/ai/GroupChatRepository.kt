@@ -189,7 +189,14 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
         }
     }
 
-    suspend fun send(id: Long, text: String, mentions: List<Long>) {
+    /**
+     * 在群里说一句话，[pictures] 是这次一起发的图片。
+     *
+     * 图片早就在消息表里了（`GroupMessageEntity.images`），界面上也一直在显示 ——
+     * **只是没人往里写过**，所以群里一直发不了图。上游那边的提交信息也写着
+     * "群内用户上传、视觉理解……尚未接入"，这块两边都一样是空的。
+     */
+    suspend fun send(id: Long, text: String, mentions: List<Long>, pictures: List<MessageImage> = emptyList()) {
         ready.await()
         gate.withLock {
             check(!paused) { "正在恢复备份，请稍后再试" }
@@ -203,7 +210,8 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                 val pick = GroupChatRules.select(active.map { it.companionId }, mentions, group.nextSpeaker)
                 val now = System.currentTimeMillis()
                 val userId = dao.insertMessage(GroupMessageEntity(groupId = id, role = "user", content = content,
-                    createdAt = now, speakerName = settings.current().userName.ifBlank { "我" }, mentions = GroupChatRules.encode(mentions)))
+                    createdAt = now, speakerName = settings.current().userName.ifBlank { "我" }, mentions = GroupChatRules.encode(mentions),
+                    images = MessageImages.encode(pictures)))
                 val turn = dao.insertTurn(GroupTurnEntity(groupId = id, userMessageId = userId,
                     targets = GroupChatRules.encode(pick.targets), createdAt = now))
                 for (target in pick.targets) {
@@ -305,6 +313,15 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
             val messages = GroupChatRules.request(group, roster, ta.copy(name = slot.speakerName), history,
                 s.userName, GroupChatRules.ids(dao.message(turn.userMessageId)?.mentions ?: "[]"), ZonedDateTime.now(),
                 GroupMemoryRules.context(slot.groupId, notes, query, sources), specs)
+                // 图片在这儿才转成 data URL。
+                //
+                // 群聊不走 `ChatRepository.prepare` 那条路（那是私人聊天用的），
+                // 而 `ChatClient` 拿到 `images` 是**直接当 URL 写进请求体**的 ——
+                // 不转的话，发出去的是一个裸文件名，对面只会报"图片地址无效"。
+                .map { m ->
+                    if (m.images.isEmpty()) m
+                    else m.copy(images = m.images.mapNotNull { images.dataUrl(it) })
+                }
             _progress.update { it + (slot.id to GroupReplyProgress(System.nanoTime())) }
             val text = GroupToolReply.reply(messages, specs, ta.deepThinking,
                 stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking) },

@@ -73,11 +73,24 @@ object GroupChatRules {
             val photoReferences = GroupPhotoRules.context(row.images)
             val words = if (row.role == "user" || row.status == "sent") row.content else ""
             val content = (if (role == "assistant") words else "[$name${row.speakerId?.let { "，成员 $it" }.orEmpty()}$addressed]\n${words}") + references + photoReferences
+            // **人发的图要挂上去，让它真的看得见。**
+            //
+            // 之前所有图都只有 [photoReferences] 那段文字（"图里有几张、什么来源"），
+            // 模型从来没看见过画面 —— 上游提交信息里写的"视觉理解尚未接入"就是这个。
+            //
+            // **但只挂 `user` 行的**：
+            //
+            // · 人发的是新信息，"你说了什么它就该看见什么"
+            // · TA 自己发的那些（`share_photo` 从图库挑的）**不挂** —— 它挑的时候就知道是什么，
+            //   再塞回去只是白烧 token；而且一轮里几位成员轮流回，历史每重发一次图就多一份钱
+            //
+            // 这条省得不算小：群里一张图 base64 进去是几千 token。
+            val pictures = if (row.role == "user") MessageImages.decode(row.images).map { it.file } else emptyList()
             // Some relays require alternating roles. Keep the authors on each merged segment.
             if (messages.lastOrNull()?.role == role) {
                 val previous = messages.removeAt(messages.lastIndex)
-                messages += previous.copy(content = previous.content + "\n\n" + content)
-            } else messages += ApiMessage(role, content)
+                messages += previous.copy(content = previous.content + "\n\n" + content, images = previous.images + pictures)
+            } else messages += ApiMessage(role, content, images = pictures)
         }
         if (messages.lastOrNull()?.role != "user") messages += ApiMessage("user", "现在轮到你作为${ta.name.ifBlank { "TA" }}回复这一轮群聊。")
         return messages
