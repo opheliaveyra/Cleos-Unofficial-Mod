@@ -26,8 +26,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -53,6 +56,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cleo.cleos.AppContainer
 import com.cleo.cleos.ai.McpTool
+import com.cleo.cleos.data.McpHeader
 import com.cleo.cleos.data.McpServer
 import com.cleo.cleos.glass.GlassIconButton
 import com.cleo.cleos.glass.GlassShape
@@ -76,7 +80,14 @@ class McpEditViewModel(private val c: AppContainer, startId: String) : ViewModel
     var name by mutableStateOf("")
     var url by mutableStateOf("")
     var token by mutableStateOf("")
-    var header by mutableStateOf("")
+    /** 自定义请求头，可以多条（名字 + 值）。 */
+    val headers = mutableStateListOf<McpHeader>()
+    var transport by mutableStateOf(McpServer.TRANSPORT_HTTP)
+    /** 点了「保存」之后的一句话反馈。 */
+    var saveMessage by mutableStateOf<String?>(null)
+        private set
+    var saving by mutableStateOf(false)
+        private set
     var askFirst by mutableStateOf(true)
     private var enabled = true
     val allowed = mutableStateListOf<String>()
@@ -98,7 +109,8 @@ class McpEditViewModel(private val c: AppContainer, startId: String) : ViewModel
                 name = s.name
                 url = s.url
                 token = s.token
-                header = s.header
+                headers.addAll(s.effectiveHeaders)
+                transport = s.transport
                 askFirst = s.askFirst
                 enabled = s.enabled
                 allowed.addAll(s.allowed)
@@ -108,7 +120,39 @@ class McpEditViewModel(private val c: AppContainer, startId: String) : ViewModel
         }
     }
 
-    private fun server() = McpServer(id, name.trim(), url.trim(), token.trim(), header.trim(), enabled, askFirst, allowed.toSet(), denied.toSet())
+    private fun server() = McpServer(
+        id = id,
+        name = name.trim(),
+        url = url.trim(),
+        token = token.trim(),
+        headers = headers.map { McpHeader(it.name.trim(), it.value.trim()) }.filterNot { it.isBlank },
+        transport = transport,
+        enabled = enabled,
+        askFirst = askFirst,
+        allowed = allowed.toSet(),
+        denied = denied.toSet(),
+    )
+
+    fun addHeader() { headers.add(McpHeader()) }
+
+    fun removeHeader(index: Int) { if (index in headers.indices) headers.removeAt(index) }
+
+    /** 明确的保存：点一下就知道存没存上（返回时也会再存一次，防丢）。 */
+    fun save() {
+        if (saving) return
+        val s = server().let { if (it.name.isEmpty()) it.copy(name = hostOf(it.url)) else it }
+        if (s.url.isBlank()) {
+            saveMessage = "先填地址"
+            return
+        }
+        saving = true
+        saveMessage = null
+        viewModelScope.launch {
+            val ok = runCatching { c.mcp.servers.save(s) }.isSuccess
+            saving = false
+            saveMessage = if (ok) "已保存" else "没存上，再试一次"
+        }
+    }
 
     fun test() {
         if (testing || url.isBlank()) return
@@ -199,18 +243,63 @@ fun McpEditScreen(id: String, onBack: () -> Unit) {
                     onValueChange = { vm.token = it },
                     label = { Text("Token") },
                     placeholder = { Text("有的服务要；粘整串「Bearer …」也行") },
+                    supportingText = {
+                        Text("发成 Authorization: Bearer …。下面自定义头里如果自己写了 Authorization，就不再发这个。")
+                    },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = vm.header,
-                    onValueChange = { vm.header = it },
-                    label = { Text("另一个请求头") },
-                    placeholder = { Text("名字: 值；一般不用填") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                // 连接方式：两种 MCP 传输走的协议不一样，选错了会连不上。
+                Text("连接方式", color = palette.contentSecondary, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pill("Streamable HTTP", vm.transport == McpServer.TRANSPORT_HTTP) { vm.transport = McpServer.TRANSPORT_HTTP }
+                    Pill("老式 SSE", vm.transport == McpServer.TRANSPORT_SSE) { vm.transport = McpServer.TRANSPORT_SSE }
+                }
+                Text(
+                    "新服务一般选 Streamable HTTP；只有 /sse 事件流的老服务才选老式 SSE。",
+                    color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp,
+                )
+                // 自定义请求头：可以多条（名字 + 值），也支持删。
+                Text("自定义请求头（可以多条）", color = palette.contentSecondary, fontSize = 12.sp)
+                vm.headers.forEachIndexed { i, h ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = h.name,
+                            onValueChange = { vm.headers[i] = h.copy(name = it) },
+                            label = { Text("名字") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = h.value,
+                            onValueChange = { vm.headers[i] = h.copy(value = it) },
+                            label = { Text("值") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1.3f),
+                        )
+                        IconButton(onClick = { vm.removeHeader(i) }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "删掉这条", tint = palette.contentSecondary)
+                        }
+                    }
+                }
+                TextButton(onClick = { vm.addHeader() }) { Text("＋ 加一条请求头", color = palette.accentContent) }
+            }
+
+            Card {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Pill(if (vm.saving) "正在保存…" else "保存", selected = true) { vm.save() }
+                    Spacer(Modifier.weight(1f))
+                    vm.saveMessage?.let { Text(it, color = palette.accentContent, fontSize = 13.sp) }
+                }
+                Text(
+                    "离开这一页时也会自动存一次（所以返回不会丢）；点「保存」会立刻告诉你存没存上。",
+                    color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp,
                 )
             }
             Card {

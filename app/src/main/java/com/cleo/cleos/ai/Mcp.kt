@@ -30,8 +30,10 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 /** A tool an MCP service offers, as the service described it. */
 data class McpTool(
@@ -154,6 +156,10 @@ object Mcp {
         return take() ?: throw McpException("服务没给回应就断开了")
     }
 
+    /** 一条 SSE `data:` 里的 JSON（不要求是响应 —— SSE 传输那边自己按 id 对）。 */
+    internal fun element(text: String): JsonObject? =
+        runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull()
+
     /** A response on its own (the body was JSON), checked to be the one to request [id]. */
     fun fromJson(body: String, id: Int): JsonObject {
         val message = runCatching { json.parseToJsonElement(body) }.getOrNull()
@@ -266,7 +272,7 @@ class McpClient(http: OkHttpClient, private val version: String) {
     private val sessions = ConcurrentHashMap<String, Session>()
     private val ids = AtomicInteger(1)
 
-    private class Session(val id: String?, val protocol: String)
+    private class Session(val id: String?, val protocol: String, val sse: SseLink? = null)
 
     private class SessionGone : Exception()
 
@@ -304,6 +310,8 @@ class McpClient(http: OkHttpClient, private val version: String) {
     }
 
     private fun open(server: McpServer): Session {
+        // 两种传输的**第一次握手**不一样：Streamable HTTP 直接 POST，老式 SSE 要先 GET 一条事件流。
+        if (server.transport == McpServer.TRANSPORT_SSE) return openSse(server)
         val id = ids.getAndIncrement()
         val (message, sessionId) = post(server, null, Mcp.request(id, "initialize", Mcp.initializeParams(version)), id)
         val result = Mcp.resultOf(message)
@@ -316,7 +324,144 @@ class McpClient(http: OkHttpClient, private val version: String) {
 
     private fun send(server: McpServer, session: Session, method: String, params: JsonObject?): JsonObject {
         val id = ids.getAndIncrement()
-        return Mcp.resultOf(post(server, session, Mcp.request(id, method, params), id).first)
+        val body = Mcp.request(id, method, params)
+        // 老式 SSE：请求 POST 出去，**回应从那条 GET 流里回来**。
+        val message = session.sse?.request(body, id) ?: post(server, session, body, id).first
+        return Mcp.resultOf(message)
+    }
+
+    /** 老式 SSE 的握手：GET 事件流，等它给出要 POST 的端点，再从流里读 initialize 的回应。 */
+    private fun openSse(server: McpServer): Session {
+        val link = SseLink(server)
+        link.start()
+        val id = ids.getAndIncrement()
+        val message = link.request(Mcp.request(id, "initialize", Mcp.initializeParams(version)), id)
+        val result = Mcp.resultOf(message)
+        val session = Session(null, (result["protocolVersion"] as? JsonPrimitive)?.contentOrNull ?: Mcp.PROTOCOL, link)
+        runCatching { link.post(Mcp.notification("notifications/initialized")) }
+            .onFailure { Log.w(TAG, "initialized notification failed") }
+        return session
+    }
+
+    /**
+     * 老式 HTTP+SSE 传输（MCP 2024-11 的写法，很多老服务和中转只有这个）：
+     *
+     * 1. `GET 地址`（`Accept: text/event-stream`）拿到一条事件流
+     * 2. 流里第一个 `endpoint` 事件给出**发请求用的地址**（通常带 session 参数）
+     * 3. 之后每个请求 `POST` 到那个地址，**回应从同一条流里回来**（`message` 事件，按 id 对）
+     *
+     * 后来才有 Streamable HTTP（直接 POST 到地址）—— 两种都实现，是因为不少服务只认旧的。
+     */
+    private inner class SseLink(private val server: McpServer) {
+        private val inbox = LinkedBlockingQueue<JsonObject>()
+        private var call: okhttp3.Call? = null
+        @Volatile private var endpoint: String? = null
+        @Volatile private var closed = false
+
+        fun start() {
+            val request = Request.Builder()
+                .url(server.url.trim())
+                .headers(headers(server, null))
+                .header("Accept", "text/event-stream")
+                .get()
+                .build()
+            val c = http.newCall(request)
+            call = c
+            val response = try {
+                c.execute()
+            } catch (e: IOException) {
+                throw McpException(ioMessage(e))
+            }
+            if (!response.isSuccessful) {
+                val body = runCatching { response.body.string().take(160) }.getOrDefault("")
+                throw McpException(describe(response.code, body))
+            }
+            thread(name = "mcp-sse") {
+                try {
+                    val reader = response.body.byteStream().bufferedReader(Charsets.UTF_8)
+                    var event = ""
+                    var data = StringBuilder()
+                    fun flush() {
+                        val text = data.toString().trim()
+                        data = StringBuilder()
+                        if (text.isNotEmpty()) {
+                            when (event) {
+                                "endpoint" -> endpoint = resolveEndpoint(text)
+                                "message", "" -> Mcp.element(text)?.let { inbox.put(it) }
+                            }
+                        }
+                        event = ""
+                    }
+                    while (true) {
+                        val line = reader.readLine() ?: break
+                        when {
+                            line.isEmpty() -> flush()
+                            line.startsWith("event:") -> { flush(); event = line.substring(6).trim() }
+                            line.startsWith("data:") -> data.append(line.substring(5).trim()).append('\n')
+                        }
+                    }
+                    flush()
+                } catch (_: Exception) {
+                    // 连接断了：等回应的地方会报出来。
+                } finally {
+                    closed = true
+                }
+            }
+            // 等 endpoint。正常立刻到；等不到就是这条路走不通。
+            val deadline = System.currentTimeMillis() + 30_000
+            while (endpoint == null && System.currentTimeMillis() < deadline) {
+                if (closed) throw McpException("SSE 连接断了，没能拿到要 POST 的地址")
+                Thread.sleep(50)
+            }
+            if (endpoint == null) throw McpException("这个地址 30 秒都没给出要 POST 的端点 —— 可能不是老式 SSE 服务")
+        }
+
+        fun post(body: String) {
+            val url = endpoint ?: throw McpException("SSE 还没准备好")
+            val request = Request.Builder()
+                .url(url)
+                .headers(headers(server, null))
+                .post(body.toRequestBody(JSON))
+                .build()
+            try {
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw McpException(describe(response.code, runCatching { response.body.string().take(160) }.getOrDefault("")))
+                    }
+                }
+            } catch (e: IOException) {
+                throw McpException(ioMessage(e))
+            }
+        }
+
+        /** 发一条请求，等 id 对得上的那条回应；中间的 progress / log 事件跳过。 */
+        fun request(body: String, id: Int): JsonObject {
+            post(body)
+            val deadline = System.currentTimeMillis() + 90_000
+            while (true) {
+                val left = deadline - System.currentTimeMillis()
+                if (left <= 0) throw McpException(if (closed) "SSE 连接断了，没有等到回应" else "等太久没有回应")
+                val message = inbox.poll(left, TimeUnit.MILLISECONDS)
+                    ?: throw McpException(if (closed) "SSE 连接断了，没有等到回应" else "等太久没有回应")
+                if ((message["id"] as? JsonPrimitive)?.contentOrNull == id.toString()) return message
+            }
+        }
+
+        private fun resolveEndpoint(text: String): String {
+            if (text.startsWith("http://", true) || text.startsWith("https://", true)) return text
+            return runCatching { java.net.URI(server.url.trim()).resolve(text).toString() }.getOrDefault(server.url.trim())
+        }
+    }
+
+    /** 网络错误翻成人话（连接测试和正常调用都用这一份）。 */
+    private fun ioMessage(e: IOException): String = when (e) {
+        is UnknownHostException -> "找不到这个地址的服务器：检查地址，或者网络是不是断了"
+        is SocketTimeoutException -> "等太久没有回应"
+        else -> if (e.message?.contains("CLEARTEXT", ignoreCase = true) == true) {
+            "只支持 https:// 开头的地址"
+        } else {
+            "网络出错：${e.message ?: e.javaClass.simpleName}"
+        }
     }
 
     /** One POST. [id] null for a notification, which gets no answer. */
@@ -360,8 +505,11 @@ class McpClient(http: OkHttpClient, private val version: String) {
 
     private fun headers(server: McpServer, session: Session?): Headers = Headers.Builder().apply {
         add("Accept", "application/json, text/event-stream")
-        Mcp.bearer(server.token)?.let { add("Authorization", "Bearer $it") }
-        Mcp.header(server.header)?.let { (name, value) -> set(name, value) }
+        // 自定义请求头先上（可以多条）；用 add 而不是 set，重名也能按顺序发出去。
+        server.effectiveHeaders.forEach { h -> add(h.name, h.value) }
+        // **已经自己写了 Authorization 就不再发 Bearer**：一条请求里两个 Authorization
+        // 时服务端只认第一个，结果往往是一个莫名其妙的 401。
+        if (!server.hasOwnAuthorization) Mcp.bearer(server.token)?.let { add("Authorization", "Bearer $it") }
         session?.id?.let { add("Mcp-Session-Id", it) }
         session?.let { add("MCP-Protocol-Version", it.protocol) }
     }.build()
@@ -372,7 +520,7 @@ class McpClient(http: OkHttpClient, private val version: String) {
             401, 403 -> "Token 不对，或者已经失效了（$code）"
             404 -> "地址不对（404）"
             // The old HTTP+SSE transport takes a GET to /sse and a POST elsewhere.
-            405 -> "这个地址不收 POST：可能是老式的 SSE 接口，现在只支持 Streamable HTTP（405）"
+            405 -> "这个地址不收 POST：如果它是老式的 SSE 接口，把传输方式改成「老式 SSE」再试（405）"
             in 500..599 -> "服务那边出错了（$code）"
             else -> "请求失败（$code）"
         }

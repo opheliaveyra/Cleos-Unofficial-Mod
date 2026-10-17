@@ -283,7 +283,7 @@ class AppContainer(private val context: Context) {
         db.conversations().idsFor(id).any { chat.busy(it) || chat.isTyping(it) }
     }
     val favorites = com.cleo.cleos.data.Favorites(db, settings, images)
-    val backup = BackupService(context, db, settings, images, files)
+    val backup = BackupService(context, db, settings, images, files, mcp.servers)
     val imports = ForeignImport(context, db, companions)
     val notifier = Notifier(context, images)
 

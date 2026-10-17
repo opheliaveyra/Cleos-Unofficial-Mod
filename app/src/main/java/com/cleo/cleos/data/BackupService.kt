@@ -126,11 +126,17 @@ data class BackupFile(
     val groupTurns: List<com.cleo.cleos.data.db.GroupTurnEntity> = emptyList(),
     val groupMessages: List<com.cleo.cleos.data.db.GroupMessageEntity> = emptyList(),
     val groupMemories: List<com.cleo.cleos.data.db.GroupMemoryEntity> = emptyList(),
+    /**
+     * 接的外部服务（MCP）。以前不进备份（地址里可能带 key、token 本身就是密钥）；
+     * 现在按需求一起带走 —— 备份文件是给人自己保管的，恢复后服务列表和鉴权都还在。
+     * 旧备份没有这一段：恢复时不动现有的服务。
+     */
+    val mcpServers: List<McpServer>? = null,
 ) {
     companion object {
         const val FORMAT = "cleos-backup"
         // Older readers must not re-activate former members or drop shared conversations.
-        const val VERSION = 6
+        const val VERSION = 7
     }
 }
 
@@ -184,6 +190,8 @@ class BackupService(
     private val images: ImageStore,
     /** Files sent in the chat, and the text read out of them: both travel with a backup. */
     private val files: FileStore,
+    /** 接的外部服务（MCP）：现在也进备份。 */
+    private val mcp: McpServers,
 ) {
     private val resolver = context.contentResolver
     private val cacheDir = context.cacheDir
@@ -295,6 +303,7 @@ class BackupService(
             groupTurns = db.groups().allTurns(),
             groupMessages = db.groups().allMessages(),
             groupMemories = db.groups().allMemories(),
+            mcpServers = mcp.current(),
         ) }
         val stickerFiles = data.stickers.map { it.file }.toSet()
         val favoriteFiles = data.favorites.flatMap { FavoriteContent.files(FavoriteContent.decode(it.parts)) }
@@ -460,6 +469,8 @@ class BackupService(
                 db.groups().restoreTurns(d.groupTurns.map(GroupBackupRules::restored))
                 db.groups().restoreMessages(d.groupMessages.map { com.cleo.cleos.ai.GroupPhotoRules.restored(GroupBackupRules.restored(it)) { name -> picture(name) != null }.copy(speakerAvatar = picture(it.speakerAvatar)) })
                 db.groups().restoreMemories(d.groupMemories)
+            // 外部服务：备份里有这一段就整体换回来；旧备份没有，则不动现在这套。
+            d.mcpServers?.let { mcp.replaceAll(it) }
             }
             // A backup from before each voice service had its own place says "api" for all of them.
             val (speechEngine, speechVoices) = Speech.migrate(bs.speechEngine, bs.speechBaseUrl, bs.speechVoice, bs.speechVoices)

@@ -527,10 +527,14 @@ private fun VoiceListDialog(voices: List<VoiceOption>, current: String, onPick: 
 internal fun McpPage(vm: SettingsViewModel, onOpenMcp: (String) -> Unit) {
     val palette = LocalGlassPalette.current
     val servers by vm.mcpServers.collectAsStateWithLifecycle()
+    // 三种添加方式：手动 / 粘贴 JSON / 导入文件（后两个是同一个对话框，只是进来就弹文件选择）。
+    var importing by remember { mutableStateOf(false) }
+    var autoPickFile by remember { mutableStateOf(false) }
     Section("接上的服务") {
         Text(
-            "接上 MCP 服务，TA 就能用它们的工具，比如点咖啡、查路线。只支持 Streamable HTTP 的地址，电脑上 stdio 那种接不了。" +
-                "地址和 Token 加密存在这台手机上，不进备份。",
+            "接上 MCP 服务，TA 就能用它们的工具，比如点咖啡、查路线。" +
+                "支持 Streamable HTTP 和老式 HTTP+SSE；电脑上 stdio（本地进程）那种 Android 里跑不了，" +
+                "导入时会标成「当前环境不支持」。地址和 Token 加密存在这台手机上。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
@@ -538,6 +542,19 @@ internal fun McpPage(vm: SettingsViewModel, onOpenMcp: (String) -> Unit) {
         for (server in servers) {
             McpRow(server, onOpen = { onOpenMcp(server.id) }) { vm.setMcpEnabled(server.id, it) }
         }
-        Chip("添加一个服务", selected = false) { onOpenMcp("") }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("＋ 手动添加", selected = false) { onOpenMcp("") }
+            Chip("粘贴 JSON", selected = false) { autoPickFile = false; importing = true }
+            Chip("导入文件", selected = false) { autoPickFile = true; importing = true }
+        }
+    }
+    if (importing) {
+        val c = com.cleo.cleos.ui.common.appContainer()
+        McpImportDialog(
+            servers = c.mcp.servers,
+            autoPickFile = autoPickFile,
+            onDismiss = { importing = false },
+            onImported = { importing = false },
+        )
     }
 }
