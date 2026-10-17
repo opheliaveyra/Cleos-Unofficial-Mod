@@ -890,6 +890,21 @@ class ChatRepository(
     }
 
     /**
+     * 这次请求记到谁头上：单聊就是这段会话对应的角色。
+     * 查不到（会话/角色已删）就记成没有归属，不瞎填一个名字。
+     */
+    private suspend fun usageTag(conversationId: Long, purpose: String): UsageTag {
+        val convo = runCatching { db.conversations().get(conversationId) }.getOrNull()
+        val ta = convo?.companionId?.let { runCatching { db.companions().get(it) }.getOrNull() }
+        return UsageTag(
+            scope = com.cleo.cleos.data.db.TokenUsageEntity.SCOPE_TA,
+            scopeId = ta?.id ?: 0L,
+            scopeName = ta?.name.orEmpty(),
+            purpose = purpose,
+        )
+    }
+
+    /**
      * One request in a call: the words to [say] as they come, nothing shown in the chat. Calls are
      * stored at once (they are about to be acted on); an answer without calls comes back as
      * [Step.Said], unstored. A failure is thrown, unless it is the refusal [mayRefuse] allows for.
@@ -910,7 +925,7 @@ class ChatRepository(
         val reasoning = StringBuilder()
         var calls = emptyList<ToolCall>()
         try {
-            client.stream(endpoint, messages, specs, temperature = temperature, maxTokens = maxTokens).collect { event ->
+            client.stream(endpoint, messages, specs, temperature = temperature, maxTokens = maxTokens, usageTag = usageTag(conversationId, "chat")).collect { event ->
                 when (event) {
                     is ChatEvent.Delta -> {
                         text.append(event.text)
@@ -1504,6 +1519,12 @@ class ChatRepository(
             client.stream(
                 ApiEndpoint(vision.baseUrl, key, vision.model),
                 listOf(ApiMessage("system", VISION_RULE), ApiMessage("user", "把这几张图片的内容说清楚。", images = urls)),
+                usageTag = UsageTag(
+                    scope = com.cleo.cleos.data.db.TokenUsageEntity.SCOPE_GLOBAL,
+                    scopeId = 0L,
+                    scopeName = "",
+                    purpose = "vision",
+                ),
             ).collect { if (it is ChatEvent.Delta) text.append(it.text) }
             text.toString().trim()
         } catch (e: Exception) {
@@ -1580,7 +1601,7 @@ class ChatRepository(
         live(StreamingReply(conversationId, "", thinking = false))
         try {
             onRequest()
-            client.stream(endpoint, messages, specs, thinking, temperature = temperature, maxTokens = maxTokens).collect { event ->
+            client.stream(endpoint, messages, specs, thinking, temperature = temperature, maxTokens = maxTokens, usageTag = usageTag(conversationId, "chat")).collect { event ->
                 when (event) {
                     is ChatEvent.Delta -> {
                         doneThinking()

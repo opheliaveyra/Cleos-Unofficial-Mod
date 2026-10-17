@@ -114,7 +114,16 @@ sealed interface ChatEvent {
      * 一段 10 秒视频正常是几千个 token（Seed/Qwen 约 5000、Gemini 约 700、Kimi 约 14000），
      * **只有几十个就说明视频根本没进去**。见 `ChatRepository.prepareVideo` 里那条检查。
      */
-    data class Usage(val prompt: Int, val completion: Int = 0) : ChatEvent
+    data class Usage(
+        val prompt: Int,
+        val completion: Int = 0,
+        /** 服务端自己给的总数；没给就是 null（不去拿 prompt + completion 冒充）。 */
+        val total: Int? = null,
+        /** 缓存命中的输入 token（OpenAI `prompt_tokens_details.cached_tokens` 等）。 */
+        val cached: Int? = null,
+        /** 推理 token（`completion_tokens_details.reasoning_tokens` 等）。 */
+        val reasoning: Int? = null,
+    ) : ChatEvent
 }
 
 /**
@@ -260,9 +269,27 @@ internal object AddressMemory {
  * both halves of such a line, which shows up as characters missing from the middle of
  * long replies. readUtf8Line() waits for the whole line.
  */
+/**
+ * 一次请求该记到谁头上：单聊的某个角色（[SCOPE_TA]）或某个群（[SCOPE_GROUP]），
+ * 以及这次是干什么用的（chat / group_chat / recap / memory / diary / vision / video / tool / feed / letter / probe）。
+ * 群聊里 [speaker] 是发言角色，可能为空。
+ */
+data class UsageTag(
+    val scope: String,
+    val scopeId: Long,
+    val scopeName: String,
+    val purpose: String,
+    val speaker: String = "",
+)
+
 class ChatClient(
     private val http: OkHttpClient,
     private val diagnostic: (String) -> Unit = { Log.i("CleosTools", it) },
+    /**
+     * 每次请求结束后回调一次（成功、失败、被停都会回调），由 App 那边落到用量表里。
+     * 参数：记到谁头上、这次用的地址/型号、服务端报的用量（没给就是 null）、这次是否成功。
+     */
+    private val onUsage: ((UsageTag, ApiEndpoint, ChatEvent.Usage?, Boolean) -> Unit)? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -289,6 +316,8 @@ class ChatClient(
          */
         temperature: Float? = null,
         maxTokens: Int? = null,
+        /** 这次请求记到谁头上；不传就不记（探针之类）。 */
+        usageTag: UsageTag? = null,
     ): Flow<ChatEvent> = callbackFlow {
         val requestId = java.util.UUID.randomUUID().toString()
         fun trace(metadata: String) = diagnostic("requestId=$requestId $metadata")
@@ -355,6 +384,9 @@ class ChatClient(
                         return answer
                     }
                 }
+                var ok = false
+                var used: ChatEvent.Usage? = null
+                try {
                 val answer = try {
                     execute(off)
                 } catch (e: ChatException) {
@@ -389,6 +421,13 @@ class ChatClient(
                     } finally {
                         trace("event=response_structure " + parser.diagnostic())
                     }
+                    used = parser.lastUsage
+                    ok = true
+                }
+                } finally {
+                    // 一次请求记一条：成功、失败、中途被停都记，但只记这一次。
+                    // 服务端没给 usage 就是 missing —— 不拿 0 冒充。
+                    if (usageTag != null) onUsage?.invoke(usageTag, to, used, ok)
                 }
             }
             try {

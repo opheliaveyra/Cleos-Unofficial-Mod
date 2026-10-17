@@ -93,6 +93,7 @@ enum class SettingsPage(val title: String) {
     VoiceInput("发语音"),
     WebSearch("联网搜索"),
     Look("外观"),
+    Usage("用量统计"),
     Data("数据与备份"),
     About("关于"),
     ;
@@ -252,6 +253,8 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         Entry(Icons.Rounded.Palette, "外观", (if (settings.wallpaper == null) "默认壁纸" else "自己的壁纸") + " · 玻璃$glass") {
             onOpen(SettingsPage.Look)
         }
+        RowDivider()
+        Entry(Icons.Rounded.Info, "用量统计", "每次请求的 Token：按角色、群、用途看") { onOpen(SettingsPage.Usage) }
         RowDivider()
         Entry(Icons.Rounded.Inventory2, "数据与备份", "导出、恢复、导入记忆") { onOpen(SettingsPage.Data) }
         RowDivider()

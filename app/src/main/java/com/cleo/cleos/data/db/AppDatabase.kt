@@ -34,8 +34,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupTurnEntity::class,
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
+        TokenUsageEntity::class,
     ],
-    version = 42,
+    version = 43,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -115,6 +116,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // 41 -> 42: 每个角色、每个群可以有自己的「我的头像」（两个可空的 TEXT 列，存 ImageStore 里的名字）。
         // 空 = 用全局默认头像 —— 旧数据什么都不用搬。
         AutoMigration(from = 41, to = 42),
+        // 42 -> 43: token 用量（一张新表，只记用量，不含正文/Key）。
+        AutoMigration(from = 42, to = 43),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -135,6 +138,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun stickers(): StickerDao
     abstract fun favorites(): FavoriteDao
     abstract fun lore(): LoreDao
+    abstract fun usage(): UsageDao
 
     /**
      * Before version 5 there was one TA, so every entry a TA wrote was TA 1's. (Conversations

@@ -31,6 +31,10 @@ internal class StreamParser {
     private val think = ThinkSplitter()
     private val structure = StreamStructure()
 
+    /** 这条流最后报的那次用量；一次都没报就是 null（服务商没给，不是 0）。 */
+    var lastUsage: ChatEvent.Usage? = null
+        private set
+
     fun diagnostic(): String = structure.diagnostic(calls.size)
 
     fun feed(data: String): List<ChatEvent> {
@@ -47,11 +51,8 @@ internal class StreamParser {
         // `jsonObject` 会抛 `Element class kotlinx.serialization.json.JsonNull is not a JsonObject`，
         // 一句人话都没有（小米 MiMo 的视频流就是这么崩的，见 CapabilityTester）。
         // 现在一律先用 as? 取，取不到就算这一帧没有它。
-        val usage = (obj["usage"] as? JsonObject)?.let { u ->
-            numberOrNull(u["prompt_tokens"])?.let { prompt ->
-                ChatEvent.Usage(prompt, numberOrNull(u["completion_tokens"]) ?: 0)
-            }
-        }
+        val usage = (obj["usage"] as? JsonObject)?.let(::usageOf)
+        usage?.let { lastUsage = it }
         // A relay that ignores stream:true sends the whole reply as one JSON, under "message".
         // choices 也可能是 null / 空数组（keep-alive 帧），或者第一个元素是 null。
         val choice = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject
@@ -84,6 +85,9 @@ internal class StreamParser {
      */
     fun wholeReply(body: String): List<ChatEvent> {
         val text = body.trim()
+        // 非流式的整个回应里也可能带 usage（中转站把流式关掉时就这样）。
+        runCatching { json.parseToJsonElement(text).jsonObject["usage"] as? JsonObject }
+            .getOrNull()?.let(::usageOf)?.let { lastUsage = it }
         if (text.isEmpty()) {
             throw ChatException(
                 "连上了，但服务什么内容都没回。多半是中转站不支持流式、这个模型名没开通，或者额度有问题。",
@@ -108,6 +112,27 @@ internal class StreamParser {
     /** JSON null 也是 [JsonPrimitive] 的子类 —— 这里必须排除，否则 intOrNull 会读出 0 或者抛。 */
     private fun numberOrNull(e: JsonElement?): Int? =
         (e as? JsonPrimitive)?.takeIf { it !is JsonNull }?.intOrNull
+
+    /**
+     * 一帧 usage 里的用量。认 OpenAI 的 prompt_tokens / completion_tokens，也认
+     * input_tokens / output_tokens（Anthropic 风格的兼容中转）；明细能读就读，
+     * 读不到就是 null —— 不拿 0 冒充「服务端说没有」。
+     */
+    private fun usageOf(u: JsonObject): ChatEvent.Usage? {
+        val prompt = numberOrNull(u["prompt_tokens"]) ?: numberOrNull(u["input_tokens"]) ?: return null
+        val completion = numberOrNull(u["completion_tokens"]) ?: numberOrNull(u["output_tokens"]) ?: 0
+        fun detail(root: String): JsonObject? = u[root] as? JsonObject
+        return ChatEvent.Usage(
+            prompt = prompt,
+            completion = completion,
+            total = numberOrNull(u["total_tokens"]),
+            cached = numberOrNull(detail("prompt_tokens_details")?.get("cached_tokens"))
+                ?: numberOrNull(detail("input_tokens_details")?.get("cached_tokens"))
+                ?: numberOrNull(u["cached_tokens"]),
+            reasoning = numberOrNull(detail("completion_tokens_details")?.get("reasoning_tokens"))
+                ?: numberOrNull(detail("output_tokens_details")?.get("reasoning_tokens")),
+        )
+    }
 
     private fun addPiece(piece: JsonObject) {
         val id = (piece["id"] as? JsonPrimitive)?.contentOrNull.orEmpty()

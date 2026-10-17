@@ -136,6 +136,7 @@ fun SettingsScreen(
                     SettingsPage.VoiceInput -> VoiceInputPage(vm)
                     SettingsPage.WebSearch -> WebSearchPage(vm)
                     SettingsPage.Look -> LookPage(vm, onOpenLab, onOpenBubbleLab)
+            SettingsPage.Usage -> UsagePage(vm)
                     SettingsPage.Data -> DataPage(vm)
                     SettingsPage.About -> AboutPage()
                 }

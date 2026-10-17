@@ -469,7 +469,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                 }
             _progress.update { it + (slot.id to GroupReplyProgress(System.nanoTime())) }
             val text = GroupToolReply.reply(messages, specs, ta.deepThinking,
-                stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking, temperature = use.temperature, maxTokens = use.maxTokens) },
+                stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = com.cleo.cleos.data.db.TokenUsageEntity.SCOPE_GROUP, scopeId = slot.groupId, scopeName = group.title, purpose = "group_chat", speaker = slot.speakerName)) },
                 execute = { call ->
                     currentCoroutineContext().ensureActive()
                     check(dao.members(slot.groupId).any { it.companionId == target && it.active } && db.companions().get(target) != null) { "这位 TA 已不在群里" }

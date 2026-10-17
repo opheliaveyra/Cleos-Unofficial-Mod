@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -309,6 +310,29 @@ class RequestBodyTest {
     // 能力测试报的错就是这个，跟"模型会不会看视频"一点关系都没有。
 
     /** 只关心事件的写法（不用上面那个 run：在这里会被解析成 stdlib 的重载）。 */
+    @Test
+    fun usageDetailsAreReadWhenTheServiceSendsThem() {
+        val usage = eventsOf(
+            """{"usage":{"prompt_tokens":120,"completion_tokens":30,"total_tokens":150,"prompt_tokens_details":{"cached_tokens":100},"completion_tokens_details":{"reasoning_tokens":12}}}""",
+        ).filterIsInstance<ChatEvent.Usage>().single()
+        assertEquals(120, usage.prompt)
+        assertEquals(30, usage.completion)
+        assertEquals(150, usage.total)
+        assertEquals(100, usage.cached)
+        assertEquals(12, usage.reasoning)
+    }
+
+    @Test
+    fun aUsageWithoutDetailsLeavesThemNullInsteadOfZero() {
+        val usage = eventsOf("""{"usage":{"prompt_tokens":10,"completion_tokens":0}}""")
+            .filterIsInstance<ChatEvent.Usage>().single()
+        assertEquals(10, usage.prompt)
+        assertEquals(0, usage.completion)
+        assertNull(usage.total)
+        assertNull(usage.cached)
+        assertNull(usage.reasoning)
+    }
+
     private fun eventsOf(vararg payloads: String): List<ChatEvent> {
         val parser = StreamParser()
         return payloads.flatMap { parser.feed(it) } + parser.finish()

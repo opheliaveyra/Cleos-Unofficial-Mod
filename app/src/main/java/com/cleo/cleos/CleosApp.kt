@@ -171,7 +171,32 @@ class AppContainer(private val context: Context) {
     /** Searching the web, for web_search: whichever service the person set up in settings. */
     val searcher: com.cleo.cleos.ai.WebSearcher = com.cleo.cleos.ai.WebSearch(http, secrets)
     val toolDiagnostics = com.cleo.cleos.diagnostics.ToolDiagnostics(context)
-    val chatClient = ChatClient(http, diagnostic = { toolDiagnostics.record(it) })
+    // 用量落库：每次请求结束记一条（成功、失败、被停都记），服务商没给 usage 就标 missing。
+    val chatClient = ChatClient(http, diagnostic = { toolDiagnostics.record(it) }, onUsage = { tag, endpoint, usage, ok ->
+        appScope.launch(Dispatchers.IO) {
+            runCatching {
+                val asked = usage?.prompt?.toLong() ?: 0L
+                val saidOut = usage?.completion?.toLong() ?: 0L
+                db.usage().add(com.cleo.cleos.data.db.TokenUsageEntity(
+                    at = System.currentTimeMillis(),
+                    provider = runCatching { java.net.URI(endpoint.baseUrl).host?.removePrefix("www.") }.getOrNull()?.take(80) ?: "",
+                    model = endpoint.model.take(120),
+                    scope = tag.scope,
+                    scopeId = tag.scopeId,
+                    scopeName = tag.scopeName.take(60),
+                    speaker = tag.speaker.take(60),
+                    purpose = tag.purpose,
+                    ok = ok,
+                    source = if (usage != null) com.cleo.cleos.data.db.TokenUsageEntity.SOURCE_API else com.cleo.cleos.data.db.TokenUsageEntity.SOURCE_MISSING,
+                    input = asked,
+                    output = saidOut,
+                    total = usage?.total?.toLong() ?: (asked + saidOut),
+                    cached = usage?.cached?.toLong(),
+                    reasoning = usage?.reasoning?.toLong(),
+                ))
+            }
+        }
+    })
     val feedNews = com.cleo.cleos.ai.FeedNews(http.newBuilder().callTimeout(18, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
     val photoSource = com.cleo.cleos.ai.PhotoLibraries(
         com.cleo.cleos.ai.OpenversePhotos(http, version) { toolDiagnostics.record(it) },
