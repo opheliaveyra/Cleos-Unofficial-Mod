@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.Close
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -92,6 +94,8 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
     /** 这次要一起发到群里的图（发之前得看得见、能删）。 */
     var pictures by remember(groupId) { mutableStateOf(emptyList<MessageImage>()) }
     var pickingPicture by remember(groupId) { mutableStateOf(false) }
+    /** 「＋」展开的那层：图片、语音、点名都收在里面 —— 输入栏只留 ＋ / 输入框 / 发送。 */
+    var attachOpen by rememberSaveable(groupId) { mutableStateOf(false) }
     var loaded by remember(groupId, generation) { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
@@ -193,6 +197,10 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
         val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
         if (rows.isNotEmpty() && last >= (list.layoutInfo.totalItemsCount - 3).coerceAtLeast(0)) list.scrollToItem(rows.lastIndex)
     }
+    // 「＋」面板一展开就占了地方：把最后一条推上来，别让它被压在面板底下。
+    LaunchedEffect(attachOpen) {
+        if (attachOpen && rows.isNotEmpty()) runCatching { list.animateScrollToItem(rows.lastIndex) }
+    }
     GlassPage(overlay = { page ->
         GlassTopBar(group?.title ?: "群聊", page, subtitle = "${participating.size} 位 TA · 一起聊天",
             leading = { GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "返回", onBack, page) },
@@ -207,10 +215,6 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             .padding(horizontal = 14.dp, vertical = 8.dp).onSizeChanged { composerHeight = it.height },
             verticalArrangement = Arrangement.spacedBy(7.dp)) {
             problem?.let { Text(it, color = palette.error, fontSize = 12.sp) }
-            if (recording) Text(
-                "松开发送 · 已经 ${(recordedMs / 1000).coerceAtLeast(1)} 秒" + if (loudness > 0.02f) " · 在说" else " · 没听到声音",
-                color = palette.accentContent, fontSize = 12.sp,
-            )
             if (mentions.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 mentions.forEach { id -> Chip("@${members.firstOrNull { it.companionId == id }?.name ?: "TA"} ×", false) { mentions = mentions - id } }
             }
@@ -233,19 +237,22 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                     }
                 }
             }
-            GlassSurface(Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(26.dp),
-                contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GlassIconButton(Icons.Rounded.AddPhotoAlternate, "发图片", {
+            // 「＋」展开的那层：图片 / 语音 / 点名都收进来，输入框才留得住宽度。
+            if (attachOpen) GlassSurface(
+                Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(22.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PanelAction(Icons.Rounded.AddPhotoAlternate, "图片") {
+                        attachOpen = false
                         pickingPicture = true
                         picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }, page)
+                    }
                     // 按住说话：**松手才发**，压着不动就是还在录。
-                    Box(
+                    Row(
                         Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(if (recording) palette.error.copy(alpha = 0.85f) else Color.Transparent)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.06f))
                             .pointerInput(loaded, busy) {
                                 detectTapGestures(onPress = {
                                     if (loaded && !busy && !recording) {
@@ -268,17 +275,49 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                                         }
                                     }
                                 })
-                            },
-                        contentAlignment = Alignment.Center,
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
                             Icons.Rounded.Mic,
                             contentDescription = "按住说话",
                             tint = if (recording) Color.White else palette.accentContent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            if (recording) "松开发送 · ${(recordedMs / 1000).coerceAtLeast(1)} 秒" + if (loudness > 0.02f) " · 在说" else ""
+                            else "按住说话",
+                            color = if (recording) Color.White else palette.content,
+                            fontSize = 14.sp,
+                        )
+                    }
+                    PanelAction(Icons.Rounded.AlternateEmail, "点名成员") {
+                        attachOpen = false
+                        picking = true
+                    }
+                }
+            }
+            GlassSurface(Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(26.dp),
+                contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // ＋：默认只有它、输入框、发送 —— 别的都收在展开的那层里。
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (attachOpen) palette.accent else Color.Transparent)
+                            .clickable(enabled = !recording) { attachOpen = !attachOpen },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
+                            contentDescription = if (attachOpen) "收起更多" else "更多",
+                            tint = if (attachOpen) Color.White else palette.accentContent,
                             modifier = Modifier.size(20.dp),
                         )
                     }
-                    GlassIconButton(Icons.Rounded.AlternateEmail, "点名成员", { picking = true }, page)
                     BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.weight(1f)
                         .heightIn(min = 42.dp, max = 130.dp).semantics { contentDescription = "群聊消息" },
                         textStyle = TextStyle(color = palette.content, fontSize = 16.sp), cursorBrush = SolidColor(palette.content),
@@ -437,4 +476,22 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             } })
     } }
     selectedText?.let { SelectMessageTextDialog(it, TextStyle(fontSize = 16.sp, lineHeight = 23.sp)) { selectedText = null } }
+}
+
+/** 「＋」面板里的一项：图标 + 文字，点一下就走。 */
+@Composable
+private fun PanelAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(palette.content.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
+        Text(label, color = palette.content, fontSize = 14.sp)
+    }
 }

@@ -1,14 +1,19 @@
 package com.cleo.cleos.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.data.ApiKind
 import com.cleo.cleos.data.Capability
@@ -179,6 +185,7 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProviderDialog(
     provider: Provider?,
@@ -192,13 +199,24 @@ private fun ProviderDialog(
     var key by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        // 窄屏：宽度自己定，别让默认宽度把选项挤成一条缝。
+        modifier = Modifier.fillMaxWidth(0.94f).widthIn(max = 460.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text(if (provider == null) "添加服务商" else "编辑服务商") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // 键盘弹起 + 小屏时内容比屏幕高：**能滚，按钮永远够得着**。
+            Column(
+                Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedTextField(name, { name = it.take(40) }, label = { Text("名字（小米、中转站…）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(url, { url = it }, label = { Text("接口地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("接口类型", color = palette.contentSecondary, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // **换行排，不硬挤**：三个选项在窄屏上一行放不下，挤的结果就是文字竖着排。
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     ApiKind.entries.forEach { k ->
                         Chip(k.label, selected = kind == k) { kind = k }
                     }
@@ -294,6 +312,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ConfigDialog(
     data: ModelRegistryData,
@@ -313,11 +332,22 @@ private fun ConfigDialog(
     var maxTokens by remember { mutableStateOf(config?.maxTokens?.toString().orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        // 窄屏：宽度自己定；内容比屏幕高时能滚，底下的按钮永远够得着。
+        modifier = Modifier.fillMaxWidth(0.94f).widthIn(max = 460.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text(if (config == null) "添加模型配置" else "编辑模型配置") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text("服务商", color = palette.contentSecondary, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // 服务商可能有好几家、名字还长（拿地址当名字的）：**换行排**，
+                // 一行放不下就下一行 —— 挤在一行里就会把「DeepSeek」挤成竖排。
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     data.providers.forEach { p ->
                         Chip(p.name.ifBlank { p.baseUrl }, selected = providerId == p.id) { providerId = p.id }
                     }

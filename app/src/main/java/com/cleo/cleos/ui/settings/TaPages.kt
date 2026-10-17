@@ -173,9 +173,9 @@ internal fun ModelPage(vm: SettingsViewModel, onOpen: (SettingsPage) -> Unit) {
     var choosing by remember { mutableStateOf(false) }
     val chatConfig = data.configs.firstOrNull { it.id == data.defaultConfigId }
     val chatProvider = chatConfig?.let { c -> data.providers.firstOrNull { it.id == c.providerId } }
-    Section("聊天用哪个") {
+    Section("聊天用哪个 · 所有 TA 共用") {
         Text(
-            "全局默认 —— 没单独绑的功能都跟着它，聊天也是它。",
+            "这一条是**所有 TA 共用**的：换个 TA 不会换模型。它同时是「全局默认」—— 下面没单独绑的功能也跟着它。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
@@ -239,7 +239,7 @@ internal fun ModelPage(vm: SettingsViewModel, onOpen: (SettingsPage) -> Unit) {
     }
 
     if (vm.spokenOn) {
-        Section("电话和语音用的模型") {
+        Section("电话和语音用的模型 · 这个 TA 的") {
             ModelProfilesEditor(vm.spoken)
             ServiceChips(vm.spoken)
             ConnectionFields(vm.spoken)
@@ -249,26 +249,19 @@ internal fun ModelPage(vm: SettingsViewModel, onOpen: (SettingsPage) -> Unit) {
         }
     }
 
-    Section("按功能换模型") {
+    Section("按功能换模型 · 所有 TA 共用") {
         Text(
-            "不同活儿值得用不同档次的模型：**总结**、**朋友圈**这种是它自己在后台干的，用便宜的就够；" +
-                "**聊天**要好的；**看视频**得专门挑一个真能读视频的。不绑就是跟着上面那个全局默认。",
+            "**也是所有 TA 共用**：改一次，每个 TA 都按这个来。不同活儿值得用不同档次的模型：" +
+                "**总结**、**朋友圈**这种是它自己在后台干的，用便宜的就够；**聊天**要好的；" +
+                "**看视频**得专门挑一个真能读视频的。不绑就是跟着上面那个全局默认。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
         FeatureModelRows(vm)
-        Chip("功能用哪个（单独一页）", selected = false) { onOpen(SettingsPage.FunctionRoutes) }
     }
 }
 
-/**
- * 每个功能一行：现在用谁、点开选。
- *
- * **选，不是填。** 模型名（`deepseek-flash`、`claude-sonnet-5[次]`）没人记得住，
- * 所以这里列出**已经保存过的模型配置** —— 就是主模型那页配的那些服务 —— 点一下带走。
- * 手填留作后备（想用一个没保存过的地址时才用）。
- */
 /**
  * 每个功能用哪条模型配置 —— 就地看、就地改。
  *

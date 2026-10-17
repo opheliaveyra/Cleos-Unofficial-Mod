@@ -81,10 +81,9 @@ import com.cleo.cleos.ui.common.avatarLetter
 enum class SettingsPage(val title: String) {
     Profile("资料与性格"),
     Model("模型"),
-    /** 三层结构（0.1.44）：服务商 / 模型配置 / 功能绑定，各一页。 */
+    /** 三层结构（0.1.44）：服务商和模型配置各一页；**功能绑定并进「模型」页**，不单独占一行。 */
     Providers("服务商"),
     ModelConfigs("模型配置"),
-    FunctionRoutes("功能用哪个"),
     Behavior("说话方式"),
     Abilities("能做的事"),
     Workspace("工作区"),
@@ -101,7 +100,7 @@ enum class SettingsPage(val title: String) {
     /** Whose these are, under the page's title: the TA's own, or every TA's. */
     fun subtitle(taName: String): String? = when (this) {
         Profile, Model, Behavior -> taName
-        Abilities, Voice, Mcp, Providers, ModelConfigs, FunctionRoutes -> "所有 TA 共用"
+        Abilities, Voice, Mcp, Providers, ModelConfigs -> "所有 TA 共用"
         else -> null
     }
 
@@ -166,7 +165,7 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         val model = listOfNotNull(
             defaultProvider?.name?.ifBlank { defaultProvider.baseUrl },
             defaultConfig?.model?.trim(),
-            heard?.let { "电话和语音用 $it" },
+            heard?.let { "这个 TA 的语音用 $it" },
         ).filter { it.isNotEmpty() }.joinToString(" · ")
         when {
             modelData.configs.isEmpty() -> Entry(Icons.Rounded.Memory, "模型", "还没接上模型", palette.error) { onOpen(SettingsPage.Model) }
@@ -193,8 +192,8 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
             "模型配置",
             if (configs == 0) "还没有 · 型号、参数、验过的能力" else "$configs 条 · 型号、参数、验过的能力",
         ) { onOpen(SettingsPage.ModelConfigs) }
-        RowDivider()
-        Entry(Icons.Rounded.Widgets, "功能用哪个", "聊天、总结、看图…各挑一条") { onOpen(SettingsPage.FunctionRoutes) }
+        // 「功能用哪个」不再单独占一行：**并进「模型」页**（见 TaPages.ModelPage），
+        // 免得同一件事在目录里有两个入口、点进去还各说各的。
         RowDivider()
         Entry(Icons.Rounded.Widgets, "能做的事", "开着 ${ABILITIES.count { it in settings.tools }} 项") { onOpen(SettingsPage.Abilities) }
         RowDivider()
