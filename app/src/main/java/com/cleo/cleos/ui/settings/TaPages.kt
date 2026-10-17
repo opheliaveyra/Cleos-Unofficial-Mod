@@ -98,10 +98,14 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
             "只影响和${name}的聊天；别的角色、以及群聊各用各的。",
             color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp,
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // 并排预览：「我的头像 + 角色头像」，和聊天里看到的一对一样。
+        // 换的时候能直接看出配不配，而不是先存下来再回聊天里比。
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val mine = vm.myAvatarForCompanion()
             Avatar(mine ?: vm.myAvatarDefault, avatarLetter(vm.userName, "我"), 56.dp)
-            Spacer(Modifier.width(14.dp))
+            Text("＋", color = palette.contentSecondary, fontSize = 14.sp)
+            Avatar(ta?.avatar, ta?.avatarEmoji ?: avatarLetter(vm.aiName, "TA"), 56.dp)
+            Spacer(Modifier.width(2.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(if (mine == null) "上传" else "更换", selected = false) {
                     myPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))

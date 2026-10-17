@@ -703,6 +703,20 @@ internal fun AboutPage() {
         diagnosticHint?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
     }
 
+    // 一键反馈：把该带的（版本、系统、页面、脱敏错误）整理好，人自己看、自己发。
+    var feedbackOpen by remember { mutableStateOf(false) }
+    Section("反馈问题") {
+        Text(
+            "把版本、系统、当前页面和最近的脱敏错误整理成一段，先给你看：可以补描述、选截图，再复制或导出。" +
+                "不含密钥、Token、聊天正文和私人附件，也不会自动发给任何服务。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        Chip("反馈问题", selected = false) { feedbackOpen = true }
+    }
+    if (feedbackOpen) FeedbackDialog(page = "设置 › 关于", onDismiss = { feedbackOpen = false })
+
     // The last crash, to send to whoever makes the app (CrashLog): there only after one.
     var crash by remember { mutableStateOf(CrashLog.read(context)) }
     var crashHint by remember { mutableStateOf<String?>(null) }
