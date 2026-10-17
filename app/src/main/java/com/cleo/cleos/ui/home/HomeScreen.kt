@@ -171,13 +171,16 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
             ) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.Top) {
+                        // 「我与 TA」里的**我**：跟着当前角色走（角色专属 > 全局），
+                        // 和聊天页走同一个解析入口（UserFaces）—— 不然主页和聊天里会是两张脸。
+                        val myFace = com.cleo.cleos.data.UserFaces.forCompanion(ta, s)
                         Person(
-                            file = s.userAvatar,
+                            file = myFace,
                             name = me,
                             letter = avatarLetter(s.userName, "我"),
                             label = if (s.userName.isBlank()) null else "我",
                             menuOpen = menuFor == Who.Me,
-                            onAvatar = { if (s.userAvatar == null) pick(Who.Me) else menuFor = Who.Me },
+                            onAvatar = { if (myFace == null) pick(Who.Me) else menuFor = Who.Me },
                             onName = { naming = Who.Me },
                             onChange = { menuFor = null; pick(Who.Me) },
                             onReset = { menuFor = null; c.appScope.launch { setAvatar(c, Who.Me, null, ta.id) } },
