@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -72,6 +73,13 @@ fun ConversationsScreen(onBack: () -> Unit, onSearch: () -> Unit, onGroup: (Long
     var groupTab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var newGroup by remember { mutableStateOf(false) }
     var confirmGroup by remember { mutableStateOf<com.cleo.cleos.data.db.ChatGroupEntity?>(null) }
+    // 长按先出菜单：重命名 / 删除（删除仍要再确认一次）。
+    var ops by remember { mutableStateOf<ConversationEntity?>(null) }
+    var opsGroup by remember { mutableStateOf<com.cleo.cleos.data.db.ChatGroupEntity?>(null) }
+    var renaming by remember { mutableStateOf<ConversationEntity?>(null) }
+    var renameText by remember { mutableStateOf("") }
+    var renamingGroup by remember { mutableStateOf<com.cleo.cleos.data.db.ChatGroupEntity?>(null) }
+    var renameGroupText by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
     var groupProblem by remember { mutableStateOf<String?>(null) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -83,7 +91,7 @@ fun ConversationsScreen(onBack: () -> Unit, onSearch: () -> Unit, onGroup: (Long
         overlay = { page ->
             GlassTopBar(
                 title = if (groupTab) "大家的群聊" else ta?.name?.takeIf { it.isNotBlank() }?.let { "和${it}的对话" } ?: "对话记录",
-                subtitle = "长按可以删除",
+                subtitle = "长按可以重命名或删除",
                 backdrop = page,
                 leading = { GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "返回", onBack, page) },
                 trailing = {
@@ -118,7 +126,7 @@ fun ConversationsScreen(onBack: () -> Unit, onSearch: () -> Unit, onGroup: (Long
                 if (groups.isEmpty()) item { Text("还没有群聊。点右上角，选几位 TA 一起聊聊。", color = palette.contentSecondary, modifier = Modifier.padding(16.dp)) }
                 items(groups, key = { "group-${it.id}" }) { group ->
                     val members by remember(group.id) { c.db.groups().observeMembers(group.id) }.collectAsStateWithLifecycle(emptyList())
-                    GlassSurface(Modifier.fillMaxWidth().combinedClickable(onClick = { onGroup(group.id) }, onLongClick = { confirmGroup = group }),
+                    GlassSurface(Modifier.fillMaxWidth().combinedClickable(onClick = { onGroup(group.id) }, onLongClick = { opsGroup = group }),
                         shape = GlassShape.Rounded(22.dp), contentPadding = PaddingValues(18.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { members.filter { it.active }.take(4).forEach { member ->
@@ -141,7 +149,7 @@ fun ConversationsScreen(onBack: () -> Unit, onSearch: () -> Unit, onGroup: (Long
                                 c.appScope.launch { c.settings.setCurrentConversation(conv.id) }
                                 onBack()
                             },
-                            onLongClick = { confirm = conv },
+                            onLongClick = { ops = conv },
                         ),
                     shape = GlassShape.Rounded(22.dp),
                     contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
@@ -177,6 +185,88 @@ fun ConversationsScreen(onBack: () -> Unit, onSearch: () -> Unit, onGroup: (Long
             catch (e: Exception) { groupProblem = e.message }
         }
     } }
+
+    // 长按菜单：重命名 / 删除。删除照旧再确认一次。
+    ops?.let { conv ->
+        AlertDialog(
+            onDismissRequest = { ops = null },
+            title = { Text(conv.title) },
+            text = { Text("要给这段对话改名，还是删掉它？") },
+            confirmButton = {
+                TextButton(onClick = { ops = null; renaming = conv; renameText = conv.title }) { Text("重命名") }
+            },
+            dismissButton = {
+                TextButton(onClick = { ops = null; confirm = conv }) { Text("删除", color = LocalGlassPalette.current.error) }
+            },
+        )
+    }
+    opsGroup?.let { group ->
+        AlertDialog(
+            onDismissRequest = { opsGroup = null },
+            title = { Text(group.title) },
+            text = { Text("要给这个群改名，还是删掉它？") },
+            confirmButton = {
+                TextButton(onClick = { opsGroup = null; renamingGroup = group; renameGroupText = group.title }) { Text("重命名") }
+            },
+            dismissButton = {
+                TextButton(onClick = { opsGroup = null; confirmGroup = group }) { Text("删除", color = LocalGlassPalette.current.error) }
+            },
+        )
+    }
+    // 重命名：**只改会话标题**，角色名字不动（两者是分开存的）。
+    renaming?.let { conv ->
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text("给这段对话改名") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { renameText = it.take(60) },
+                        label = { Text("标题") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text("和角色名字是分开的，改名不会影响角色本身；之后也不会被自动标题覆盖。", color = LocalGlassPalette.current.contentSecondary, fontSize = 12.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameText.isNotBlank(),
+                    onClick = {
+                        renaming = null
+                        scope.launch { runCatching { c.db.conversations().rename(conv.id, renameText.trim()) } }
+                    },
+                ) { Text("保存") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text("取消") } },
+        )
+    }
+    renamingGroup?.let { group ->
+        AlertDialog(
+            onDismissRequest = { renamingGroup = null },
+            title = { Text("给这个群改名") },
+            text = {
+                OutlinedTextField(
+                    value = renameGroupText,
+                    onValueChange = { renameGroupText = it.take(40) },
+                    label = { Text("群名") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameGroupText.isNotBlank(),
+                    onClick = {
+                        renamingGroup = null
+                        scope.launch { runCatching { c.groupChat.rename(group.id, renameGroupText.trim()) } }
+                    },
+                ) { Text("保存") }
+            },
+            dismissButton = { TextButton(onClick = { renamingGroup = null }) { Text("取消") } },
+        )
+    }
 
     confirm?.let { conv ->
         AlertDialog(
