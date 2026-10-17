@@ -2,6 +2,8 @@ package com.cleo.cleos.ui.diary
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -21,13 +24,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.cleo.cleos.data.DiaryBlocks
+import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.DiaryEntryEntity
 import com.cleo.cleos.glass.GlassIconButton
 import com.cleo.cleos.glass.GlassShape
@@ -83,38 +91,52 @@ private sealed interface DiaryRow {
 }
 
 /**
- * 一本书（当前 TA 的），两个作者。**默认只看当前 TA 的这本书**；
- * 「全部」是主动进去的汇总：所有 TA 和我的页都在里面，每篇会标是谁的。
+ * 日记类型：**只影响展示**，不改变任何数据的归属。
+ * 和「看谁的书」（归属范围）是两件事，所以分成两排。
  */
-private enum class DiaryFilter(val label: String, val empty: String, val hint: String) {
-    Current("这个 TA", "TA 还没写过日记", "在聊天里请 TA 写一篇"),
+private enum class DiaryType(val label: String, val empty: String, val hint: String) {
+    All("全部", "还没有日记", "点右下角的笔，写第一篇"),
     Mine("我写的", "你还没写过日记", "点右下角的笔，写第一篇"),
     Theirs("TA 写的", "TA 还没写过日记", "在聊天里请 TA 写一篇"),
     Secrets("小秘密", "还没有小秘密", "你和 TA 都可以把想留给自己的话写在这里"),
-    All("全部（所有 TA）", "还没有日记", "点右下角的笔，写第一篇"),
     ;
 
     fun accepts(e: DiaryEntryEntity) = when (this) {
-        Current, All -> true
+        All -> true
         Mine -> e.author == DiaryEntryEntity.AUTHOR_ME
         Theirs -> e.author == DiaryEntryEntity.AUTHOR_AI
         Secrets -> e.secret
     }
 }
 
+/** 归属范围：0 = 当前角色，-1 = 所有角色，>0 = 指定角色 id。 */
+private const val SCOPE_ALL = -1L
+private const val SCOPE_CURRENT = 0L
+
 @Composable
 fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) {
     val c = appContainer()
     val palette = LocalGlassPalette.current
-    var filter by rememberSaveable { mutableStateOf(DiaryFilter.Current) }
+    // 归属范围（看谁的书）与类型（看哪几篇）分开；两个都只影响展示，不改数据归属。
+    var scope by rememberSaveable { mutableLongStateOf(SCOPE_CURRENT) }
+    var type by rememberSaveable { mutableStateOf(DiaryType.All) }
     // 当前 TA：**默认就是它的那本书**。切角色时数据源跟着换，不用手动刷新。
     val ta by remember { c.companions.current }.collectAsStateWithLifecycle(null)
-    val rows by remember(filter, ta?.id) {
-        // 「全部」才看所有 TA 的；其余四种都在当前 TA 的这本书里筛。
-        val source = if (filter == DiaryFilter.All) c.db.diary().observeAll()
-            else ta?.let { c.db.diary().observeFor(it.id) } ?: flowOf(emptyList())
+    val allTas by c.companions.all.collectAsStateWithLifecycle(emptyList())
+    val scopeTa = allTas.firstOrNull { it.id == scope }
+    val scopeLabel = when {
+        scope == SCOPE_ALL -> "所有角色"
+        scope == SCOPE_CURRENT -> ta?.name?.trim().orEmpty().ifEmpty { "当前角色" }
+        else -> scopeTa?.name?.trim().orEmpty().ifEmpty { "角色" }
+    }
+    val rows by remember(scope, ta?.id, type) {
+        val source = when {
+            scope == SCOPE_ALL -> c.db.diary().observeAll()
+            scope == SCOPE_CURRENT -> ta?.let { c.db.diary().observeFor(it.id) } ?: flowOf(emptyList())
+            else -> c.db.diary().observeFor(scope)
+        }
         source
-            .map { entries -> toRows(entries.filter(filter::accepts)) { c.images.file(it) } }
+            .map { entries -> toRows(entries.filter(type::accepts)) { c.images.file(it) } }
             .flowOn(Dispatchers.Default)
     }.collectAsStateWithLifecycle(null)
     // Which TA wrote which entry, by name: the book holds every TA's pages.
@@ -128,14 +150,11 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
             GlassTopBar(
                 title = "日记",
                 // 标题下面写清楚正在看谁的书（「全部」时才不写）。
-                subtitle = listOfNotNull(
-                    ta?.name?.trim()?.takeIf { it.isNotEmpty() && filter != DiaryFilter.All },
-                    if (count > 0) "$count 篇" else null,
-                ).joinToString(" · ").ifEmpty { null },
+                subtitle = listOfNotNull(scopeLabel, if (count > 0) "$count 篇" else null).joinToString(" · "),
                 backdrop = page,
             )
             // Writing from the secrets page starts locked: that page is where secrets are kept.
-            val secret = filter == DiaryFilter.Secrets
+            val secret = type == DiaryType.Secrets
             GlassIconButton(
                 if (secret) Icons.Rounded.Lock else Icons.Rounded.EditNote,
                 if (secret) "写小秘密" else "写日记",
@@ -146,7 +165,8 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
                 size = 58.dp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = bottomInset + 4.dp),
+                    // 让开底部导航和列表最后一条。
+                    .padding(end = 20.dp, bottom = bottomInset + 16.dp),
             )
         },
     ) {
@@ -159,9 +179,9 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(filter.empty, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    Text(type.empty, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.size(6.dp))
-                    Text(filter.hint, color = palette.contentSecondary, fontSize = 14.sp)
+                    Text(type.hint, color = palette.contentSecondary, fontSize = 14.sp)
                 }
             }
         }
@@ -169,10 +189,20 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
             modifier = Modifier
                 .fillMaxSize()
                 .fadeUnderTopBar(statusTop + TopBarHeight, bottom = bottomInset - 10.dp),
-            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = statusTop + TopBarHeight + 6.dp, bottom = bottomInset + 80.dp),
+            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = statusTop + TopBarHeight + 6.dp, bottom = bottomInset + 104.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item(key = "filter") { FilterBar(filter) { filter = it } }
+            item(key = "filter") {
+                DiaryFilters(
+                    scope = scope,
+                    scopeLabel = scopeLabel,
+                    allTas = allTas,
+                    currentTaId = ta?.id,
+                    type = type,
+                    onScope = { scope = it },
+                    onType = { type = it },
+                )
+            }
             items(list.orEmpty(), key = {
                 when (it) {
                     is DiaryRow.Month -> "m${it.month}"
@@ -181,7 +211,14 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
             }) { row ->
                 when (row) {
                     is DiaryRow.Month -> MonthHeader(row.month)
-                    is DiaryRow.Entry -> DiaryCardView(row.card, row.card.byTa?.let { names[it] ?: "TA" }) {
+                    is DiaryRow.Entry -> DiaryCardView(
+                        card = row.card,
+                        author = when {
+                            row.card.secret -> if (row.card.byTa != null) "${names[row.card.byTa] ?: "TA"}的小秘密" else "我的小秘密"
+                            row.card.byTa != null -> "${names[row.card.byTa] ?: "TA"}写的"
+                            else -> "我写的"
+                        },
+                    ) {
                         onOpenEntry(row.card.id, false)
                     }
                 }
@@ -221,33 +258,91 @@ private fun toRows(entries: List<DiaryEntryEntity>, file: (String) -> File): Lis
 @Composable
 private fun MonthHeader(month: YearMonth) {
     val palette = LocalGlassPalette.current
-    Box(Modifier.padding(start = 6.dp, top = 8.dp, bottom = 2.dp)) {
+    // 月份标题和卡片左边缘对齐（不再缩进）。
+    Box(Modifier.padding(top = 8.dp, bottom = 2.dp)) {
         GlassSurface(style = palette.bar, shape = GlassShape.Capsule, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 5.dp)) {
             Text(Dates.yearMonth(month.atDay(1)), color = palette.content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
-/** On glass, like every other line of text on this page; the chosen one is an accent pill. */
+/**
+ * 两排筛选：**上面一排是归属范围**（下拉：当前角色 / 别的角色 / 所有角色），
+ * **下面一排是日记类型**（全部 / 我写的 / TA 写的 / 小秘密）。
+ *
+ * 类型那一排：单行、所有选项等高（固定 30dp）、文字不换行；放不下就横向滚，不压缩成竖排。
+ * 底色的不透明度比默认玻璃高一点（card.tint 再压一层），壁纸花的时候字也清楚。
+ */
 @Composable
-private fun FilterBar(selected: DiaryFilter, onSelect: (DiaryFilter) -> Unit) {
+private fun DiaryFilters(
+    scope: Long,
+    scopeLabel: String,
+    allTas: List<CompanionEntity>,
+    currentTaId: Long?,
+    type: DiaryType,
+    onScope: (Long) -> Unit,
+    onType: (DiaryType) -> Unit,
+) {
     val palette = LocalGlassPalette.current
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        GlassSurface(style = palette.bar, shape = GlassShape.Capsule, contentPadding = PaddingValues(4.dp)) {
-            Row {
-                DiaryFilter.entries.forEach { f ->
-                    val on = f == selected
+    var open by remember { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // 第一排：归属范围。
+        Box {
+            GlassSurface(style = palette.card, shape = GlassShape.Capsule, contentPadding = PaddingValues(0.dp)) {
+                Row(
+                    Modifier
+                        .background(palette.card.tint.copy(alpha = 0.55f), CircleShape)
+                        .clickable(interactionSource = null, indication = null) { open = true }
+                        .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        scopeLabel,
+                        color = palette.content, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                        maxLines = 1, softWrap = false,
+                    )
+                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = "换一个范围", tint = palette.contentSecondary, modifier = Modifier.size(20.dp))
+                }
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                DropdownMenuItem(text = { Text("当前角色") }, onClick = { open = false; onScope(SCOPE_CURRENT) })
+                allTas.filter { it.id != currentTaId }.forEach { other ->
+                    DropdownMenuItem(
+                        text = { Text(other.name.trim().ifEmpty { "TA" }, maxLines = 1) },
+                        onClick = { open = false; onScope(other.id) },
+                    )
+                }
+                DropdownMenuItem(text = { Text("所有角色") }, onClick = { open = false; onScope(SCOPE_ALL) })
+            }
+        }
+        // 第二排：日记类型。
+        GlassSurface(style = palette.card, shape = GlassShape.Capsule, contentPadding = PaddingValues(4.dp)) {
+            Row(
+                Modifier
+                    .horizontalScroll(scroll)
+                    .background(palette.card.tint.copy(alpha = 0.55f), CircleShape)
+                    .padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DiaryType.entries.forEach { t ->
+                    val on = t == type
                     Box(
                         Modifier
+                            // 固定等高（不是被文字撑出来的），大字体下也不会把整排撑高。
+                            .height(34.dp)
                             .background(if (on) palette.accent else Color.Transparent, CircleShape)
-                            .clickable(interactionSource = null, indication = null) { onSelect(f) }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                            .clickable(interactionSource = null, indication = null) { onType(t) }
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            f.label,
+                            t.label,
                             color = if (on) Color.White else palette.content,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                     }
                 }
@@ -266,48 +361,75 @@ private fun CardTag(icon: ImageVector, text: String) {
     }
 }
 
+/**
+ * 统一卡片：左边固定宽度日期 + 星期；右边依次是 作者/类型、标题、最多两行摘要；
+ * 有图时固定 64dp 缩略图，文字列 weight(1f) 保住空间。
+ * 所有间距、内边距都固定，内容多少都不会让位置跳。
+ */
 @Composable
-private fun DiaryCardView(card: DiaryCard, ta: String?, onClick: () -> Unit) {
+private fun DiaryCardView(card: DiaryCard, author: String, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
     GlassSurface(
         modifier = Modifier.fillMaxWidth().clickable(interactionSource = null, indication = null, onClick = onClick),
-        shape = GlassShape.Rounded(24.dp),
-        contentPadding = PaddingValues(16.dp),
+        style = palette.card,
+        shape = GlassShape.Rounded(22.dp),
+        contentPadding = PaddingValues(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.width(46.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${card.date.dayOfMonth}", color = palette.accentContent, fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
-                Text(Dates.weekday(card.date).replace("星期", "周"), color = palette.contentSecondary, fontSize = 12.sp)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                // 卡片底再压一层，壁纸再花也不至于把字吃掉。
+                .background(palette.card.tint.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(Modifier.width(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "${card.date.dayOfMonth}",
+                    color = palette.accentContent, fontSize = 26.sp, fontWeight = FontWeight.Bold,
+                    lineHeight = 28.sp, maxLines = 1,
+                )
+                Text(
+                    Dates.weekday(card.date).replace("星期", "周"),
+                    color = palette.contentSecondary, fontSize = 11.sp, maxLines = 1,
+                )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                when {
-                    card.secret -> CardTag(Icons.Rounded.Lock, if (ta != null) "${ta}的小秘密" else "我的小秘密")
-                    ta != null -> CardTag(Icons.Rounded.AutoAwesome, "${ta}写的")
-                }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CardTag(
+                    when {
+                        card.secret -> Icons.Rounded.Lock
+                        card.byTa != null -> Icons.Rounded.AutoAwesome
+                        else -> Icons.Rounded.EditNote
+                    },
+                    author,
+                )
                 if (card.title.isNotBlank()) {
-                    Text(card.title, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.size(3.dp))
+                    Text(
+                        card.title,
+                        color = palette.content, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 when {
                     card.excerpt.isNotBlank() -> Text(
                         card.excerpt,
-                        color = palette.content.copy(alpha = 0.78f),
-                        fontSize = 14.sp,
-                        lineHeight = 21.sp,
-                        maxLines = if (card.title.isBlank()) 3 else 2,
+                        color = palette.content.copy(alpha = 0.82f),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    card.title.isBlank() -> Text("${card.imageCount} 张图片", color = palette.contentSecondary, fontSize = 14.sp)
+                    card.title.isBlank() -> Text("${card.imageCount} 张图片", color = palette.contentSecondary, fontSize = 13.sp)
                 }
             }
             card.cover?.let { cover ->
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(10.dp))
                 AsyncImage(
                     model = cover,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)),
+                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)),
                 )
             }
         }
