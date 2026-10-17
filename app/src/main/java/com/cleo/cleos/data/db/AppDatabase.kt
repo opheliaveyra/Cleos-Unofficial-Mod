@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 41,
+    version = 42,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -112,6 +112,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // 40 -> 41: 群里也能发语音（group_messages 上一个可空的 TEXT 列，存 MessageAudio 的 JSON）。
         // **只加列**：录音本体和私人聊天一样放在 ImageStore 的目录里，备份跟着一起走。
         AutoMigration(from = 40, to = 41),
+        // 41 -> 42: 每个角色、每个群可以有自己的「我的头像」（两个可空的 TEXT 列，存 ImageStore 里的名字）。
+        // 空 = 用全局默认头像 —— 旧数据什么都不用搬。
+        AutoMigration(from = 41, to = 42),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

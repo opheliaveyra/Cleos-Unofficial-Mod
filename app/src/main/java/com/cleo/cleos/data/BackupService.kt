@@ -305,6 +305,8 @@ class BackupService(
             // Recordings live with the pictures and travel the same way.
             data.messages.mapNotNull { m -> MessageAudios.decode(m.audio)?.file } +
             companions.mapNotNull { it.avatar } + data.groupMembers.mapNotNull { it.avatar } + data.groupMessages.mapNotNull { it.speakerAvatar } +
+            // 「我」在不同角色 / 不同群里的专属头像也得一起打包，不然恢复后全是空的。
+            companions.mapNotNull { it.userAvatar } + data.groups.mapNotNull { it.userAvatar } +
             stickerFiles +
             s.bubblePresets.flatMap { it.decoration.imageFiles() } + s.bubbleDecoration.components.mapNotNull { it.image } + listOfNotNull(s.wallpaper, s.feedCover, s.userAvatar, s.bubbleDecoration.faceImage, s.bubbleDecoration.starImage)).toSet()
 
@@ -417,7 +419,7 @@ class BackupService(
                         createdAt = d.exportedAt,
                     ),
                 )
-            }.map { it.copy(avatar = picture(it.avatar)) }
+            }.map { it.copy(avatar = picture(it.avatar), userAvatar = picture(it.userAvatar)) }
             // TA entries in such a backup carry no owner: they were all TA 1's.
             val diary = d.diary.map {
                 if (it.author == DiaryEntryEntity.AUTHOR_AI && it.companionId == null) it.copy(companionId = Companions.FIRST) else it
@@ -452,7 +454,8 @@ class BackupService(
                 db.feed().insertAll(d.feedPosts)
                 db.stickers().insertAll(stickers)
                 db.favorites().insertAll(d.favorites)
-                db.groups().restoreGroups(d.groups)
+                // 群专属的「我」的头像也要把旧文件名换成恢复后的文件名。
+            db.groups().restoreGroups(d.groups.map { it.copy(userAvatar = picture(it.userAvatar)) })
                 db.groups().insertMembers(d.groupMembers.map { it.copy(avatar = picture(it.avatar)) })
                 db.groups().restoreTurns(d.groupTurns.map(GroupBackupRules::restored))
                 db.groups().restoreMessages(d.groupMessages.map { com.cleo.cleos.ai.GroupPhotoRules.restored(GroupBackupRules.restored(it)) { name -> picture(name) != null }.copy(speakerAvatar = picture(it.speakerAvatar)) })

@@ -85,6 +85,12 @@ data class CompanionEntity(
     /** 每个功能指向哪条配置，JSON：`{"Recap":"<id>", ...}`（见 [Feature]）。 */
     @ColumnInfo(defaultValue = "")
     val featureProfileIds: String = "",
+    /**
+     * **与这个角色聊天时「我」的头像**（ImageStore 里的名字）；空 = 用全局默认头像。
+     *
+     * 和全局默认分开：不同角色可以配不同的情侣头像，改一个不影响别的（见 [com.cleo.cleos.data.UserFaces]）。
+     */
+    @ColumnInfo(defaultValue = "NULL") val userAvatar: String? = null,
 ) {
     /**
      * The model for this TA's words: its own, or, for words that will be heard, the other one when

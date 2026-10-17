@@ -73,6 +73,9 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
     var cropping by remember { mutableStateOf<Uri?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) cropping = uri }
+    // 「我」在这个角色这儿的头像：和上面 TA 自己的头像是两件事（见 UserFaces）。
+    var croppingMine by remember { mutableStateOf<Uri?>(null) }
+    val myPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) croppingMine = uri }
 
     Section("头像和名字") {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -87,6 +90,29 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
             }
         }
         Field("名字", vm.aiName, { vm.aiName = it })
+    }
+
+    // 角色专属的「我」：**只影响和这个角色的聊天**，不碰全局和其他角色。
+    Section("我在这个角色这儿的头像") {
+        Text(
+            "只影响和${name}的聊天；别的角色、以及群聊各用各的。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val mine = vm.myAvatarForCompanion()
+            Avatar(mine ?: vm.myAvatarDefault, avatarLetter(vm.userName, "我"), 56.dp)
+            Spacer(Modifier.width(14.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(if (mine == null) "上传" else "更换", selected = false) {
+                    myPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+                if (mine != null) Chip("用回全局默认", selected = false) { vm.clearMyAvatarForCompanion() }
+            }
+        }
+        Text(
+            if (vm.myAvatarForCompanion() == null) "现在用的是全局默认头像" else "这是这个角色专属的",
+            color = palette.contentSecondary, fontSize = 11.sp,
+        )
     }
 
     Section("性格") {
@@ -129,6 +155,17 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
             onCropped = { picture ->
                 cropping = null
                 vm.setAvatar(picture)
+            },
+        )
+    }
+
+    croppingMine?.let { uri ->
+        AvatarCropDialog(
+            uri = uri,
+            onDismiss = { croppingMine = null },
+            onCropped = { picture ->
+                croppingMine = null
+                vm.setMyAvatarForCompanion(picture)
             },
         )
     }

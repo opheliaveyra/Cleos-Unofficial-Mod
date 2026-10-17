@@ -2853,7 +2853,8 @@ private fun ChatInputBar(
             ) {
                 if (text.isEmpty()) {
                     Text(
-                        if (transcribingVoice) "正在转成文字…" else "发消息或按住说话",
+                        // 短占位：输入框要留出宽度（长按说话仍然可用，只是不再写在提示里）。
+                        if (transcribingVoice) "正在转成文字…" else "发消息",
                         color = palette.contentSecondary,
                         style = type.body,
                     )
@@ -2888,67 +2889,44 @@ private fun ChatInputBar(
                     )
                 }
             }
-            // Narrower than the squares either side: the text keeps as much of the bar as it can.
-            Box(Modifier.size(width = 40.dp, height = BarHeight), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(if (drawerOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent)
-                        .clickable(enabled = !editing, onClick = onDrawer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Rounded.EmojiEmotions,
-                        contentDescription = if (drawerOpen) "收起表情包" else "表情包",
-                        tint = if (drawerOpen) palette.accentContent else palette.contentSecondary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-            Box(Modifier.size(BarHeight), contentAlignment = Alignment.Center) {
-                // Plain fills inside the glass, like the chips on a card: glass in glass reads as a hole.
-                val button = Modifier.size(38.dp).clip(CircleShape)
-                if (busy && !canSend && !editing) {
-                    Box(
-                        button.background(palette.content.copy(alpha = 0.1f)).clickable(onClick = onStop),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Rounded.Stop, contentDescription = "停止", tint = palette.content, modifier = Modifier.size(20.dp))
-                    }
-                } else {
-                    Box(
-                        button
-                            .background(palette.accent.copy(alpha = if (sendEnabled && canSend) 1f else 0.35f))
-                            .clickable(enabled = sendEnabled && canSend, onClick = onSend),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Rounded.ArrowUpward, contentDescription = if (editing) "修改并重新回答" else "发送", tint = Color.White, modifier = Modifier.size(22.dp))
-                    }
-                }
+            // 视觉 34dp / 点击 44dp：看着小一点，输入框能多占一点宽度（见 ChatInputParts.kt）。
+            BarIconButton(
+                Icons.Rounded.EmojiEmotions,
+                if (drawerOpen) "收起表情包" else "表情包",
+                onClick = onDrawer,
+                enabled = !editing,
+                tint = if (drawerOpen) palette.accentContent else palette.contentSecondary,
+                background = if (drawerOpen) palette.content.copy(alpha = 0.1f) else Color.Transparent,
+            )
+            if (busy && !canSend && !editing) {
+                BarIconButton(Icons.Rounded.Stop, "停止", onClick = onStop, tint = palette.content, background = palette.content.copy(alpha = 0.1f))
+            } else {
+                BarIconButton(
+                    Icons.Rounded.ArrowUpward,
+                    if (editing) "修改并重新回答" else "发送",
+                    onClick = onSend,
+                    enabled = sendEnabled && canSend,
+                    tint = Color.White,
+                    background = palette.accent.copy(alpha = if (sendEnabled && canSend) 1f else 0.35f),
+                )
             }
         }
-        // The + is open: the two ways of attaching something, under the bar.
+        // 「＋」展开：和群聊同一个面板（换行网格 + 内部滚动，见 ChatInputParts.kt）。
         if (attachOpen) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                AttachChip(
+            AttachPanel(Modifier.padding(top = 2.dp, bottom = 2.dp)) {
+                AttachTile(
                     Icons.Rounded.AddPhotoAlternate,
                     "图片",
                     enabled = !editing && attachments.size < MAX_ATTACHMENTS,
                     onClick = onPick,
                 )
-                AttachChip(
+                AttachTile(
                     Icons.Rounded.PhotoCamera,
                     "拍照",
                     enabled = !editing && attachments.size < MAX_ATTACHMENTS,
                     onClick = onTakePhoto,
                 )
-                AttachChip(
+                AttachTile(
                     Icons.Rounded.AttachFile,
                     "文件",
                     enabled = !editing && files.size < Prompt.MAX_FILES && !readingFiles,
@@ -2956,7 +2934,7 @@ private fun ChatInputBar(
                 )
                 // 视频不是"发原片"，是**本地抽几帧当图片**发（见 VideoFrames）——
                 // 所以它占的是图片的名额，也会走看图模型那条路。
-                AttachChip(
+                AttachTile(
                     Icons.Rounded.VideoLibrary,
                     "视频",
                     enabled = !editing && attachments.size < MAX_ATTACHMENTS,
@@ -2964,26 +2942,6 @@ private fun ChatInputBar(
                 )
             }
         }
-    }
-}
-
-/**
- * One way of attaching something, in the row under the bar: 图片 or 文件.
- */
-@Composable
-private fun AttachChip(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
-    val palette = LocalGlassPalette.current
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(palette.content.copy(alpha = if (enabled) 0.09f else 0.04f))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, tint = if (enabled) palette.content else palette.contentSecondary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, color = if (enabled) palette.content else palette.contentSecondary, fontSize = 14.sp)
     }
 }
 

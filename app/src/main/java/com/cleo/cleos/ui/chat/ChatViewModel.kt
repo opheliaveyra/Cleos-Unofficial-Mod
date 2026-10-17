@@ -166,7 +166,8 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 userName = s.userName,
                 aiAvatar = ta.avatar,
                 aiAvatarEmoji = ta.avatarEmoji,
-                userAvatar = s.userAvatar,
+                // 这个角色专属的 > 全局默认（见 UserFaces）。换角色时跟着变，不用手动再选。
+                userAvatar = com.cleo.cleos.data.UserFaces.forCompanion(ta, s),
                 chatAvatars = s.chatAvatars,
                 avatarEachMessage = s.avatarEachMessage,
                 chatTextSize = s.chatTextSize,

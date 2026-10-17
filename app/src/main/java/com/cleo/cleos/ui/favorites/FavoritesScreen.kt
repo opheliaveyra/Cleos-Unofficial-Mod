@@ -216,7 +216,8 @@ fun FavoriteScreen(id: Long, onBack: () -> Unit, onFound: () -> Unit, onImage: (
                         }
                         if (settings.chatAvatars && mine) {
                             Spacer(Modifier.width(8.dp))
-                            Avatar(settings.userAvatar, avatarLetter(part.name, "我"), 32.dp)
+                            // 收藏属于某个角色的对话，所以「我」的头像也按这个角色解析（见 UserFaces）。
+                            Avatar(com.cleo.cleos.data.UserFaces.forCompanion(ta, settings), avatarLetter(part.name, "我"), 32.dp)
                         }
                     }
                 }

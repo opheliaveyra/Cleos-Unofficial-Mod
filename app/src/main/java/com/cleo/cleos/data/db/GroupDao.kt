@@ -14,6 +14,8 @@ data class ChatGroupEntity(
     val nextSpeaker: Int = 0,
     val draft: String = "",
     val mentions: String = "[]",
+    /** **我在这个群里的头像**；空 = 用全局默认头像（群没有唯一对应角色，见 UserFaces）。 */
+    @ColumnInfo(defaultValue = "NULL") val userAvatar: String? = null,
 )
 
 /** No TA foreign key: deleting a TA must not erase a shared conversation. Avatars are owned copies. */
@@ -86,6 +88,7 @@ interface GroupDao {
     @Query("UPDATE group_messages SET content = :content WHERE id = :id") suspend fun setContent(id: Long, content: String): Int
     @Query("UPDATE group_messages SET error = :error WHERE id = :id") suspend fun setError(id: Long, error: String?): Int
     @Query("UPDATE chat_groups SET title = :title WHERE id = :id") suspend fun rename(id: Long, title: String)
+    @Query("UPDATE chat_groups SET userAvatar = :file WHERE id = :id") suspend fun setUserAvatar(id: Long, file: String?): Int
     @Query("UPDATE chat_groups SET draft = :text, mentions = :mentions WHERE id = :id") suspend fun draft(id: Long, text: String, mentions: String)
     @Query("UPDATE chat_groups SET updatedAt = :at, nextSpeaker = :next, draft = '', mentions = '[]' WHERE id = :id") suspend fun advance(id: Long, at: Long, next: Int)
     @Query("UPDATE chat_groups SET updatedAt = :at WHERE id = :id") suspend fun touch(id: Long, at: Long)

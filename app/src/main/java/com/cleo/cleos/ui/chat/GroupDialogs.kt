@@ -68,7 +68,10 @@ internal fun NewGroupDialog(tas: List<CompanionEntity>, busy: Boolean, problem: 
 @Composable
 internal fun GroupMembersDialog(group: ChatGroupEntity, members: List<GroupMemberEntity>, active: Set<Long>,
     selected: List<Long>?, onPick: ((List<Long>) -> Unit)?, onDismiss: () -> Unit, onRename: (String) -> Unit,
-    canManage: Boolean = true, onManage: () -> Unit = {}) {
+    canManage: Boolean = true, onManage: () -> Unit = {},
+    /** 我在本群的头像（群专属）；空 = 全局默认。群没有唯一对应角色，所以是 per 群设置。 */
+    myAvatar: String? = null, defaultAvatar: String? = null,
+    onPickMyAvatar: () -> Unit = {}, onClearMyAvatar: () -> Unit = {}) {
     val palette = LocalGlassPalette.current
     var name by rememberSaveable(group.id) { mutableStateOf(group.title) }
     var picks by rememberSaveable(group.id) { mutableStateOf(selected.orEmpty()) }
@@ -77,6 +80,23 @@ internal fun GroupMembersDialog(group: ChatGroupEntity, members: List<GroupMembe
             Column(Modifier.heightIn(max = 550.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(if (onPick != null) "想请谁接话" else "群里的伙伴", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 if (onPick == null) OutlinedTextField(name, { name = it.take(40) }, label = { Text("群名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                // 我在本群的头像：**每个群各自一份**，不跟着谁发言变。
+                if (onPick == null) Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Avatar(myAvatar ?: defaultAvatar, avatarLetter("我", "我"), 40.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("我在本群的头像", color = palette.content, fontSize = 14.sp)
+                        Text(
+                            if (myAvatar == null) "用的是全局默认头像" else "这个群专属的",
+                            color = palette.contentSecondary, fontSize = 11.sp,
+                        )
+                    }
+                    TextButton(onClick = onPickMyAvatar) { Text(if (myAvatar == null) "设置" else "更换", color = palette.accentContent) }
+                    if (myAvatar != null) TextButton(onClick = onClearMyAvatar) { Text("用回默认", color = palette.content) }
+                }
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     members.filter { onPick == null || it.active }.forEach { member ->
                         val available = member.active && member.companionId in active

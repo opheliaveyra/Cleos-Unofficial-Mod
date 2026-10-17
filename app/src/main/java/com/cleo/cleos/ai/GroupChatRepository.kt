@@ -353,6 +353,9 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
         }
     }
 
+    /** 我在这个群里的头像（ImageStore 里的名字）；null = 恢复全局默认。**只动这一条群记录**。 */
+    suspend fun setMyAvatar(groupId: Long, file: String?) = dao.setUserAvatar(groupId, file)
+
     suspend fun retry(messageId: Long) {
         ready.await()
         gate.withLock {

@@ -136,6 +136,11 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
     val photo = rememberPhotoCapture()
     var photoBusy by remember { mutableStateOf(false) }
     var photoProblem by remember { mutableStateOf<String?>(null) }
+    // 「我在本群的头像」：选图 → 裁剪 → 存成这个群专属的（见 UserFaces）。
+    var myFaceCrop by remember { mutableStateOf<android.net.Uri?>(null) }
+    val myFacePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) myFaceCrop = uri
+    }
     photo.pending?.let { shot ->
         PhotoPreviewDialog(
             file = shot,
@@ -377,76 +382,45 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                 }
             }
             // 「＋」展开的那层：图片 / 语音 / 点名都收进来，输入框才留得住宽度。
-            if (attachOpen) GlassSurface(
-                Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(22.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-            ) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PanelAction(Icons.Rounded.AddPhotoAlternate, "图片") {
-                        attachOpen = false
-                        pickingPicture = true
-                        picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
-                    // 拍照：和「图片」并排；拍完先预览，确认才进待发送的图。
-                    PanelAction(Icons.Rounded.PhotoCamera, "拍照") {
-                        attachOpen = false
-                        photoProblem = null
-                        photo.take()
-                    }
-                    // 按住说话：和输入框上是同一套（长按记录，左滑转文字 / 右滑直接发 / 上滑取消）。
-                    Box(Modifier.clip(RoundedCornerShape(14.dp))) {
-                        Row(
-                            Modifier
-                                .background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.06f))
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                Icons.Rounded.Mic,
-                                contentDescription = "按住说话",
-                                tint = if (recording) Color.White else palette.accentContent,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                if (recording) "松手按方向发" else "按住说话",
-                                color = if (recording) Color.White else palette.content,
-                                fontSize = 14.sp,
-                            )
-                        }
-                        HoldToTalkLayer(
-                            onTap = { attachOpen = false },
-                            onStart = ::startVoice,
-                            onMove = { holdTarget = it; cancelling = it == null },
-                            onEnd = ::finishVoice,
-                            modifier = Modifier.matchParentSize(),
-                        )
-                    }
-                    PanelAction(Icons.Rounded.AlternateEmail, "点名成员") {
-                        attachOpen = false
-                        picking = true
-                    }
+            // 「＋」展开：和单聊同一个面板（换行网格 + 内部滚动，见 ChatInputParts.kt）。
+            if (attachOpen) AttachPanel(Modifier.padding(top = 2.dp, bottom = 2.dp)) {
+                AttachTile(Icons.Rounded.AddPhotoAlternate, "图片") {
+                    attachOpen = false
+                    pickingPicture = true
+                    picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+                // 拍照：和「图片」并排；拍完先预览，确认才进待发送的图。
+                AttachTile(Icons.Rounded.PhotoCamera, "拍照") {
+                    attachOpen = false
+                    photoProblem = null
+                    photo.take()
+                }
+                // 按住说话：和输入框上是同一套（长按记录，左滑转文字 / 右滑直接发 / 上滑取消）。
+                HoldTile(
+                    recording = recording,
+                    onTap = { attachOpen = false },
+                    onStart = ::startVoice,
+                    onMove = { holdTarget = it; cancelling = it == null },
+                    onEnd = ::finishVoice,
+                )
+                AttachTile(Icons.Rounded.AlternateEmail, "点名成员") {
+                    attachOpen = false
+                    picking = true
                 }
             }
             GlassSurface(Modifier.fillMaxWidth(), backdrop = page, style = palette.card, shape = GlassShape.Rounded(26.dp),
                 contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // ＋：默认只有它、输入框、发送 —— 别的都收在展开的那层里。
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(if (attachOpen) palette.accent else Color.Transparent)
-                            .clickable(enabled = !recording) { attachOpen = !attachOpen },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
-                            contentDescription = if (attachOpen) "收起更多" else "更多",
-                            tint = if (attachOpen) Color.White else palette.accentContent,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
+                    // 视觉 34dp / 点击 44dp（和单聊同一套，见 ChatInputParts.kt）。
+                    BarIconButton(
+                        if (attachOpen) Icons.Rounded.Close else Icons.Rounded.Add,
+                        if (attachOpen) "收起更多" else "更多",
+                        onClick = { attachOpen = !attachOpen },
+                        enabled = !recording,
+                        tint = if (attachOpen) Color.White else palette.accentContent,
+                        background = if (attachOpen) palette.accent else Color.Transparent,
+                    )
                     Box(Modifier.weight(1f)) {
                         BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.fillMaxWidth()
                             .heightIn(min = 42.dp, max = 130.dp).focusRequester(focus).semantics { contentDescription = "群聊消息" },
@@ -469,19 +443,34 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                             )
                         }
                     }
-                    if (busy) GlassIconButton(Icons.Rounded.Stop, "停止群聊回复", { act { c.groupChat.stop(groupId) } }, page)
-                    else GlassIconButton(Icons.AutoMirrored.Rounded.Send, "发送群聊消息", {
-                        // 只发图不写字也算一条 —— 群里发张图不用配文字。
-                        if ((draft.isNotBlank() || pictures.isNotEmpty()) && !posting && loaded) act {
-                            posting = true
-                            val sentPictures = pictures
-                            try {
-                                c.groupChat.send(groupId, draft, mentions, sentPictures)
-                                draft = ""; mentions = emptyList(); pictures = emptyList()
-                                if (rows.isNotEmpty()) list.scrollToItem(rows.lastIndex)
-                            } finally { posting = false }
-                        }
-                    }, page)
+                    if (busy) {
+                        BarIconButton(
+                            Icons.Rounded.Stop,
+                            "停止群聊回复",
+                            onClick = { act { c.groupChat.stop(groupId) } },
+                            tint = palette.content,
+                            background = palette.content.copy(alpha = 0.1f),
+                        )
+                    } else {
+                        BarIconButton(
+                            Icons.AutoMirrored.Rounded.Send,
+                            "发送群聊消息",
+                            onClick = {
+                                // 只发图不写字也算一条 —— 群里发张图不用配文字。
+                                if ((draft.isNotBlank() || pictures.isNotEmpty()) && !posting && loaded) act {
+                                    posting = true
+                                    val sentPictures = pictures
+                                    try {
+                                        c.groupChat.send(groupId, draft, mentions, sentPictures)
+                                        draft = ""; mentions = emptyList(); pictures = emptyList()
+                                        if (rows.isNotEmpty()) list.scrollToItem(rows.lastIndex)
+                                    } finally { posting = false }
+                                }
+                            },
+                            enabled = !posting,
+                            background = palette.accent.copy(alpha = if (draft.isNotBlank() || pictures.isNotEmpty()) 1f else 0.35f),
+                        )
+                    }
                 }
             }
         }
@@ -559,18 +548,45 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                                 TextButton({ act { c.groupChat.retry(row.id) } }) { Text("请${row.speakerName}再试一次", color = palette.accentContent, fontSize = 12.sp) }
                             }
                         }
-                        if (mine && settings.chatAvatars) { Spacer(Modifier.width(8.dp)); Avatar(settings.userAvatar, avatarLetter(settings.userName, "我"), 34.dp) }
+                        // 群聊里「我」的头像：**这个群专属的 > 全局默认**，不跟着谁发言变（见 UserFaces）。
+                        if (mine && settings.chatAvatars) { Spacer(Modifier.width(8.dp)); Avatar(com.cleo.cleos.data.UserFaces.forGroup(group, settings), avatarLetter(settings.userName, "我"), 34.dp) }
                     }
                 }
             }
         }
     }
+    myFaceCrop?.let { uri ->
+        com.cleo.cleos.ui.home.AvatarCropDialog(
+            uri = uri,
+            onDismiss = { myFaceCrop = null },
+            onCropped = { bmp ->
+                myFaceCrop = null
+                val old = group?.userAvatar
+                scope.launch {
+                    val file = runCatching { c.images.save(bmp, prefix = "me-group-") }.getOrNull() ?: return@launch
+                    c.groupChat.setMyAvatar(groupId, file)
+                    if (!old.isNullOrBlank()) runCatching { c.images.delete(listOf(old)) }
+                }
+            },
+        )
+    }
+
     group?.let { saved ->
         if (picking || details) GroupMembersDialog(saved, members, active, if (picking) mentions else null,
             if (picking) { value -> mentions = value; picking = false } else null,
             { picking = false; details = false }, { name -> act { c.groupChat.rename(groupId, name); details = false } },
             canManage = !busy && members.isNotEmpty() && active.isNotEmpty(),
-            onManage = { problem = null; details = false; editingMembers = true })
+            onManage = { problem = null; details = false; editingMembers = true },
+            myAvatar = saved.userAvatar,
+            defaultAvatar = settings.userAvatar,
+            onPickMyAvatar = { myFacePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onClearMyAvatar = {
+                val old = saved.userAvatar
+                act {
+                    c.groupChat.setMyAvatar(groupId, null)
+                    if (!old.isNullOrBlank()) runCatching { c.images.delete(listOf(old)) }
+                }
+            })
         if (editingMembers) EditGroupMembersDialog(saved, members, tas, savingMembers || busy, problem,
             onDismiss = { if (!savingMembers) { editingMembers = false; problem = null } },
             onSave = { value -> act {

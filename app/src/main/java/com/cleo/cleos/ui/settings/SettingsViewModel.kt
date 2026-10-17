@@ -1517,6 +1517,37 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun addManualModels(text: String) {
         addBatchModels(parseModelIds(text))
     }
+
+    /** 全局默认的「我」的头像；角色没设专属时就显示它（见 [com.cleo.cleos.data.UserFaces]）。 */
+    val myAvatarDefault: String? get() = settings.value.userAvatar
+
+    /** 与当前角色聊天时「我」的头像（界面显示用）；null = 用全局默认。 */
+    fun myAvatarForCompanion(id: Long = companionId): String? =
+        companions.value.firstOrNull { it.id == id }?.userAvatar?.takeIf { it.isNotBlank() }
+
+    /** 给当前角色设一张专属的「我」的头像：**只影响这个角色**，不碰全局和其他角色。 */
+    fun setMyAvatarForCompanion(bitmap: android.graphics.Bitmap) {
+        val id = companionId
+        if (id <= 0L) return
+        viewModelScope.launch {
+            val file = runCatching { c.images.save(bitmap, prefix = "me-ta-") }.getOrNull() ?: return@launch
+            val old = companions.value.firstOrNull { it.id == id }?.userAvatar
+            c.companions.update(id) { it.copy(userAvatar = file) }
+            // 换下来的那张没人用了，删掉省地方。
+            if (!old.isNullOrBlank()) runCatching { c.images.delete(listOf(old)) }
+        }
+    }
+
+    /** 恢复用全局默认头像（只清这个角色的）。 */
+    fun clearMyAvatarForCompanion() {
+        val id = companionId
+        if (id <= 0L) return
+        viewModelScope.launch {
+            val old = companions.value.firstOrNull { it.id == id }?.userAvatar
+            c.companions.update(id) { it.copy(userAvatar = null) }
+            if (!old.isNullOrBlank()) runCatching { c.images.delete(listOf(old)) }
+        }
+    }
     override fun onCleared() {
         speechPlayer?.release()
         speechPlayer = null
