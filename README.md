@@ -1,4 +1,37 @@
-# Cleos
+# Cleos 二次开发版（社区修改版）
+
+> **非官方衍生版本**。本仓库由 [1553673952-cloud](https://github.com/1553673952-cloud) 维护，基于 [jqzhang921-sudo/cleos](https://github.com/jqzhang921-sudo/cleos) 修改，不代表原作者发布或背书。感谢原项目及贡献者。
+
+## 本仓库是什么
+
+这是基于 Cleos 的 Android 原生 AI 陪伴聊天应用二次开发分支，使用 Kotlin 与 Jetpack Compose。保留原项目的核心设计，同时持续进行功能扩展、交互调整与问题修复。
+
+- **当前源码版本**：`0.1.62-mod`（从 `app/build.gradle.kts` 读取；安装包版本请以实际发布的 APK 为准）。
+- **Android 最低版本**：Android 10（API 29）。
+- **源码分支**：`feature/chat-file-upload-and-hold-to-talk`（当前仓库默认分支）。
+- **开发状态**：持续迭代的二改版；部分功能可能仍在测试中。
+
+## 二改版与原版的区别
+
+本仓库采用独立的 `0.x-mod` 版本号，以区别于上游 Cleos 的版本线。二改工作的方向包括聊天附件与交互体验的扩展、功能调整及修复。**具体哪些功能已完成、已发布、可在设备上稳定使用，应以本仓库的提交记录、实际构建与测试结果为准**；不要直接把下方上游说明当作本二改版的完整已验收功能清单。
+
+查看：[本仓库提交历史](https://github.com/1553673952-cloud/Cleos/commits/feature/chat-file-upload-and-hold-to-talk) · [原版项目](https://github.com/jqzhang921-sudo/cleos)
+
+## 下载、安装与更新
+
+请优先查看本仓库的 [Releases](https://github.com/1553673952-cloud/Cleos/releases)。若暂无发布资产，说明当前未在 GitHub Releases 提供可直接下载的 APK，不能将原版的下载渠道视为本二改版的更新地址。
+
+**更新前请备份应用内数据。** Android 安装包需要匹配应用包名和签名证书；签名不同可能无法覆盖安装，卸载会清除本地应用数据。不要仅凭文件名或版本号判断可以无损升级。
+
+## 许可、署名和上游资料
+
+本项目基于上游 Cleos 开发，原作者及贡献者的版权、Apache-2.0 许可证及第三方声明应按其适用范围保留。请阅读 [LICENSE](LICENSE)、[NOTICE](NOTICE)、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 和 [许可范围说明](docs/LICENSING.md)。二次开发不意味着拥有上游代码或第三方素材的版权。
+
+以下保留上游 README 的详细介绍，**作为原版资料参考**。其中原作者的下载链接、赞助入口、版本计划和功能描述不应被理解为本仓库维护者的官方渠道或对二改版的承诺。
+
+---
+
+## 上游 Cleos README（历史参考，非本二改版完整功能清单）
 
 ## 源码使用与分发
 
