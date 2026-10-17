@@ -67,6 +67,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.rounded.DynamicFeed
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Description
@@ -726,6 +727,39 @@ fun ChatTab(
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
     // The + under the bar: 图片 or 文件.
     var attachOpen by rememberSaveable { mutableStateOf(false) }
+    // 拍照：拍完先在这里预览（PhotoCapture.kt），**确认了才进待发送的图片**，不自动发。
+    val photo = rememberPhotoCapture()
+    var photoBusy by remember { mutableStateOf(false) }
+    var photoProblem by remember { mutableStateOf<String?>(null) }
+    photo.pending?.let { shot ->
+        PhotoPreviewDialog(
+            file = shot,
+            problem = photoProblem ?: photo.problem,
+            busy = photoBusy,
+            onRetake = {
+                photo.discard()
+                photoProblem = null
+                photo.take()
+            },
+            onCancel = {
+                photo.discard()
+                photoProblem = null
+            },
+            onConfirm = {
+                photoBusy = true
+                c.appScope.launch {
+                    val why = vm.attachPhoto(shot)
+                    photoBusy = false
+                    if (why == null) {
+                        photo.discard()
+                        photoProblem = null
+                    } else {
+                        photoProblem = why
+                    }
+                }
+            },
+        )
+    }
     var deletingSticker by remember { mutableStateOf<StickerEntity?>(null) }
     val stickerPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         pickingAttachment = false
@@ -1055,6 +1089,11 @@ fun ChatTab(
                     pickingAttachment = true
                     vm.typing(true, processingMedia = true)
                     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onTakePhoto = {
+                    attachOpen = false
+                    photoProblem = null
+                    photo.take()
                 },
                 onRemove = vm::detach,
                 attachOpen = editingMessage == null && attachOpen,
@@ -2638,6 +2677,8 @@ private fun ChatInputBar(
     attachments: List<MessageImage>,
     attaching: Boolean,
     onPick: () -> Unit,
+    /** 拍照：和「图片」并排（拍完先预览，见 PhotoCapture.kt）。 */
+    onTakePhoto: () -> Unit = {},
     onRemove: (MessageImage) -> Unit,
     /** The + is open: the two ways of attaching something show under the bar. */
     attachOpen: Boolean = false,
@@ -2900,6 +2941,12 @@ private fun ChatInputBar(
                     "图片",
                     enabled = !editing && attachments.size < MAX_ATTACHMENTS,
                     onClick = onPick,
+                )
+                AttachChip(
+                    Icons.Rounded.PhotoCamera,
+                    "拍照",
+                    enabled = !editing && attachments.size < MAX_ATTACHMENTS,
+                    onClick = onTakePhoto,
                 )
                 AttachChip(
                     Icons.Rounded.AttachFile,

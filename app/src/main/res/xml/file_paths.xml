@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    拍照的临时文件：只开放 cacheDir/camera/ 这一处，别的一概不给相机 app 看。
+    拍完确认后由 ImageStore.import 转正、压缩、搬进应用自己的图片目录。
+-->
+<paths>
+    <cache-path name="camera" path="camera/" />
+</paths>

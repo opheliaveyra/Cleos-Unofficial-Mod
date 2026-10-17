@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Voice messages: asked for the first time the person holds the microphone button. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 拍照：调系统相机。声明了就要在启动相机前请求（Android 11 起没授权会抛 SecurityException）。 -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- get_location, only while a reply asks; asked for when the switch is turned on. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -40,6 +42,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            拍照的临时文件交给相机 app：Android 10 起不能再用 file://，要 FileProvider。
+            权限是临时的（grantUriPermissions），路径见 res/xml/file_paths.xml。
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <service
             android:name=".ReplyKeeper"

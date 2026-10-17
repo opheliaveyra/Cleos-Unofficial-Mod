@@ -211,6 +211,22 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         c.appScope.launch { c.images.delete(listOf(image.file)) }
     }
 
+    /**
+     * 相机拍的一张：**界面确认过**才进来（预览不在这一层）。
+     *
+     * 走和相册同一套导入（[com.cleo.cleos.data.ImageStore.import]）：EXIF 转正、缩到 2048、JPEG 88%，
+     * 方向、变形、体积都在这道门口处理掉。返回没加进来的原因；null 表示加好了。
+     */
+    suspend fun attachPhoto(file: java.io.File): String? {
+        if (attachments.size >= Prompt.MAX_IMAGES) return "图片最多 ${Prompt.MAX_IMAGES} 张"
+        return runCatching {
+            c.images.import(android.net.Uri.fromFile(file), maxEdge = 2048, prefix = "camera-")
+        }.map { stored ->
+            attachments += MessageImage(stored.file, stored.width, stored.height)
+            null
+        }.getOrElse { "这张照片没能处理（${it.message?.take(80) ?: "没有说明"}）—— 重拍一张，或者从相册选" }
+    }
+
     /** 上一条视频没能进来的原因；显示一下就消失，跟 [fileProblem] 一样。 */
     var videoProblem by mutableStateOf<String?>(null)
         private set

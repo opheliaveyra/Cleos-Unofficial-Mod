@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Book
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.*
@@ -130,6 +131,42 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
     val keyboard = LocalSoftwareKeyboardController.current
     val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) voiceHint = "要给 Cleos 用话筒的权限，才能发语音"
+    }
+    // 拍照：和单聊共用同一个组件（PhotoCapture.kt）—— 拍完先预览，确认了才进待发送的图片。
+    val photo = rememberPhotoCapture()
+    var photoBusy by remember { mutableStateOf(false) }
+    var photoProblem by remember { mutableStateOf<String?>(null) }
+    photo.pending?.let { shot ->
+        PhotoPreviewDialog(
+            file = shot,
+            problem = photoProblem ?: photo.problem,
+            busy = photoBusy,
+            onRetake = {
+                photo.discard()
+                photoProblem = null
+                photo.take()
+            },
+            onCancel = {
+                photo.discard()
+                photoProblem = null
+            },
+            onConfirm = {
+                photoBusy = true
+                scope.launch {
+                    val stored = runCatching {
+                        c.images.import(android.net.Uri.fromFile(shot), maxEdge = 2048, prefix = "group-camera-")
+                    }.getOrNull()
+                    photoBusy = false
+                    if (stored == null) {
+                        photoProblem = "这张照片没能处理 —— 重拍一张，或者从相册选"
+                    } else {
+                        pictures = pictures + MessageImage(stored.file, stored.width, stored.height)
+                        photo.discard()
+                        photoProblem = null
+                    }
+                }
+            },
+        )
     }
     val player = remember { arrayOfNulls<android.media.MediaPlayer>(1) }
     var playing by remember { mutableStateOf<String?>(null) }
@@ -349,6 +386,12 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                         attachOpen = false
                         pickingPicture = true
                         picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                    // 拍照：和「图片」并排；拍完先预览，确认才进待发送的图。
+                    PanelAction(Icons.Rounded.PhotoCamera, "拍照") {
+                        attachOpen = false
+                        photoProblem = null
+                        photo.take()
                     }
                     // 按住说话：和输入框上是同一套（长按记录，左滑转文字 / 右滑直接发 / 上滑取消）。
                     Box(Modifier.clip(RoundedCornerShape(14.dp))) {
