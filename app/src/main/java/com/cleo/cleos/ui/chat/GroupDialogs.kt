@@ -15,12 +15,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.cleo.cleos.data.db.*
 import com.cleo.cleos.glass.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.ui.common.Avatar
+import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.avatarLetter
 
 @Composable
 internal fun NewGroupDialog(tas: List<CompanionEntity>, busy: Boolean, problem: String?, onCancel: () -> Unit, onCreate: (String, List<Long>) -> Unit) {
     val palette = LocalGlassPalette.current
+    // 群里的模型走三层结构（「群聊」这条，见 ModelRoutes），所以这里显示的是它现在会用的那条。
+    val registryData by appContainer().registry.data.collectAsStateWithLifecycle(com.cleo.cleos.data.ModelRegistryData())
+    val groupModel = registryData.configs.firstOrNull {
+        it.id == (registryData.routes["Groups"]?.configId.orEmpty().ifEmpty { registryData.defaultConfigId })
+    }?.label.orEmpty()
     var name by rememberSaveable { mutableStateOf("一起聊聊") }
     var selected by rememberSaveable { mutableStateOf(listOf<Long>()) }
     Dialog(onDismissRequest = { if (!busy) onCancel() }) {
@@ -40,7 +47,7 @@ internal fun NewGroupDialog(tas: List<CompanionEntity>, busy: Boolean, problem: 
                             Avatar(ta.avatar, ta.avatarEmoji ?: avatarLetter(ta.name, "TA"), 34.dp)
                             Column(Modifier.weight(1f)) {
                                 Text(ta.name.ifBlank { "TA" }, color = palette.content)
-                                Text(ta.apiModel, color = palette.contentSecondary, fontSize = 11.sp)
+                                Text(groupModel.ifBlank { "还没配模型" }, color = palette.contentSecondary, fontSize = 11.sp)
                             }
                             Checkbox(picked, null, enabled = enabled)
                         }

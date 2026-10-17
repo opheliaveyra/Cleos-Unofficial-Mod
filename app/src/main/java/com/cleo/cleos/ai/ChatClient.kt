@@ -260,6 +260,12 @@ class ChatClient(
         messages: List<ApiMessage>,
         tools: List<ToolSpec> = emptyList(),
         thinking: Boolean = false,
+        /**
+         * 这条请求带的参数，来自三层结构（模型配置的默认值，被功能的覆盖压过，见 `ModelRoutes`）。
+         * 空着就不发这个字段 —— 让服务端用它自己的默认，而不是我们替它决定。
+         */
+        temperature: Float? = null,
+        maxTokens: Int? = null,
     ): Flow<ChatEvent> = callbackFlow {
         val requestId = java.util.UUID.randomUUID().toString()
         fun trace(metadata: String) = diagnostic("requestId=$requestId $metadata")
@@ -271,6 +277,8 @@ class ChatClient(
                 to.model, messages, requestTools,
                 thinking = if (thinking) true else if (off && !always) false else null,
                 effort = if (off && always) Thinking.LITTLE else null,
+                temperature = temperature,
+                maxTokens = maxTokens,
             )
             trace("route=${com.cleo.cleos.diagnostics.ToolDiagnosticStore.fingerprint(to.chatUrl)} " + ChatCompatibility.diagnostic(body))
             return http.newCall(
@@ -304,7 +312,9 @@ class ChatClient(
                                 val body = it.body.string()
                                 val sent = requestBody(to.model, messages, requestTools,
                                     thinking = if (thinking) true else if (disableThinking && !always) false else null,
-                                    effort = if (disableThinking && always) Thinking.LITTLE else null)
+                                    effort = if (disableThinking && always) Thinking.LITTLE else null,
+                                    temperature = temperature,
+                                    maxTokens = maxTokens)
                                 trace(ChatCompatibility.diagnostic(sent, it.code, body))
                                 httpFailure(it.code, body)
                             }
@@ -606,10 +616,15 @@ internal fun requestBody(
     tools: List<ToolSpec>,
     thinking: Boolean? = null,
     effort: String? = null,
+    /** 功能绑定上的参数覆盖（[com.cleo.cleos.data.ParamOverrides]）；空着就不发，用服务端默认。 */
+    temperature: Float? = null,
+    maxTokens: Int? = null,
 ): JsonObject = buildJsonObject {
     val allReasoning = tools.isNotEmpty() && thinking != false && Thinking.keepsToolReasoning(model)
     put("model", model)
     put("stream", true)
+    if (temperature != null) put("temperature", temperature)
+    if (maxTokens != null) put("max_tokens", maxTokens)
     if (thinking != null) putJsonObject("thinking") { put("type", if (thinking) "enabled" else "disabled") }
     if (effort != null) put("reasoning_effort", effort)
     putJsonArray("messages") {

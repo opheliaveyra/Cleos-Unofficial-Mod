@@ -1,5 +1,6 @@
 package com.cleo.cleos.ui.chat
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,8 +22,11 @@ import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Book
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -48,6 +54,7 @@ import com.cleo.cleos.ai.GroupMemoryRules
 import com.cleo.cleos.ai.GroupToolRules
 import com.cleo.cleos.data.MessageImage
 import com.cleo.cleos.data.MessageImages
+import com.cleo.cleos.data.MessageAudios
 import com.cleo.cleos.data.BubbleSpacing
 import com.cleo.cleos.data.db.GroupMessageEntity
 import com.cleo.cleos.glass.*
@@ -99,6 +106,35 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                 .onFailure { problem = "这张图没能读进来" }
         }
     }
+    // 按住说话：和私人聊天同一个录音器（16 kHz 单声道 WAV，转文字服务都认）。
+    val recorder = remember { VoiceRecorder(c.images.dir) }
+    var recording by remember { mutableStateOf(false) }
+    var recordedMs by remember { mutableLongStateOf(0L) }
+    var loudness by remember { mutableFloatStateOf(0f) }
+    val mic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) problem = "要给 Cleos 用话筒的权限，才能发语音"
+    }
+    val player = remember { arrayOfNulls<android.media.MediaPlayer>(1) }
+    var playing by remember { mutableStateOf<String?>(null) }
+    fun stopPlaying() {
+        player[0]?.let { runCatching { it.stop() }; it.release() }
+        player[0] = null
+        playing = null
+    }
+    fun playVoice(file: String) {
+        val again = playing == file
+        stopPlaying()
+        if (again) return
+        playing = file
+        val p = android.media.MediaPlayer()
+        runCatching {
+            p.setDataSource(c.images.file(file).path)
+            p.setOnCompletionListener { stopPlaying() }
+            p.prepare()
+            p.start()
+        }.onSuccess { player[0] = p }.onFailure { p.release(); playing = null; problem = "这段语音放不了" }
+    }
+    DisposableEffect(groupId) { onDispose { stopPlaying() } }
     var selectedText by remember { mutableStateOf<String?>(null) }
     var actionMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
     var toolMessageId by rememberSaveable(groupId, generation) { mutableStateOf<Long?>(null) }
@@ -124,6 +160,15 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
         try { block() } catch (e: CancellationException) { throw e }
         catch (e: Exception) { problem = e.message ?: "没有完成，请再试一次" }
     } }
+    /** 松手：录到了就发，太短或划走了就丢掉（转录在仓库那边做，见 [GroupChatRepository.sendVoice]）。 */
+    fun finishRecording(cancel: Boolean) {
+        if (!recording) return
+        recording = false
+        recordedMs = 0L
+        loudness = 0f
+        val clip = if (cancel) { recorder.cancel(); null } else recorder.stop()
+        if (clip != null) act { c.groupChat.sendVoice(groupId, clip, mentions); mentions = emptyList() }
+    }
     LaunchedEffect(group?.id, generation) {
         if (group != null) {
             val saved = dao.group(groupId)
@@ -153,6 +198,8 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             leading = { GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "返回", onBack, page) },
             trailing = { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 GlassIconButton(Icons.Rounded.Book, "群内小本本", { problem = null; memoriesOpen = true }, page)
+                // 不用人先开口：点一下，几位 TA 自己轮流接几句。
+                GlassIconButton(Icons.Rounded.Forum, "让他们自己聊", { act { c.groupChat.selfTalk(groupId, 3) } }, page)
                 GlassIconButton(Icons.Rounded.Groups, "群聊成员", { details = true }, page)
             } },
             onTitleClick = { details = true })
@@ -160,6 +207,10 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
             .padding(horizontal = 14.dp, vertical = 8.dp).onSizeChanged { composerHeight = it.height },
             verticalArrangement = Arrangement.spacedBy(7.dp)) {
             problem?.let { Text(it, color = palette.error, fontSize = 12.sp) }
+            if (recording) Text(
+                "松开发送 · 已经 ${(recordedMs / 1000).coerceAtLeast(1)} 秒" + if (loudness > 0.02f) " · 在说" else " · 没听到声音",
+                color = palette.accentContent, fontSize = 12.sp,
+            )
             if (mentions.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 mentions.forEach { id -> Chip("@${members.firstOrNull { it.companionId == id }?.name ?: "TA"} ×", false) { mentions = mentions - id } }
             }
@@ -189,6 +240,44 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                         pickingPicture = true
                         picturePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }, page)
+                    // 按住说话：**松手才发**，压着不动就是还在录。
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (recording) palette.error.copy(alpha = 0.85f) else Color.Transparent)
+                            .pointerInput(loaded, busy) {
+                                detectTapGestures(onPress = {
+                                    if (loaded && !busy && !recording) {
+                                        if (!recorder.start()) {
+                                            mic.launch(Manifest.permission.RECORD_AUDIO)
+                                        } else {
+                                            recording = true
+                                            recordedMs = 0L
+                                            loudness = recorder.level
+                                            val tick = scope.launch {
+                                                while (recording) {
+                                                    recordedMs += 100
+                                                    loudness = recorder.level
+                                                    kotlinx.coroutines.delay(100)
+                                                }
+                                            }
+                                            val released = tryAwaitRelease()
+                                            tick.cancel()
+                                            finishRecording(cancel = !released)
+                                        }
+                                    }
+                                })
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Rounded.Mic,
+                            contentDescription = "按住说话",
+                            tint = if (recording) Color.White else palette.accentContent,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                     GlassIconButton(Icons.Rounded.AlternateEmail, "点名成员", { picking = true }, page)
                     BasicTextField(draft, { draft = it.take(GroupChatRules.MAX_TEXT) }, modifier = Modifier.weight(1f)
                         .heightIn(min = 42.dp, max = 130.dp).semantics { contentDescription = "群聊消息" },
@@ -238,6 +327,28 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                             Text(row.speakerName.ifBlank { if (mine) "我" else "TA" }, color = palette.contentSecondary, fontSize = 11.sp)
                             if (mine && GroupChatRules.ids(row.mentions).isNotEmpty()) Text(GroupChatRules.ids(row.mentions)
                                 .joinToString(" ") { "@${members.firstOrNull { m -> m.companionId == it }?.name ?: "TA"}" }, color = palette.contentSecondary, fontSize = 11.sp)
+                            // 语音：能播、看得见多长；说了什么由仓库那边转成文字填进 content。
+                            val clip = remember(row.audio) { MessageAudios.decode(row.audio) }
+                            if (clip != null) Row(
+                                Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(palette.content.copy(alpha = 0.07f))
+                                    .clickable { playVoice(clip.file) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    if (playing == clip.file) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                                    contentDescription = "播放语音",
+                                    tint = palette.accentContent,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    (clip.ms / 1000).coerceAtLeast(1).toString() + " 秒",
+                                    color = palette.content, fontSize = 13.sp,
+                                )
+                            }
                             val photos = remember(row.images) { MessageImages.decode(row.images) }
                             if (text.isNotBlank() || photos.isEmpty() || row.status in setOf("pending", "running")) ChatBubbleSurface(mine = mine, theme = if (mine) settings.myBubbleTheme else settings.taBubbleThemes[row.speakerId.toString()] ?: "glass",
                                 background = settings.bubbleBackgrounds[if (mine) settings.myBubbleTheme else settings.taBubbleThemes[row.speakerId.toString()] ?: "glass"],

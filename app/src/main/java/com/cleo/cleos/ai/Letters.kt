@@ -3,6 +3,8 @@ package com.cleo.cleos.ai
 import android.util.Log
 import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.DiaryBlocks
+import com.cleo.cleos.data.ModelRegistry
+import com.cleo.cleos.data.RouteResult
 import com.cleo.cleos.data.SecretStore
 import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.StickerText
@@ -256,6 +258,8 @@ class Letters(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
+    /** 三层结构：功能用哪个模型只从这里解（见 [com.cleo.cleos.data.ModelRoutes]）。 */
+    private val registry: ModelRegistry,
     private val client: ChatClient,
     private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -355,8 +359,12 @@ class Letters(
 
     /** The letter's text, or null when it can't be written now (no key yet, nothing came back). */
     private suspend fun write(ta: CompanionEntity, replyTo: LetterEntity?): String? {
-        // 写信是它自己主动干的活，没单独配就跟着主模型（见 Feature.Letters）。
-        val use = ta.modelFor(Feature.Letters)
+        // 写信是它自己主动干的活，走统一入口（见 [com.cleo.cleos.data.ModelRoutes]）；
+        // 解不出来（还没配、或者绑的那条被删了）这一封就先不写。
+        val use = when (val route = registry.route(Feature.Letters)) {
+            is RouteResult.Ready -> route.model
+            is RouteResult.Broken -> return null
+        }
         val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: return null
         val s = settings.current()
         val z = zone()
@@ -388,7 +396,7 @@ class Letters(
             ),
         )
         val text = StringBuilder()
-        client.stream(ApiEndpoint(use.baseUrl, key, use.model), messages).collect { if (it is ChatEvent.Delta) text.append(it.text) }
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), messages, temperature = use.temperature, maxTokens = use.maxTokens).collect { if (it is ChatEvent.Delta) text.append(it.text) }
         return text.toString().trim().ifEmpty { null }
     }
 

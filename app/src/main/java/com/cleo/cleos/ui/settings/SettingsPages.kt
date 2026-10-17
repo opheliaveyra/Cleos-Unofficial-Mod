@@ -81,6 +81,10 @@ import com.cleo.cleos.ui.common.avatarLetter
 enum class SettingsPage(val title: String) {
     Profile("资料与性格"),
     Model("模型"),
+    /** 三层结构（0.1.44）：服务商 / 模型配置 / 功能绑定，各一页。 */
+    Providers("服务商"),
+    ModelConfigs("模型配置"),
+    FunctionRoutes("功能用哪个"),
     Behavior("说话方式"),
     Abilities("能做的事"),
     Workspace("工作区"),
@@ -97,7 +101,7 @@ enum class SettingsPage(val title: String) {
     /** Whose these are, under the page's title: the TA's own, or every TA's. */
     fun subtitle(taName: String): String? = when (this) {
         Profile, Model, Behavior -> taName
-        Abilities, Voice, Mcp -> "所有 TA 共用"
+        Abilities, Voice, Mcp, Providers, ModelConfigs, FunctionRoutes -> "所有 TA 共用"
         else -> null
     }
 
@@ -122,7 +126,7 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
     val servers by vm.mcpServers.collectAsStateWithLifecycle()
     val companions by vm.companions.collectAsStateWithLifecycle()
     val lore by vm.lore.collectAsStateWithLifecycle()
-    val hasKey by vm.chat.activeHasKey.collectAsStateWithLifecycle()
+    val modelData by vm.registry.collectAsStateWithLifecycle()
     val ta = companions.firstOrNull { it.id == vm.companionId }
     val name = vm.aiName.trim().ifEmpty { "TA" }
     var switching by remember { mutableStateOf(false) }
@@ -155,12 +159,18 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
             else -> "$books 本书 ${lore.size} 条 · TA 想用时自己查"
         }) { onOpenLore(vm.companionId) }
         RowDivider()
-        val service = ApiPresets.all.firstOrNull { it.baseUrl == vm.chat.activeUrl.trim().trimEnd('/') }?.name ?: host(vm.chat.activeUrl)
+        // 走三层结构：全局默认那条是聊天用的，别的功能不绑就跟着它。
+        val defaultConfig = modelData.configs.firstOrNull { it.id == modelData.defaultConfigId }
+        val defaultProvider = defaultConfig?.let { c -> modelData.providers.firstOrNull { it.id == c.providerId } }
         val heard = vm.spoken.activeModel.trim().takeIf { vm.spokenOn && vm.spoken.activeUrl.isNotBlank() }
-        val model = listOfNotNull(service, vm.chat.activeModel.trim(), heard?.let { "电话和语音用 $it" }).filter { it.isNotEmpty() }.joinToString(" · ")
+        val model = listOfNotNull(
+            defaultProvider?.name?.ifBlank { defaultProvider.baseUrl },
+            defaultConfig?.model?.trim(),
+            heard?.let { "电话和语音用 $it" },
+        ).filter { it.isNotEmpty() }.joinToString(" · ")
         when {
-            vm.chat.activeUrl.isBlank() -> Entry(Icons.Rounded.Memory, "模型", "还没接上模型", palette.error) { onOpen(SettingsPage.Model) }
-            !hasKey -> Entry(Icons.Rounded.Memory, "模型", "$model · 还没填 Key", palette.error) { onOpen(SettingsPage.Model) }
+            modelData.configs.isEmpty() -> Entry(Icons.Rounded.Memory, "模型", "还没接上模型", palette.error) { onOpen(SettingsPage.Model) }
+            defaultConfig == null -> Entry(Icons.Rounded.Memory, "模型", "全局默认那条配置不在了", palette.error) { onOpen(SettingsPage.Model) }
             else -> Entry(Icons.Rounded.Memory, "模型", model) { onOpen(SettingsPage.Model) }
         }
         RowDivider()
@@ -170,6 +180,22 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
     }
 
     ListCard("所有 TA 共用") {
+        val providers = modelData.providers.size
+        val configs = modelData.configs.size
+        Entry(
+            Icons.Rounded.Memory,
+            "服务商",
+            if (providers == 0) "还没加 · 接口地址和 Key 在这儿" else "$providers 家 · 地址、接口类型和 Key",
+        ) { onOpen(SettingsPage.Providers) }
+        RowDivider()
+        Entry(
+            Icons.Rounded.Extension,
+            "模型配置",
+            if (configs == 0) "还没有 · 型号、参数、验过的能力" else "$configs 条 · 型号、参数、验过的能力",
+        ) { onOpen(SettingsPage.ModelConfigs) }
+        RowDivider()
+        Entry(Icons.Rounded.Widgets, "功能用哪个", "聊天、总结、看图…各挑一条") { onOpen(SettingsPage.FunctionRoutes) }
+        RowDivider()
         Entry(Icons.Rounded.Widgets, "能做的事", "开着 ${ABILITIES.count { it in settings.tools }} 项") { onOpen(SettingsPage.Abilities) }
         RowDivider()
         // 工作区是 TA 的能力，但这一页是给人看的：看它写了什么、导出、删。

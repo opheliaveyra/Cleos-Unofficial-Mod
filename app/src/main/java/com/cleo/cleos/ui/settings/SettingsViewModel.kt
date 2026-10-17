@@ -1165,6 +1165,167 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
+    // ---- 三层结构：服务商 / 模型配置 / 功能绑定 ----
+
+    /** 现在这份三层配置；[com.cleo.cleos.data.ModelRegistry.edit] 写完就刷新。 */
+    val registry: StateFlow<com.cleo.cleos.data.ModelRegistryData> =
+        c.registry.data.stateIn(viewModelScope, SharingStarted.Eagerly, com.cleo.cleos.data.ModelRegistryData())
+
+    var registryBusy by mutableStateOf(false)
+        private set
+    var registryMessage by mutableStateOf<String?>(null)
+        private set
+
+    fun clearRegistryMessage() { registryMessage = null }
+
+    /** 改配置一律走这里：按钮点下去有个忙碌状态，出错就把原话显示出来。 */
+    private fun registryAction(action: suspend () -> String?) {
+        if (registryBusy) return
+        registryBusy = true
+        viewModelScope.launch {
+            try { registryMessage = action() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { registryMessage = e.message ?: "没做成，再试一次" }
+            finally { registryBusy = false }
+        }
+    }
+
+    /** 正在测哪条（服务商的 id、或模型配置的 id）；null 表示没在测。 */
+    var testing by mutableStateOf<String?>(null)
+        private set
+
+    /** 上一次测试的结果：id → 那句人话。 */
+    var testResult by mutableStateOf<Pair<String, String>?>(null)
+        private set
+
+    fun clearTestResult() { testResult = null }
+
+    // ---- 服务商 ----
+
+    fun addProvider(name: String, baseUrl: String, kind: com.cleo.cleos.data.ApiKind, key: String) = registryAction {
+        val url = baseUrl.trim()
+        require(url.isNotBlank()) { "接口地址不能空着" }
+        require(c.registry.current().providers.none { it.baseUrl.trim().trimEnd('/').equals(url.trimEnd('/'), ignoreCase = true) }) {
+            "这个地址已经有一条服务商了"
+        }
+        if (key.isNotBlank()) c.secrets.setKey(url, key.trim())
+        c.registry.addProvider(name, url, kind)
+        "已添加。点「测试连接」真发一条试试。"
+    }
+
+    fun updateProvider(id: String, name: String, baseUrl: String, kind: com.cleo.cleos.data.ApiKind, key: String) = registryAction {
+        val url = baseUrl.trim()
+        require(url.isNotBlank()) { "接口地址不能空着" }
+        if (key.isNotBlank()) c.secrets.setKey(url, key.trim())
+        c.registry.updateProvider(id) { it.copy(name = name.trim(), baseUrl = url, kind = kind) }
+        "已保存"
+    }
+
+    /** 删服务商：名下的模型配置一起删，引用它们的功能退回全局默认（由 [com.cleo.cleos.data.ModelRegistry.removeProvider] 报出来）。 */
+    fun removeProvider(id: String) = registryAction {
+        val configs = registry.value.configs.count { it.providerId == id }
+        val affected = c.registry.removeProvider(id)
+        "已删除服务商，连同它名下 $configs 条模型配置" + if (affected.isEmpty()) "。" else "；${affected.joinToString("、") { it.label }} 回到跟随全局默认。"
+    }
+
+    /** 连接测试：**真发一条最小请求**，不是"能列模型就算通"。 */
+    fun testProvider(provider: com.cleo.cleos.data.Provider) {
+        if (testing != null) return
+        testing = provider.id
+        testResult = null
+        viewModelScope.launch {
+            val url = provider.baseUrl.trim()
+            val key = c.secrets.key(url).orEmpty()
+            val config = registry.value.configs.firstOrNull { it.providerId == provider.id && it.model.isNotBlank() }
+            val said = when {
+                url.isBlank() -> "还没填接口地址。"
+                key.isBlank() -> "这个地址还没有 Key —— 点「编辑」把 Key 填上。"
+                config == null -> "这家名下还没有填型号的模型配置，先加一条，再来测。"
+                else -> try {
+                    c.chatClient.probe(com.cleo.cleos.ai.ApiEndpoint(url, key, config.model))
+                    "连上了，说得上话（拿「${config.label}」测的）。"
+                } catch (e: CancellationException) { throw e
+                } catch (e: Exception) { e.message ?: "没连上，也没说为什么。" }
+            }
+            testResult = provider.id to said
+            testing = null
+        }
+    }
+
+    // ---- 模型配置 ----
+
+    fun addConfig(providerId: String, model: String, name: String, temperature: Float?, maxTokens: Int?) = registryAction {
+        require(providerId.isNotBlank()) { "先选一个服务商" }
+        val m = model.trim()
+        require(m.isNotBlank()) { "型号不能空着" }
+        val config = c.registry.addConfig(providerId, m, name)
+        if (temperature != null || maxTokens != null) {
+            c.registry.updateConfig(config.id) { it.copy(temperature = temperature, maxTokens = maxTokens) }
+        }
+        "已添加。点「测一下」验验它到底会不会看图 / 看视频。"
+    }
+
+    fun updateConfig(id: String, providerId: String, model: String, name: String, temperature: Float?, maxTokens: Int?) = registryAction {
+        val m = model.trim()
+        require(m.isNotBlank()) { "型号不能空着" }
+        c.registry.updateConfig(id) { it.copy(providerId = providerId, model = m, name = name.trim(), temperature = temperature, maxTokens = maxTokens) }
+        "已保存"
+    }
+
+    /** 删一条模型配置：引用它的功能退回全局默认。 */
+    fun removeConfig(id: String) = registryAction {
+        val affected = c.registry.removeConfig(id)
+        "已删除这条模型配置" + if (affected.isEmpty()) "。" else "；${affected.joinToString("、") { it.label }} 回到跟随全局默认。"
+    }
+
+    /**
+     * 「测一下」：照 Operit 的做法，**测它真实要干的那件事** ——
+     * 看图就画一张印着随机码的图、看视频就现造一小段带码的视频，**答对了才把能力记上**。
+     */
+    fun testConfig(config: com.cleo.cleos.data.ModelConfig, capability: com.cleo.cleos.data.Capability) {
+        if (testing != null) return
+        val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
+        if (provider == null) {
+            testResult = config.id to "这条配置指向的服务商已经不在了 —— 先修好它再测。"
+            return
+        }
+        testing = config.id
+        testResult = null
+        viewModelScope.launch {
+            val result = when (capability) {
+                com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)
+                com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
+            }
+            if (result.passed) c.registry.setCapability(config.id, capability, true)
+            testResult = config.id to result.message
+            testing = null
+        }
+    }
+
+    // ---- 功能绑定 ----
+
+    fun bindFeature(
+        feature: com.cleo.cleos.data.db.Feature,
+        configId: String,
+        overrides: com.cleo.cleos.data.ParamOverrides = com.cleo.cleos.data.ParamOverrides(),
+    ) = registryAction {
+        c.registry.bind(feature, configId, overrides)
+        if (configId.isBlank()) "「${feature.label}」现在跟着全局默认。" else "「${feature.label}」已绑定。"
+    }
+
+    fun setDefaultConfig(configId: String) = registryAction {
+        c.registry.setDefault(configId)
+        "全局默认换成「${registry.value.configs.firstOrNull { it.id == configId }?.label ?: configId}」了。"
+    }
+
+    /** 这个功能现在这条绑定缺哪些能力（见 [com.cleo.cleos.data.ModelRoutes.capabilityProblem]）。 */
+    fun capabilityProblem(feature: com.cleo.cleos.data.db.Feature): String? {
+        val data = registry.value
+        return com.cleo.cleos.data.ModelRoutes.capabilityProblem(
+            data, feature, com.cleo.cleos.data.ModelRoutes.configIdFor(data, feature),
+        )
+    }
+
     override fun onCleared() {
         speechPlayer?.release()
         speechPlayer = null

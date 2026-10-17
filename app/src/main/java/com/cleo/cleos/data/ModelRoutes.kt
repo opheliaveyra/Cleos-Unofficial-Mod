@@ -1,6 +1,7 @@
 package com.cleo.cleos.data
 
 import com.cleo.cleos.data.db.Feature
+import com.cleo.cleos.data.db.TaModel
 
 /** 解析出来的一条**可以用的**模型：哪家、哪个型号、什么参数。 */
 data class ResolvedModel(
@@ -20,6 +21,12 @@ data class ResolvedModel(
     val model: String get() = config.model
     val kind: ApiKind get() = provider.kind
     val label: String get() = config.label
+
+    /**
+     * 调用点要的还是"地址 + 型号"这一对（老形状 [TaModel]）——
+     * 转换只写在这一处，省得六个调用点各转一遍、各转出一个样。
+     */
+    fun asTa(forHeard: Boolean = false): TaModel = TaModel(baseUrl, model, forHeard)
 }
 
 /**

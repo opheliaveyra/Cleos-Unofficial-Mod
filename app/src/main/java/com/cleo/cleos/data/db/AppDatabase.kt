@@ -35,7 +35,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMessageEntity::class,
         GroupMemoryEntity::class,
     ],
-    version = 40,
+    version = 41,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -109,6 +109,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         // 39 -> 40: 消息带上一起发出去的视频（一个带默认值的 TEXT 列，存 VideoStore 里的名字）。
         // **还是只加列** —— 视频本体在文件目录里，这一列只记"这条消息带了哪条视频"。
         AutoMigration(from = 39, to = 40),
+        // 40 -> 41: 群里也能发语音（group_messages 上一个可空的 TEXT 列，存 MessageAudio 的 JSON）。
+        // **只加列**：录音本体和私人聊天一样放在 ImageStore 的目录里，备份跟着一起走。
+        AutoMigration(from = 40, to = 41),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

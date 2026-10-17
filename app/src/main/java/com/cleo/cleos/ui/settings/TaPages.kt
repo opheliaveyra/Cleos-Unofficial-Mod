@@ -154,7 +154,7 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
  * the words that are heard: on the phone, and answering a voice message.
  */
 @Composable
-internal fun ModelPage(vm: SettingsViewModel) {
+internal fun ModelPage(vm: SettingsViewModel, onOpen: (SettingsPage) -> Unit) {
     val palette = LocalGlassPalette.current
     // 转屏、折叠屏展开、切深浅色这些「配置变化」也会走到 onDispose，而 ViewModel 活了下来 ——
     // 于是刚粘进去的接口地址和 Key 会被清回已保存的值，人以为自己没保存上。
@@ -168,20 +168,66 @@ internal fun ModelPage(vm: SettingsViewModel) {
         }
     }
 
-    Section("${vm.aiName.ifBlank { "TA" }}的配置") { ModelProfilesEditor(vm.chat) }
-
-    Section("用谁家的") { ServiceChips(vm.chat) }
-
-    Section("连接") {
-        ConnectionFields(vm.chat)
+    // ---- 聊天（也就是全局默认）走哪条配置 ----
+    val data by vm.registry.collectAsStateWithLifecycle()
+    var choosing by remember { mutableStateOf(false) }
+    val chatConfig = data.configs.firstOrNull { it.id == data.defaultConfigId }
+    val chatProvider = chatConfig?.let { c -> data.providers.firstOrNull { it.id == c.providerId } }
+    Section("聊天用哪个") {
         Text(
-            "每个 TA 用自己的模型。Key 跟着接口地址存：同一个地址的几个 TA 共用一个 Key，填一次就够。",
+            "全局默认 —— 没单独绑的功能都跟着它，聊天也是它。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
+        when {
+            data.configs.isEmpty() ->
+                Text("还没有模型配置 —— 先去「模型配置」加一条。", color = palette.error, fontSize = 13.sp)
+            chatConfig == null ->
+                Text("全局默认指着的那条配置已经不在了，重新指一个。", color = palette.error, fontSize = 13.sp)
+            else -> {
+                Text(chatConfig.label, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "${chatConfig.model} · ${chatProvider?.name?.ifBlank { chatProvider.baseUrl } ?: "服务商不在了"}",
+                    color = palette.contentSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("换一条", selected = false) { choosing = true }
+            Chip("管理模型配置", selected = false) { onOpen(SettingsPage.ModelConfigs) }
+        }
     }
 
+    // 换全局默认：列的就是三层里那些「模型配置」，不再有"自己填地址"这条主路径。
+    if (choosing) Dialog(onDismissRequest = { choosing = false }) {
+        GlassSurface(
+            modifier = Modifier.fillMaxWidth(),
+            style = palette.card,
+            shape = GlassShape.Rounded(28.dp),
+            contentPadding = PaddingValues(20.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("聊天用哪条配置", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "没单独绑的功能都跟着它。要加新的一条，去「模型配置」。",
+                    color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp,
+                )
+                if (data.configs.isEmpty()) Text("还没有模型配置。", color = palette.contentSecondary, fontSize = 14.sp)
+                data.configs.forEach { c ->
+                    val p = data.providers.firstOrNull { it.id == c.providerId }
+                    ListRow(
+                        title = c.label,
+                        detail = "${c.model} · ${p?.name?.ifBlank { p.baseUrl } ?: "服务商不在了"}",
+                        chosen = c.id == data.defaultConfigId,
+                    ) { vm.setDefaultConfig(c.id); choosing = false }
+                }
+                TextButton(onClick = { choosing = false }) { Text("关闭") }
+            }
+        }
+    }
+
+    // ---- 说的和写的可以不是同一条 ----
     ListCard {
         ExplainedSwitch(
             "打电话、发语音时换个模型",
@@ -206,13 +252,13 @@ internal fun ModelPage(vm: SettingsViewModel) {
     Section("按功能换模型") {
         Text(
             "不同活儿值得用不同档次的模型：**总结**、**朋友圈**这种是它自己在后台干的，用便宜的就够；" +
-                "**聊天**要好的；**看视频**得专门挑一个真能读视频的。" +
-                "下面每条不填就是跟着上面那个主模型走 —— 不填也行。",
+                "**聊天**要好的；**看视频**得专门挑一个真能读视频的。不绑就是跟着上面那个全局默认。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
         FeatureModelRows(vm)
+        Chip("功能用哪个（单独一页）", selected = false) { onOpen(SettingsPage.FunctionRoutes) }
     }
 }
 
@@ -223,181 +269,15 @@ internal fun ModelPage(vm: SettingsViewModel) {
  * 所以这里列出**已经保存过的模型配置** —— 就是主模型那页配的那些服务 —— 点一下带走。
  * 手填留作后备（想用一个没保存过的地址时才用）。
  */
+/**
+ * 每个功能用哪条模型配置 —— 就地看、就地改。
+ *
+ * 0.1.44 起，这一层的实现搬进了三层结构（[FeatureRoutesPage]），这里只留一个入口：
+ * 同一件事在两处各写一套，正是玖玖说过的"存了之后就很难受"。
+ */
 @Composable
 private fun FeatureModelRows(vm: SettingsViewModel) {
-    val palette = LocalGlassPalette.current
-    val profiles by vm.modelProfiles.collectAsStateWithLifecycle()
-    var open by remember { mutableStateOf<Feature?>(null) }
-    var filling by remember { mutableStateOf<Feature?>(null) }
-
-    Feature.entries.forEach { feature ->
-        val picked = vm.featureModel(feature)
-        // 这个功能配的模型，缺不缺它要的能力（见 Capability）。
-        // **配错了要当场说出来** —— 之前是等人发了图发现没用，再回来一个字段一个字段猜。
-        val missing = vm.missingFor(feature, picked)
-        ListCard {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(feature.label, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                    Text(
-                        if (picked == null) "跟随主模型" else "${picked.model} · ${picked.baseUrl}",
-                        color = if (picked == null) palette.contentSecondary else palette.accentContent,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (missing.isNotEmpty()) {
-                        Row(
-                            Modifier.padding(top = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = palette.error, modifier = Modifier.size(14.dp))
-                            Text(
-                                "这个模型没有声明「${missing.joinToString("、") { it.label }}」能力 —— 用之前先测一下",
-                                color = palette.error,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
-                            )
-                        }
-                    }
-                    // 需要特殊能力的功能，给一个「测一下」：照 Operit 的做法，
-                    // **每个功能测它真实要干的那件事**（图像识别就画张带随机码的图让它认）。
-                    // 测过了才把能力记到配置上 —— 不是"我猜它会"。
-                    if (feature.needs.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(
-                                onClick = { vm.testCapability(feature) },
-                                enabled = vm.probing == null,
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                                modifier = Modifier.heightIn(min = 28.dp),
-                            ) {
-                                if (vm.probing == feature) {
-                                    CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Text("测一下", fontSize = 12.sp)
-                                }
-                            }
-                            vm.probeResult?.takeIf { it.first == feature }?.let { (_, result) ->
-                                Icon(
-                                    if (result.passed) Icons.Rounded.CheckCircle else Icons.Rounded.WarningAmber,
-                                    contentDescription = null,
-                                    tint = if (result.passed) palette.accentContent else palette.error,
-                                    modifier = Modifier.size(13.dp),
-                                )
-                                Text(
-                                    result.message,
-                                    color = if (result.passed) palette.accentContent else palette.error,
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
-                                    modifier = Modifier.padding(start = 4.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-                Chip(if (picked == null) "选择" else "已选 · 改", selected = picked != null) {
-                    filling = null
-                    open = feature
-                }
-            }
-        }
-    }
-
-    // 选一个
-    open?.let { feature ->
-        val picked = vm.featureModel(feature)
-        val choices = vm.modelChoices()
-        Dialog(onDismissRequest = { open = null }) {
-            GlassSurface(
-                modifier = Modifier.fillMaxWidth(),
-                style = palette.card,
-                shape = GlassShape.Rounded(28.dp),
-                contentPadding = PaddingValues(20.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("给「${feature.label}」选模型", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Text(feature.hint, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-
-                    ListRow(
-                        title = "跟随主模型",
-                        detail = "上面那个，不用另配",
-                        chosen = picked == null,
-                    ) { vm.setFeatureModel(feature, null); open = null }
-
-                    choices.forEach { choice ->
-                        ListRow(
-                            title = choice.label,
-                            detail = "${choice.model} · ${choice.where}",
-                            chosen = choice.sameAs(picked),
-                        ) { vm.setFeatureModel(feature, FeatureModel(choice.baseUrl, choice.model)); open = null }
-                    }
-
-                    if (choices.isEmpty()) {
-                        Text(
-                            "还没有配过任何模型。先去上面「连接」那一节填好地址和 Key，保存之后这里就有得选了。",
-                            color = palette.contentSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { filling = feature; open = null }) { Text("自己填地址") }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { open = null }) { Text("取消") }
-                    }
-                }
-            }
-        }
-    }
-
-    // 自己填（想用一个没保存过的地址时才用）
-    filling?.let { feature ->
-        val picked = vm.featureModel(feature)
-        var url by remember(feature) { mutableStateOf(picked?.baseUrl.orEmpty()) }
-        var model by remember(feature) { mutableStateOf(picked?.model.orEmpty()) }
-        Dialog(onDismissRequest = { filling = null }) {
-            GlassSurface(
-                modifier = Modifier.fillMaxWidth(),
-                style = palette.card,
-                shape = GlassShape.Rounded(28.dp),
-                contentPadding = PaddingValues(20.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("给「${feature.label}」填一个", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Key 不用填 —— 它是跟着接口地址存的，同一个地址填一次就够。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                    OutlinedTextField(
-                        value = url,
-                        onValueChange = { url = it },
-                        label = { Text("接口地址") },
-                        placeholder = { Text("https://api.deepseek.com/v1") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = model,
-                        onValueChange = { model = it },
-                        label = { Text("模型名") },
-                        placeholder = { Text("deepseek-flash") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (url.isBlank() || model.isBlank()) {
-                        Text("两个都填了才算数；只填一个等于没配，还是走主模型。", color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(
-                            enabled = url.isNotBlank() && model.isNotBlank(),
-                            onClick = { vm.setFeatureModel(feature, FeatureModel(url.trim(), model.trim())); filling = null },
-                        ) { Text("保存") }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { filling = null }) { Text("取消") }
-                    }
-                }
-            }
-        }
-    }
+    FeatureRoutesPage(vm)
 }
 
 /** 选择弹窗里的一行：点一下选中，选中的那条打勾。 */

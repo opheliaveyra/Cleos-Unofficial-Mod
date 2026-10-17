@@ -5,6 +5,8 @@ import androidx.room.withTransaction
 import com.cleo.cleos.data.CallRecords
 import com.cleo.cleos.data.MessageImages
 import com.cleo.cleos.data.MessageQuotes
+import com.cleo.cleos.data.ModelRegistry
+import com.cleo.cleos.data.RouteResult
 import com.cleo.cleos.data.SecretStore
 import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.StickerText
@@ -169,6 +171,8 @@ class Recaps(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
+    /** 三层结构：功能用哪个模型只从这里解（见 [com.cleo.cleos.data.ModelRoutes]）。 */
+    private val registry: ModelRegistry,
     private val client: ChatClient,
     private val scope: CoroutineScope,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
@@ -202,11 +206,15 @@ class Recaps(
             val s = settings.current()
             val batch = Recap.toFold(live(conversation), s.historySize)
             if (batch.isEmpty()) return
-            // 总结是后台自己干的活，没单独配就跟着主模型（见 Feature.Recap）。
-            val use = ta.modelFor(Feature.Recap)
+            // 总结是后台自己干的活，走统一入口（见 [com.cleo.cleos.data.ModelRoutes]）；
+            // 解不出来（还没配、或者绑的那条被删了）就这一轮不做，下次再试。
+            val use = when (val route = registry.route(Feature.Recap)) {
+                is RouteResult.Ready -> route.model
+                is RouteResult.Broken -> return
+            }
             val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: return
             val text = StringBuilder()
-            client.stream(ApiEndpoint(use.baseUrl, key, use.model), Recap.request(ta, s.userName, conversation.recap, batch, zone()))
+            client.stream(ApiEndpoint(use.baseUrl, key, use.model), Recap.request(ta, s.userName, conversation.recap, batch, zone()), temperature = use.temperature, maxTokens = use.maxTokens)
                 .collect { if (it is ChatEvent.Delta) text.append(it.text) }
             val recap = Recap.clean(text.toString()) ?: return
             val last = batch.last()

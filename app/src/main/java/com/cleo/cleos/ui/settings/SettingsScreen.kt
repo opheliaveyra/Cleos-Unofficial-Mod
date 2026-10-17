@@ -124,7 +124,10 @@ fun SettingsScreen(
                 when (shown) {
                     null -> SettingsDirectory(vm, onOpenLore) { page = it }
                     SettingsPage.Profile -> ProfilePage(vm, onOpenPersona = { onOpenPersona(vm.companionId) }, onLeave = onBack)
-                    SettingsPage.Model -> ModelPage(vm)
+                    SettingsPage.Model -> ModelPage(vm, onOpen = { page = it })
+                    SettingsPage.Providers -> ProvidersPage(vm)
+                    SettingsPage.ModelConfigs -> ModelConfigsPage(vm)
+                    SettingsPage.FunctionRoutes -> FeatureRoutesPage(vm)
                     SettingsPage.Behavior -> BehaviorPage(vm)
                     SettingsPage.Abilities -> AbilitiesPage(vm, onOpenVoice = { page = SettingsPage.Voice })
                     SettingsPage.Workspace -> WorkspacePage(vm)

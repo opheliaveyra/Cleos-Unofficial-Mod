@@ -181,7 +181,14 @@ object ModelConfigMigration {
  */
 object ModelChoices {
     /** 一项：叫它什么、它是哪来的、地址和型号。 */
-    data class Choice(val label: String, val where: String, val baseUrl: String, val model: String) {
+    data class Choice(
+        val label: String,
+        val where: String,
+        val baseUrl: String,
+        val model: String,
+        /** 三层结构里那条配置的 id；老式构造（[of]）不填，空串。 */
+        val id: String = "",
+    ) {
         /** 某个功能现在配的是不是就是这一项。 */
         fun sameAs(picked: com.cleo.cleos.data.db.FeatureModel?) =
             picked != null && picked.baseUrl == baseUrl && picked.model == model

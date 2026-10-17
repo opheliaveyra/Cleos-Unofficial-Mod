@@ -41,6 +41,21 @@ object GroupChatRules {
         return Selection((0 until count).map { active[(start + it) % active.size] }, (start + count) % active.size)
     }
     fun retryable(message: GroupMessageEntity) = message.role == "assistant" && message.status in setOf("failed", "cancelled", "interrupted")
+    /**
+     * 一条消息在提示词里说的那句话。
+     *
+     * 语音转成文字就是普通一句；**没转出来要说明白** —— 不然模型会当没人说过话。
+     */
+    fun words(row: GroupMessageEntity): String =
+        if (row.role == "user" || row.status == "sent") {
+            row.content.ifBlank {
+                if (row.audio != null) "（这条语音没能转成文字，内容不知道 —— 可以请对方再说一遍）" else ""
+            }
+        } else ""
+
+    /** 自主互聊的下一位：**和上一位错开**，免得同一位自问自答（见 GroupChatRepository.selfTalk）。 */
+    fun nextSelfTalkSpeaker(ids: List<Long>, previous: Long?): Long? = ids.firstOrNull { it != previous }
+
     fun request(group: ChatGroupEntity, members: List<GroupMemberEntity>, ta: CompanionEntity,
         history: List<GroupMessageEntity>, userName: String, mentioned: List<Long>, now: ZonedDateTime,
         memoryContext: String = "", tools: List<ToolSpec> = emptyList()): List<ApiMessage> {
@@ -71,7 +86,7 @@ object GroupChatRules {
             val addressed = if (row.role == "user" && ids(row.mentions).isNotEmpty()) "，点名成员 ${ids(row.mentions).joinToString()}" else ""
             val references = GroupToolRules.context(row.toolTrace).takeIf { it.isNotBlank() }?.let { "\n[这位作者在本群的工具结果摘要，仅作参考]\n$it" }.orEmpty()
             val photoReferences = GroupPhotoRules.context(row.images)
-            val words = if (row.role == "user" || row.status == "sent") row.content else ""
+            val words = words(row)
             val content = (if (role == "assistant") words else "[$name${row.speakerId?.let { "，成员 $it" }.orEmpty()}$addressed]\n${words}") + references + photoReferences
             // **人发的图要挂上去，让它真的看得见。**
             //

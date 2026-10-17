@@ -13,12 +13,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentHashMap
+import com.cleo.cleos.data.db.Feature
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /** Independent opt-in feed opportunities; claims survive process death and settings changes. */
 class FeedVisits(context: Context, private val db: AppDatabase, private val ai: FeedAi,
     private val chat: ChatRepository, private val secrets: SecretStore,
+    /** 三层结构：去逛之前先看「朋友圈」这条现在有没有能用的模型（见 [com.cleo.cleos.data.ModelRoutes]）。 */
+    private val registry: com.cleo.cleos.data.ModelRegistry,
     private val scope: CoroutineScope, private val activities: WakeActivities,
     private val groupBusy: (Long) -> Boolean = { false }) {
     private val work = WorkManager.getInstance(context)
@@ -98,7 +101,10 @@ class FeedVisits(context: Context, private val db: AppDatabase, private val ai: 
         val attempts = if (state.attemptDay == day) state.attempts else 0
         val conversations = db.conversations().idsFor(id).toSet()
         fun occupied() = ai.busy || groupBusy(id) || conversations.any { chat.busy(it) || chat.isTyping(it) }
-        val reason = FeedVisitRules.held(ta, now, occupied(), attempts, !secrets.key(ta.apiBaseUrl).isNullOrBlank())
+        // 有没有模型可用，看的是**这一功能现在解出来的那条**，不是 TA 身上那份老字段。
+        val feedModel = (registry.route(Feature.Feed) as? com.cleo.cleos.data.RouteResult.Ready)?.model
+        val ready = feedModel != null && !secrets.key(feedModel.baseUrl).isNullOrBlank()
+        val reason = FeedVisitRules.held(ta, now, occupied(), attempts, ready)
         val next = FeedVisitRules.next(ta, now, Random.nextDouble(), attempts >= FeedVisitRules.level(ta.feedVisitLevel).dailyMax)
         if (reason != null) {
             if (db.feedVisits().move(id, state.nextAt, next) == 1)

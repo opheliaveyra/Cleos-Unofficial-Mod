@@ -177,7 +177,7 @@ class AppContainer(private val context: Context) {
         com.cleo.cleos.ai.OpenversePhotos(http, version) { toolDiagnostics.record(it) },
         com.cleo.cleos.ai.WordPressPhotos(http, version) { toolDiagnostics.record(it) },
     ) { settings.current().photoLibrary }
-    val feedAi = com.cleo.cleos.ai.FeedAi(db, settings, secrets, chatClient, feedNews, feed, images, photoSource)
+    val feedAi = com.cleo.cleos.ai.FeedAi(db, settings, secrets, registry, chatClient, feedNews, feed, images, photoSource)
     private val calendar = PhoneCalendar(context)
 
     /** What the phone is playing, and its words: the chat's 一起听 bar, a reply's line about it, music_control. */
@@ -213,7 +213,7 @@ class AppContainer(private val context: Context) {
         searcher = searcher,
         workspace = ::workspaceFor,
     )
-    val recaps = Recaps(db, settings, secrets, chatClient, appScope)
+    val recaps = Recaps(db, settings, secrets, registry, chatClient, appScope)
     val mcp = McpHub(
         McpServers(secrets),
         McpClient(http, version),
@@ -226,7 +226,7 @@ class AppContainer(private val context: Context) {
     val ear = EarVoice(context, images)
     val wakeActivities = com.cleo.cleos.ai.WakeActivities(db)
     val chat: ChatRepository = ChatRepository(
-        db, settings, secrets, chatClient, tools, images, videos, files, companions, recaps, mcp, transcriber, speaker, appScope,
+        db, settings, secrets, registry, chatClient, tools, images, videos, files, companions, recaps, mcp, transcriber, speaker, appScope,
         // 没配「视频理解」模型时的退路：从视频里抽几帧顶上（见 ChatRepository.prepareVideo）。
         videoFrames = { path, count -> com.cleo.cleos.data.VideoFrames.frames(path, count) },
         // A reply finished where the person isn't looking (they left, or went to another page): as a notification.
@@ -277,7 +277,7 @@ class AppContainer(private val context: Context) {
     /** 探一个配置到底会不会看图 / 看视频（见 [com.cleo.cleos.ai.CapabilityProbe]）。放在 chatClient 之后。 */
     val capabilityTester = com.cleo.cleos.ai.CapabilityTester(images, videos, secrets, chatClient)
 
-    val groupChat = com.cleo.cleos.ai.GroupChatRepository(db, settings, secrets, chatClient, images, appScope,
+    val groupChat = com.cleo.cleos.ai.GroupChatRepository(db, settings, secrets, registry, chatClient, images, transcriber, appScope,
         groupTools = com.cleo.cleos.ai.GroupTools(tools) { settings.current() },
         diagnostic = { toolDiagnostics.record(it) }) { id ->
         db.conversations().idsFor(id).any { chat.busy(it) || chat.isTyping(it) }
@@ -323,8 +323,8 @@ class AppContainer(private val context: Context) {
         activities = wakeActivities,
         showing = { id -> visible && chatOnScreen == id },
         onEnabled = { later.wantsNotifications.value = true })
-    val letters = Letters(db, settings, secrets, chatClient, appScope, written = { later.letterWritten(it) })
-    val feedVisits = com.cleo.cleos.ai.FeedVisits(context, db, feedAi, chat, secrets, appScope, wakeActivities, groupChat::busyMember)
+    val letters = Letters(db, settings, secrets, registry, chatClient, appScope, written = { later.letterWritten(it) })
+    val feedVisits = com.cleo.cleos.ai.FeedVisits(context, db, feedAi, chat, secrets, registry, appScope, wakeActivities, groupChat::busyMember)
 
     /** Where a tapped notification leads, until a screen has gone there. */
     val opening = MutableStateFlow<Opening?>(null)

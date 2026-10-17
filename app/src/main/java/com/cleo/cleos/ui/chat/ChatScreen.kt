@@ -943,7 +943,7 @@ fun ChatTab(
                 subtitleMenu = {
                     DropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
                         modelChoices.forEach { choice ->
-                            val here = choice.baseUrl == state.modelUrl && choice.model == state.model
+                            val here = choice.id.isNotEmpty() && choice.id == state.modelConfigId
                             DropdownMenuItem(
                                 text = {
                                     Column {
@@ -965,7 +965,7 @@ fun ChatTab(
                                 trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = "正在用") }) else null,
                                 onClick = {
                                     modelMenu = false
-                                    if (!here) vm.switchModel(state.companionId, choice.baseUrl, choice.model)
+                                    if (!here) vm.switchModel(choice.id)
                                 },
                             )
                         }

@@ -12,6 +12,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 class GroupReplyTimeoutException : Exception("这位 TA 的回复超过 3 分钟了，可以单独重试；后面的成员会继续接话")
 
+/** 自主互聊时那句开场白：人没说话，但一轮总得有一条人消息当落脚点（见 [GroupChatRepository.selfTalk]）。 */
+private const val SELF_TALK_KICKOFF = "（你们几个自己聊会儿吧，不用管我）"
+
 /** No tool loop or additional routing model. The caller keeps partial output if the stream fails. */
 object GroupReplyEngine {
     const val REPLY_TIMEOUT_MS = 180_000L
@@ -58,7 +61,12 @@ object GroupReplyEngine {
 
 /** A separate destination, with durable reply slots. Retrying a slot never resends a successful member. */
 class GroupChatRepository(private val db: AppDatabase, private val settings: SettingsRepository,
-    private val secrets: SecretStore, private val client: ChatClient, private val images: ImageStore,
+    private val secrets: SecretStore,
+    /** 三层结构：功能用哪个模型只从这里解（见 [ModelRoutes]）。 */
+    private val registry: ModelRegistry,
+    private val client: ChatClient, private val images: ImageStore,
+    /** 群里发语音时要转文字（和私人聊天用同一个服务，见 [Transcriber]）。 */
+    private val transcriber: Transcriber,
     private val scope: CoroutineScope, private val groupTools: GroupTools? = null, private val diagnostic: (String) -> Unit = {},
     private val privateBusy: suspend (Long) -> Boolean = { false }) {
     private val dao = db.groups()
@@ -74,6 +82,15 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
     private val _generation = MutableStateFlow(0L)
     val generation = _generation.asStateFlow()
     @Volatile private var paused = false
+    /**
+     * 这个功能**现在**解出来的模型，还是不是这次请求开始时用的那个。
+     *
+     * 一轮回复要跑一会儿，期间人可能把配置改了、或者把它删了；那时候写出来的字已经不是
+     * 说好的那个模型写的了。以前比的是 TA 身上那份老字段，现在比的是统一入口的解。
+     */
+    private suspend fun sameRouteAs(feature: Feature, was: ResolvedModel): Boolean =
+        (registry.route(feature) as? RouteResult.Ready)?.model == was
+
     private val ready = scope.async { db.withTransaction { dao.recoverMessages(); dao.recoverTurns() } }
     fun busyMember(id: Long) = membersInUse.containsKey(id)
 
@@ -228,6 +245,114 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
         }
     }
 
+    /**
+     * 在群里发一条语音。
+     *
+     * **先把录音插进去**（界面马上能看见、能播），再去转文字：转出来了 TA 们才接话，
+     * 转不出来就把原因写在这条上 —— **不能让它们假装听见了**。
+     */
+    suspend fun sendVoice(id: Long, clip: MessageAudio, mentions: List<Long> = emptyList()) {
+        ready.await()
+        gate.withLock {
+            check(!paused) { "正在恢复备份，请稍后再试" }
+            check(jobs[id] == null) { "这一轮还在回复，可以先停止" }
+            withContext(NonCancellable) {
+                val turnId = db.withTransaction {
+                    val group = dao.group(id) ?: error("这个群已不存在")
+                    val members = dao.members(id)
+                    val active = members.filter { it.active && db.companions().get(it.companionId) != null }
+                    val pick = GroupChatRules.select(active.map { it.companionId }, mentions, group.nextSpeaker)
+                    val now = System.currentTimeMillis()
+                    val userId = dao.insertMessage(
+                        GroupMessageEntity(
+                            groupId = id, role = "user", content = "", createdAt = now,
+                            speakerName = settings.current().userName.ifBlank { "我" },
+                            mentions = GroupChatRules.encode(mentions),
+                            audio = MessageAudios.encode(clip),
+                        ),
+                    )
+                    val turn = dao.insertTurn(GroupTurnEntity(groupId = id, userMessageId = userId,
+                        targets = GroupChatRules.encode(pick.targets), createdAt = now))
+                    for (target in pick.targets) {
+                        val member = members.first { it.companionId == target }
+                        dao.insertMessage(GroupMessageEntity(groupId = id, role = "assistant", content = "", createdAt = now,
+                            speakerId = target, speakerName = member.name, speakerAvatar = member.avatar,
+                            speakerEmoji = member.emoji, turnId = turn, status = "pending"))
+                    }
+                    dao.advance(id, now, pick.next)
+                    turn
+                }
+                transcribeVoice(turnId, clip)
+                start(id, turnId, null)
+            }
+        }
+    }
+
+    /** 把刚发的那条语音转成文字；转不出来就写在这条消息上（空的语音等于没听见）。 */
+    private suspend fun transcribeVoice(turnId: Long, clip: MessageAudio) {
+        val messageId = dao.turn(turnId)?.userMessageId ?: return
+        val s = settings.current()
+        val text = try {
+            if (s.voiceBaseUrl.isBlank() || s.voiceModel.isBlank()) {
+                throw IllegalStateException("还没接语音转文字的服务，去设置「发语音」里选一个。")
+            }
+            transcriber.transcribe(s.voiceBaseUrl, s.voiceModel, images.file(clip.file)).trim()
+        } catch (e: Exception) {
+            dao.setError(messageId, "没转成文字：${e.message ?: "说不上来"}")
+            return
+        }
+        if (text.isEmpty()) dao.setError(messageId, "没转成文字：没听清，再说一次？") else dao.setContent(messageId, text)
+    }
+
+    /**
+     * **让他们自己聊**：不用人先开口，几位 TA 轮流接几句。
+     *
+     * 每一句是单独的一轮 —— 一个 turn 里一位成员只能发言一次（那是表上的唯一约束），
+     * 所以这里是**顺序跑完 [rounds] 句**，下一句才看得到上一句说了什么。
+     * 轮到的和下一位错开，免得同一位自问自答。
+     */
+    suspend fun selfTalk(id: Long, rounds: Int = 3) {
+        ready.await()
+        gate.withLock {
+            check(!paused) { "正在恢复备份，请稍后再试" }
+            check(jobs[id] == null) { "这一轮还在回复，可以先停止" }
+            val active = db.withTransaction {
+                dao.members(id).filter { it.active && db.companions().get(it.companionId) != null }.map { it.companionId }
+            }
+            check(active.size >= 2) { "群里至少要有两位 TA，才聊得起来" }
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                var previous: Long? = null
+                repeat(rounds) {
+                    val made = db.withTransaction {
+                        val members = dao.members(id)
+                        val live = members.filter { it.active && db.companions().get(it.companionId) != null }
+                        if (live.size < 2) return@withTransaction null
+                        val speaker = GroupChatRules.nextSelfTalkSpeaker(live.map { it.companionId }, previous) ?: return@withTransaction null
+                        val member = live.first { it.companionId == speaker }
+                        val now = System.currentTimeMillis()
+                        val userId = dao.insertMessage(
+                            GroupMessageEntity(
+                                groupId = id, role = "user", content = SELF_TALK_KICKOFF, createdAt = now,
+                                speakerName = settings.current().userName.ifBlank { "我" },
+                            ),
+                        )
+                        val turn = dao.insertTurn(GroupTurnEntity(groupId = id, userMessageId = userId,
+                            targets = GroupChatRules.encode(listOf(speaker)), createdAt = now))
+                        val slot = dao.insertMessage(GroupMessageEntity(groupId = id, role = "assistant", content = "", createdAt = now,
+                            speakerId = speaker, speakerName = member.name, speakerAvatar = member.avatar,
+                            speakerEmoji = member.emoji, turnId = turn, status = "pending"))
+                        dao.advance(id, now, 0)
+                        Triple(turn, slot, speaker)
+                    } ?: return@repeat
+                    previous = made.third
+                    runTurn(id, made.first, made.second)
+                }
+            }
+            track(id, job)
+            job.start()
+        }
+    }
+
     suspend fun retry(messageId: Long) {
         ready.await()
         gate.withLock {
@@ -247,39 +372,53 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
     }
 
     private fun start(groupId: Long, turnId: Long, only: Long?) {
-        val job = scope.launch(start = CoroutineStart.LAZY) {
-            try {
-                GroupReplyEngine.round(dao.replies(turnId), only, { id ->
-                    withContext(NonCancellable) {
-                        val old = dao.message(id)
-                        val began = dao.beginReply(id) == 1
-                        if (began) images.delete(MessageImages.decode(old?.images).map { it.file })
-                        began
-                    }
-                }, ::respond)
-                db.withTransaction {
-                    if (dao.turn(turnId)?.status == "running") dao.turnStatus(turnId,
-                        if (dao.replies(turnId).all { it.status == "sent" }) "completed" else "failed")
-                }
-            } catch (e: CancellationException) {
-                withContext(NonCancellable) { db.withTransaction {
-                    dao.interruptMessages(groupId, "cancelled", "这轮已停止，可以重试")
-                    dao.interruptTurns(groupId, "cancelled")
-                } }
-                throw e
-            } catch (_: Exception) {
-                withContext(NonCancellable) { db.withTransaction {
-                    dao.interruptMessages(groupId, "failed", "这轮没有完成，可以重试")
-                    dao.interruptTurns(groupId, "failed")
-                } }
-            } finally {
-                _working.update { it - groupId }
-                jobs.remove(groupId, currentCoroutineContext().job)
-            }
-        }
+        val job = scope.launch(start = CoroutineStart.LAZY) { runTurn(groupId, turnId, only) }
+        track(groupId, job)
+        job.start()
+    }
+
+    /** 把这个 job 记成"这个群正在忙"，跑完（或被打断）自己摘掉。 */
+    private fun track(groupId: Long, job: Job) {
         jobs[groupId] = job
         _working.update { it + groupId }
-        job.start()
+        job.invokeOnCompletion {
+            jobs.remove(groupId, job)
+            if (jobs[groupId] == null) _working.update { it - groupId }
+        }
+    }
+
+    /**
+     * 跑完一轮：turn 里那几位 pending 的成员依次回复，然后给这一轮收尾。
+     *
+     * **不含"这个群忙不忙"的登记** —— 那是 [start] 和 [selfTalk] 各自的事：
+     * 自主互聊是一串轮次，只在最外面登记一次。
+     */
+    private suspend fun runTurn(groupId: Long, turnId: Long, only: Long?) {
+        try {
+            GroupReplyEngine.round(dao.replies(turnId), only, { id ->
+                withContext(NonCancellable) {
+                    val old = dao.message(id)
+                    val began = dao.beginReply(id) == 1
+                    if (began) images.delete(MessageImages.decode(old?.images).map { it.file })
+                    began
+                }
+            }, ::respond)
+            db.withTransaction {
+                if (dao.turn(turnId)?.status == "running") dao.turnStatus(turnId,
+                    if (dao.replies(turnId).all { it.status == "sent" }) "completed" else "failed")
+            }
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) { db.withTransaction {
+                dao.interruptMessages(groupId, "cancelled", "这轮已停止，可以重试")
+                dao.interruptTurns(groupId, "cancelled")
+            } }
+            throw e
+        } catch (_: Exception) {
+            withContext(NonCancellable) { db.withTransaction {
+                dao.interruptMessages(groupId, "failed", "这轮没有完成，可以重试")
+                dao.interruptTurns(groupId, "failed")
+            } }
+        }
     }
 
     private suspend fun respond(slot: GroupMessageEntity) {
@@ -295,8 +434,11 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
             check(!privateBusy(target)) { "${slot.speakerName}正在私聊或通话，稍后可以重试" }
             check(dao.members(slot.groupId).any { it.companionId == target && it.active }) { "这位 TA 已不在群里，不能继续回复" }
             val ta = db.companions().get(target) ?: error("这位 TA 已离开，不能继续回复")
-            // 群里说话可以单独配一个模型（见 Feature.Groups）；没配就跟着主模型。
-            val use = ta.modelFor(Feature.Groups)
+            // 群里说话可以单独配一个模型（见 Feature.Groups）；没配就跟着全局默认 —— 统一入口解。
+            val use = when (val route = registry.route(Feature.Groups)) {
+                is RouteResult.Ready -> route.model
+                is RouteResult.Broken -> error(route.why)
+            }
             model = com.cleo.cleos.diagnostics.ToolDiagnosticStore.label(use.model)
             val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: error("请先为${slot.speakerName}保存模型和 Key")
             val group = dao.group(slot.groupId) ?: error("这个群已不存在")
@@ -324,7 +466,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                 }
             _progress.update { it + (slot.id to GroupReplyProgress(System.nanoTime())) }
             val text = GroupToolReply.reply(messages, specs, ta.deepThinking,
-                stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking) },
+                stream = { context, offered, thinking -> client.stream(ApiEndpoint(use.baseUrl, key, use.model), context, offered, thinking, temperature = use.temperature, maxTokens = use.maxTokens) },
                 execute = { call ->
                     currentCoroutineContext().ensureActive()
                     check(dao.members(slot.groupId).any { it.companionId == target && it.active } && db.companions().get(target) != null) { "这位 TA 已不在群里" }
@@ -342,7 +484,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
                             }, commit = { added ->
                                 db.withTransaction {
                                     val current = db.companions().get(target)
-                                    check(current != null && current.modelFor(Feature.Groups) == use && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，没有发送图片" }
+                                    check(current != null && current.persona == ta.persona && current.deepThinking == ta.deepThinking && sameRouteAs(Feature.Groups, use)) { "TA 的配置改变了，没有发送图片" }
                                     val next = sentPhotos + added
                                     check(GroupPhotoRules.valid(MessageImages.encode(next))) { "图片记录不完整" }
                                     check(dao.saveImages(slot.id, slot.groupId, target, turn.id, requireNotNull(MessageImages.encode(next))) == 1) { "这一轮已结束，没有发送图片" }
@@ -365,7 +507,7 @@ class GroupChatRepository(private val db: AppDatabase, private val settings: Set
             db.withTransaction {
                 val current = db.companions().get(target)
                 check(dao.members(slot.groupId).any { it.companionId == target && it.active }) { "这位 TA 已不在群里，不能继续回复" }
-                check(current != null && current.modelFor(Feature.Groups) == use && current.persona == ta.persona && current.deepThinking == ta.deepThinking) { "TA 的配置改变了，请重试" }
+                check(current != null && current.persona == ta.persona && current.deepThinking == ta.deepThinking && sameRouteAs(Feature.Groups, use)) { "TA 的配置改变了，请重试" }
                 if (dao.finishReply(slot.id, turn.id, text, "sent", null) == 1) dao.touch(slot.groupId, System.currentTimeMillis())
             }
         } catch (e: CancellationException) {

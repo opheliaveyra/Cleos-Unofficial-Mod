@@ -22,8 +22,12 @@ import com.cleo.cleos.data.FeedShares
 import com.cleo.cleos.data.MessageReactions
 import com.cleo.cleos.data.MessageThought
 import com.cleo.cleos.data.MessageThoughts
+import com.cleo.cleos.data.ModelRegistry
+import com.cleo.cleos.data.ModelRoutes
 import com.cleo.cleos.data.PatRecord
 import com.cleo.cleos.data.Pats
+import com.cleo.cleos.data.ResolvedModel
+import com.cleo.cleos.data.RouteResult
 import com.cleo.cleos.data.SecretStore
 import com.cleo.cleos.data.SettingsRepository
 import com.cleo.cleos.data.StickerBook
@@ -97,6 +101,8 @@ class ChatRepository(
     private val db: AppDatabase,
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
+    /** 三层结构（服务商／模型配置／功能绑定）：**所有模型都从这个入口拿**（见 [ModelRoutes]）。 */
+    private val registry: ModelRegistry,
     private val client: ChatClient,
     private val tools: ToolBox,
     private val images: ImageStore,
@@ -370,6 +376,55 @@ class ChatRepository(
         db.conversations().get(conversationId)?.companionId?.let { companions.get(it) } ?: companions.current()
 
     /**
+     * 某个功能现在该用哪个模型 —— **唯一的入口**（见 [ModelRoutes]）。
+     *
+     * 在这之前每个调用点自己写一份"配了就用配的、没配就用主模型"，同一个规则有六份实现；
+     * 现在只问 [ModelRegistry.route]。解不出来（[RouteResult.Broken]）就是 `null`——
+     * **绝不退回上一个能用的**，调用方照 [RouteResult.Broken] 里那句人话说给人听。
+     */
+    private suspend fun modelFor(feature: Feature): ResolvedModel? =
+        (registry.route(feature) as? RouteResult.Ready)?.model
+
+    /**
+     * 一条要**说出口**的回复用哪个模型。
+     *
+     * 说的和写的可以是两条：TA 单独配了语音模型就用那条（见 [CompanionEntity.modelFor]），
+     * 没配才跟着聊天那条 —— 而"聊天那条"现在从 [Feature.Chat] 解出来。
+     */
+    /**
+     * 这一次请求用的模型，**连同它算好的参数**。
+     *
+     * 参数（温度、最长回复 token）是三层结构算出来的：模型配置的默认值被功能的覆盖压过
+     * （见 [ModelRoutes.resolve]）—— 调用方不用再知道"覆盖"这回事，照发就行。
+     */
+    private data class Use(
+        val baseUrl: String,
+        val model: String,
+        val forHeard: Boolean,
+        val temperature: Float?,
+        val maxTokens: Int?,
+    ) {
+        fun endpoint(key: String) = ApiEndpoint(baseUrl, key, model)
+    }
+
+    private suspend fun spokenOrChat(ta: CompanionEntity, heard: Boolean): Use {
+        if (heard && ta.spokenModelOn && ta.spokenApiBaseUrl.isNotBlank() && ta.spokenApiModel.isNotBlank()) {
+            // 语音这条还在 TA 身上（老结构），没有参数覆盖。
+            return Use(ta.spokenApiBaseUrl.trim(), ta.spokenApiModel.trim(), forHeard = true, temperature = null, maxTokens = null)
+        }
+        return when (val route = registry.route(Feature.Chat)) {
+            is RouteResult.Ready -> Use(
+                baseUrl = route.model.baseUrl,
+                model = route.model.model,
+                forHeard = false,
+                temperature = route.model.temperature,
+                maxTokens = route.model.maxTokens,
+            )
+            is RouteResult.Broken -> throw ChatException(route.why)
+        }
+    }
+
+    /**
      * The tools [ta] gets: the ones switched on, send_voice only once there is a voice to speak
      * with, and note_for_later only while it may reach out on its own (a switch of its own, not
      * one of the shared ones). Stickers are not a tool: they go along even when tools can't
@@ -571,8 +626,9 @@ class ChatRepository(
                 if (quietFor >= Pats.STREAK_MS + 500) break
                 delay(Pats.STREAK_MS + 500 - quietFor)
             }
-            val ta = taOf(conversationId)
-            if (secrets.key(ta.modelFor(heard = false).baseUrl).isNullOrBlank()) return@launch
+            // 统一入口：没配好（或者配坏了）就不说这句，和原来"没 Key 就不说"一个意思。
+            val chat = modelFor(Feature.Chat) ?: return@launch
+            if (secrets.key(chat.baseUrl).isNullOrBlank()) return@launch
             start(conversationId) { reply(conversationId) }
         }
     }
@@ -787,7 +843,7 @@ class ChatRepository(
         val s = settings.current()
         val ta = taOf(conversationId)
         // Everything said on the phone is heard: the model the TA has for that, when it has one.
-        val use = ta.modelFor(heard = true)
+        val use = spokenOrChat(ta, heard = true)
         val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() }
             ?: throw ChatException(if (use.forHeard) "打电话用的模型还没有填 API Key" else "还没有填 API Key")
         val conversation = db.conversations().get(conversationId) ?: throw ChatException("这段对话已经删了")
@@ -802,18 +858,18 @@ class ChatRepository(
         val calls = callsOutside(history)
         // 唤醒也可能是"人发了一张图、然后走开"——图照样要能送到。
         // 这里以前写死 false，配了「图像识别」模型也白搭。
-        fun build() = Prompt.messages(
+        suspend fun build() = Prompt.messages(
             s, ta, history, ZonedDateTime.now(), groups,
-            history.any { it.role == "user" && it.images != null } && (visionSeparate(ta) || endpointKey !in refusesImages),
+            history.any { it.role == "user" && it.images != null } && (visionSeparate() || endpointKey !in refusesImages),
             memories, conversation.recap, stickers = stickers, call = callId, calls = calls,
             lore = lore,
             preserveReasoning = Thinking.keepsToolReasoning(use.model),
         ).let { if (instruction != null) Prompt.withWake(it, instruction) else it }
-        var messages = prepare(build(), ta)
+        var messages = prepare(build())
         val said = StringBuilder()
         var rounds = 0
         while (true) {
-            val step = callStep(conversationId, callId, endpoint, messages, tools.specs(groups), mayRefuse = rounds == 0 && groups.isNotEmpty()) {
+            val step = callStep(conversationId, callId, endpoint, messages, tools.specs(groups), mayRefuse = rounds == 0 && groups.isNotEmpty(), temperature = use.temperature, maxTokens = use.maxTokens) {
                 said.append(it)
                 say(it)
             }
@@ -845,13 +901,16 @@ class ChatRepository(
         messages: List<ApiMessage>,
         specs: List<ToolSpec>,
         mayRefuse: Boolean,
+        /** 三层结构算好的参数（见 [Use]）。放在 [say] 前面，是因为尾随 lambda 只认最后一个参数。 */
+        temperature: Float? = null,
+        maxTokens: Int? = null,
         say: (String) -> Unit,
     ): Step {
         val text = StringBuilder()
         val reasoning = StringBuilder()
         var calls = emptyList<ToolCall>()
         try {
-            client.stream(endpoint, messages, specs).collect { event ->
+            client.stream(endpoint, messages, specs, temperature = temperature, maxTokens = maxTokens).collect { event ->
                 when (event) {
                     is ChatEvent.Delta -> {
                         text.append(event.text)
@@ -1066,10 +1125,15 @@ class ChatRepository(
         activities.preparing(activity)
         val s = settings.current()
         val ta = taOf(conversationId)
-        val key = secrets.key(ta.apiBaseUrl)
+        // 主动说话也是聊天这条 —— 统一入口，和人改了全局默认之后是一致的。
+        val chatModel = when (val route = registry.route(Feature.Chat)) {
+            is RouteResult.Ready -> route.model
+            is RouteResult.Broken -> return WakeResult.Failed(route.why)
+        }
+        val key = secrets.key(chatModel.baseUrl)
         if (key.isNullOrBlank()) return WakeResult.Failed("还没填 API Key")
         val conversation = db.conversations().get(conversationId) ?: return WakeResult.Failed("对话已经删了")
-        val endpoint = ApiEndpoint(ta.apiBaseUrl, key, ta.apiModel)
+        val endpoint = ApiEndpoint(chatModel.baseUrl, key, chatModel.model)
         val endpointKey = endpoint.chatUrl + "|" + endpoint.model
         val history = Recap.sent(recaps.live(conversation), s.historySize)
         val now = ZonedDateTime.now()
@@ -1101,7 +1165,7 @@ class ChatRepository(
         try {
             while (true) {
                 val mayRefuse = rounds == 0 && (groups.isNotEmpty() || thinking)
-                when (val step = step(conversationId, endpoint, messages, tools.specs(groups), mayRefuse, thinking, showThought = ta.deepThinking, wake = true, onRequest = { activities.request(activity) })) {
+                when (val step = step(conversationId, endpoint, messages, tools.specs(groups), mayRefuse, thinking, showThought = ta.deepThinking, wake = true, onRequest = { activities.request(activity) }, temperature = chatModel.temperature, maxTokens = chatModel.maxTokens)) {
                     is Step.Said -> {
                         val error = step.error
                         if (error != null) return if (sent().isEmpty()) WakeResult.Failed(error) else result("")
@@ -1164,8 +1228,23 @@ class ChatRepository(
         // stands in for everything before.
         val conversation = db.conversations().get(conversationId)
         val history = if (conversation == null) emptyList() else Recap.sent(recaps.live(conversation), s.historySize)
-        // Something said aloud is answered by the model the TA has for words heard, when it has one.
-        val use = ta.modelFor(heard = history.lastOrNull { it.role == "user" }?.audio != null)
+        // 说出来的话走语音那条；写下来的走聊天那条 —— 聊天这条现在从统一入口解（见 [Feature.Chat]）。
+        val heard = history.lastOrNull { it.role == "user" }?.audio != null
+        val use = try {
+            spokenOrChat(ta, heard)
+        } catch (e: ChatException) {
+            // 解不出来（还没配、或者绑的那条被删了）：把原话写进气泡，别让人对着转圈空等。
+            db.messages().insert(
+                MessageEntity(
+                    conversationId = conversationId,
+                    role = "assistant",
+                    content = "",
+                    createdAt = System.currentTimeMillis(),
+                    error = e.message,
+                ),
+            )
+            return
+        }
         val key = secrets.key(use.baseUrl)
         if (key.isNullOrBlank()) {
             db.messages().insert(
@@ -1208,7 +1287,7 @@ class ChatRepository(
             //   2. 没配转述的 → 试着直接发；模型要是拒了，refusesImages 记住它，以后不发了。
             //   3. 都不行 → Prompt 会在话里写"你这边看不到图片"。
             var withImages = history.any { it.role == "user" && it.images != null } &&
-                (visionSeparate(ta) || endpointKey !in refusesImages)
+                (visionSeparate() || endpointKey !in refusesImages)
             var thinking = ta.deepThinking && endpointKey !in refusesThinking
             // What the TA remembers, read once for this reply.
             val memories = if (ToolGroup.Memory in s.tools) db.memories().allFor(ta.id) else emptyList()
@@ -1237,7 +1316,7 @@ class ChatRepository(
                 preserveReasoning = Thinking.keepsToolReasoning(endpoint.model),
                 fileText = { name -> inlineFiles[name] },
             )
-            var messages = prepare(build(), ta)
+            var messages = prepare(build())
             var rounds = 0
             // What the last refusal made this reply leave out, and when.
             var leftOut: LeftOut? = null
@@ -1251,7 +1330,7 @@ class ChatRepository(
             while (true) {
                 val mayRefuse = rounds == 0 && (groups.isNotEmpty() || outside.isNotEmpty() || withImages || thinking)
                 val specs = tools.specs(groups) + outside.map { it.spec }
-                when (val step = step(conversationId, endpoint, messages, specs, mayRefuse, thinking, showThought = ta.deepThinking)) {
+                when (val step = step(conversationId, endpoint, messages, specs, mayRefuse, thinking, showThought = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens)) {
                     is Step.Ended -> {
                         if (step.ok) done()
                         return
@@ -1273,7 +1352,7 @@ class ChatRepository(
                                 outside = emptyList()
                             }
                         }
-                        messages = prepare(build(), ta)
+                        messages = prepare(build())
                     }
                     is Step.Called -> {
                         if (rounds == MAX_TOOL_ROUNDS) {
@@ -1335,8 +1414,11 @@ class ChatRepository(
      * 这正是玖玖那个用法：主模型不会看图，就在「图像识别」里单配一个会看的。
      * 以前这里漏了一层 —— 图片挂不挂只看"主模型拒没拒过图"，配了转述模型也白搭。
      */
-    private fun visionSeparate(ta: CompanionEntity): Boolean =
-        VisionRules.separate(ta.modelFor(Feature.Vision), ta.modelFor(heard = false))
+    private suspend fun visionSeparate(): Boolean {
+        val vision = modelFor(Feature.Vision) ?: return false
+        val chat = modelFor(Feature.Chat) ?: return false
+        return VisionRules.separate(vision.asTa(), chat.asTa())
+    }
 
     /**
      * Pictures become data: URLs just before sending; one that can't be read is left out.
@@ -1349,22 +1431,24 @@ class ChatRepository(
      * **完全不知道是自己那个识别模型没配好**（没 Key、模型名写错、服务不通……）。
      * 现在改成把原因写在话里，让人一眼看出问题出在哪。
      */
-    private suspend fun prepare(messages: List<ApiMessage>, ta: CompanionEntity): List<ApiMessage> {
-        val vision = ta.modelFor(Feature.Vision)
-        val chat = ta.modelFor(heard = false)
-        val separate = VisionRules.separate(vision, chat)
-        val videoModel = ta.modelFor(Feature.Video)
-        val videoSeparate = VisionRules.separate(videoModel, chat)
+    private suspend fun prepare(messages: List<ApiMessage>): List<ApiMessage> {
+        val chat = modelFor(Feature.Chat)?.asTa()
+        // 没单独绑「看图」的功能继承的就是聊天那条 —— 同一条就没什么可转述的（见 [VisionRules.separate]）。
+        val vision = modelFor(Feature.Vision)?.asTa()
+        val separate = chat != null && vision != null && VisionRules.separate(vision, chat)
+        val video = modelFor(Feature.Video)?.asTa()
+        val videoSeparate = chat != null && video != null && VisionRules.separate(video, chat)
         return messages.map { m ->
-            val withVideo = if (m.videos.isEmpty()) m else prepareVideo(m, videoModel, videoSeparate)
+            val withVideo = if (m.videos.isEmpty()) m else prepareVideo(m, videoSeparate)
             if (withVideo.images.isEmpty()) return@map withVideo
-            if (!separate) return@map withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
-            val described = describeImages(withVideo.images, vision)
+            val visionFor = vision
+            if (!separate || visionFor == null) return@map withVideo.copy(images = withVideo.images.mapNotNull { images.dataUrl(it) })
+            val described = describeImages(withVideo.images, visionFor)
             if (described.isNotBlank()) {
                 return@map withVideo.copy(images = emptyList(), content = withVideo.content + "\n\n" + VisionRules.NOTE + "\n" + described)
             }
             // 说不出话来：**告诉人为什么**，而不是假装没事。
-            val why = VisionRules.whyNotDescribed(vision, secrets.key(vision.baseUrl)?.isNotBlank() == true)
+            val why = VisionRules.whyNotDescribed(visionFor, secrets.key(visionFor.baseUrl)?.isNotBlank() == true)
             withVideo.copy(
                 images = withVideo.images.mapNotNull { images.dataUrl(it) },
                 content = withVideo.content + "\n\n" + why,
@@ -1381,7 +1465,7 @@ class ChatRepository(
      * 没配就看聊天模型自己会不会看图：会的话抽几帧当图片顶上，不会的话算它没看见，
      * 但**在话里说清楚**（"对方发了一条视频，你看不到"），别让 TA 装作收到了。
      */
-    private suspend fun prepareVideo(m: ApiMessage, videoModel: TaModel, separate: Boolean): ApiMessage {
+    private suspend fun prepareVideo(m: ApiMessage, separate: Boolean): ApiMessage {
         if (separate) {
             val urls = m.videos.mapNotNull { videos.dataUrl(it) }
             if (urls.isNotEmpty()) return m.copy(videos = urls)
@@ -1464,6 +1548,9 @@ class ChatRepository(
         showThought: Boolean,
         wake: Boolean = false,
         onRequest: suspend () -> Unit = {},
+        /** 三层结构算好的参数（见 [Use]）；空着就让服务端用它自己的默认。 */
+        temperature: Float? = null,
+        maxTokens: Int? = null,
     ): Step {
         val startedAt = System.currentTimeMillis()
         val text = StringBuilder()
@@ -1493,7 +1580,7 @@ class ChatRepository(
         live(StreamingReply(conversationId, "", thinking = false))
         try {
             onRequest()
-            client.stream(endpoint, messages, specs, thinking).collect { event ->
+            client.stream(endpoint, messages, specs, thinking, temperature = temperature, maxTokens = maxTokens).collect { event ->
                 when (event) {
                     is ChatEvent.Delta -> {
                         doneThinking()

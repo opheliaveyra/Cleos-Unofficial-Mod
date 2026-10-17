@@ -102,8 +102,11 @@ class CapabilityTester(
      * **发的就是真的视频**（`video_url` + base64），走的就是聊天时那条路 ——
      * 测通了才算数，不是拿一帧图片糊弄过去。
      */
-    suspend fun testVideo(profile: ModelProfile): ProbeResult {
-        val key = secrets.key(profile.baseUrl)?.takeIf { it.isNotBlank() }
+    suspend fun testVideo(profile: ModelProfile): ProbeResult = testVideo(profile.baseUrl, profile.model)
+
+    /** 同上，但按「地址 + 型号」来 —— 三层结构里这两件事拆开了，见 [ModelConfig]。 */
+    suspend fun testVideo(baseUrl: String, model: String): ProbeResult {
+        val key = secrets.key(baseUrl)?.takeIf { it.isNotBlank() }
             ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「连接」那里填上")
         val code = CapabilityProbe.newCode()
         val probe = java.io.File(videos.dir, "probe-${java.util.UUID.randomUUID()}.mp4")
@@ -122,7 +125,7 @@ class CapabilityTester(
             val url = videos.dataUrl(probe.name) ?: return ProbeResult(false, "测试视频读不出来")
             val said = StringBuilder()
             client.stream(
-                ApiEndpoint(profile.baseUrl, key, profile.model),
+                ApiEndpoint(baseUrl, key, model),
                 listOf(ApiMessage("user", CapabilityProbe.PROMPT_VIDEO, videos = listOf(url))),
             ).collect { if (it is ChatEvent.Delta) said.append(it.text) }
             val text = said.toString().trim()
@@ -148,8 +151,11 @@ class CapabilityTester(
      * 每一条失败路径都**说清楚是什么问题**（没 Key / 服务不通 / 答错），
      * 因为"测试失败"三个字帮不了任何人。
      */
-    suspend fun testImage(profile: ModelProfile): ProbeResult {
-        val key = secrets.key(profile.baseUrl)?.takeIf { it.isNotBlank() }
+    suspend fun testImage(profile: ModelProfile): ProbeResult = testImage(profile.baseUrl, profile.model)
+
+    /** 同上，但按「地址 + 型号」来（见 [testVideo]）。 */
+    suspend fun testImage(baseUrl: String, model: String): ProbeResult {
+        val key = secrets.key(baseUrl)?.takeIf { it.isNotBlank() }
             ?: return ProbeResult(false, "这个地址还没有 API Key —— 先在「连接」那里填上")
         val code = CapabilityProbe.newCode()
         val name = runCatching { images.save(CapabilityProbe.image(code), prefix = "probe-") }.getOrNull()
@@ -159,7 +165,7 @@ class CapabilityTester(
                 ?: return ProbeResult(false, "测试图没能读出来")
             val said = StringBuilder()
             client.stream(
-                ApiEndpoint(profile.baseUrl, key, profile.model),
+                ApiEndpoint(baseUrl, key, model),
                 listOf(ApiMessage("user", CapabilityProbe.PROMPT, images = listOf(url))),
             ).collect { if (it is ChatEvent.Delta) said.append(it.text) }
             val text = said.toString().trim()

@@ -40,7 +40,9 @@ data class GroupMessageEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0,
     val speakerEmoji: String? = null, val turnId: Long? = null, val status: String = "sent", val error: String? = null,
     val mentions: String = "[]",
     @ColumnInfo(defaultValue = "'{}'") val toolTrace: String = "{}",
-    @ColumnInfo(defaultValue = "NULL") val images: String? = null)
+    @ColumnInfo(defaultValue = "NULL") val images: String? = null,
+    /** 这条是语音时的那段录音（MessageAudio 的 JSON：文件名 + 毫秒）。 */
+    @ColumnInfo(defaultValue = "NULL") val audio: String? = null)
 
 /** User-curated shared notes. No link to any private memory or conversation. */
 @Serializable
@@ -69,7 +71,7 @@ interface GroupDao {
     @Query("SELECT * FROM group_messages WHERE groupId = :id ORDER BY id") fun observeMessages(id: Long): Flow<List<GroupMessageEntity>>
     @Query("SELECT * FROM chat_groups WHERE id = :id") suspend fun group(id: Long): ChatGroupEntity?
     @Query("SELECT * FROM group_members WHERE groupId = :id ORDER BY position") suspend fun members(id: Long): List<GroupMemberEntity>
-    @Query("SELECT * FROM group_messages WHERE groupId = :id AND id < :before AND (content != '' OR images IS NOT NULL) AND (role = 'user' OR status = 'sent' OR images IS NOT NULL) ORDER BY id DESC LIMIT :limit")
+    @Query("SELECT * FROM group_messages WHERE groupId = :id AND id < :before AND (content != '' OR images IS NOT NULL OR audio IS NOT NULL) AND (role = 'user' OR status = 'sent' OR images IS NOT NULL OR audio IS NOT NULL) ORDER BY id DESC LIMIT :limit")
     suspend fun history(id: Long, before: Long, limit: Int): List<GroupMessageEntity>
     @Query("SELECT * FROM group_messages WHERE id = :id") suspend fun message(id: Long): GroupMessageEntity?
     @Query("SELECT * FROM group_messages WHERE turnId = :id ORDER BY id") suspend fun replies(id: Long): List<GroupMessageEntity>
@@ -80,6 +82,9 @@ interface GroupDao {
     @Upsert suspend fun saveMembers(members: List<GroupMemberEntity>)
     @Insert suspend fun insertTurn(turn: GroupTurnEntity): Long
     @Insert suspend fun insertMessage(message: GroupMessageEntity): Long
+    /** 语音转成文字之后填进去（见 GroupChatRepository.sendVoice）；转不出来就把原因写进 error。 */
+    @Query("UPDATE group_messages SET content = :content WHERE id = :id") suspend fun setContent(id: Long, content: String): Int
+    @Query("UPDATE group_messages SET error = :error WHERE id = :id") suspend fun setError(id: Long, error: String?): Int
     @Query("UPDATE chat_groups SET title = :title WHERE id = :id") suspend fun rename(id: Long, title: String)
     @Query("UPDATE chat_groups SET draft = :text, mentions = :mentions WHERE id = :id") suspend fun draft(id: Long, text: String, mentions: String)
     @Query("UPDATE chat_groups SET updatedAt = :at, nextSpeaker = :next, draft = '', mentions = '[]' WHERE id = :id") suspend fun advance(id: Long, at: Long, next: Int)

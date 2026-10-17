@@ -82,6 +82,8 @@ data class ChatUiState(
     val webSearch: Boolean = false,
     /** 这个 TA 主模型用的接口地址；顶栏那个"换模型"列表靠它判断哪一项正在用。 */
     val modelUrl: String = "",
+    /** 现在用的是哪条**模型配置**（三层结构）；顶栏那个菜单靠它打勾，空串表示一条都没有。 */
+    val modelConfigId: String = "",
     /** 对话里的小玩意儿：它写的 HTML 直接在气泡里跑起来（设置里的开关，默认关）。 */
     val liveWidgets: Boolean = false,
     /** 它写的卡片：只说"要什么"、样式由 App 画，没有代码在跑（默认开）。 */
@@ -128,17 +130,25 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
         val here = combine(c.db.conversations().observe(id), c.companions.all) { conversation, list ->
             (list.firstOrNull { it.id == conversation?.companionId } ?: list.firstOrNull())?.let { conversation to it }
         }.filterNotNull()
+        // 三层结构：聊天用哪条配置、那个地址有没有 Key —— 都从 registry 来。
+        // TA 身上那份 apiBaseUrl/apiModel 已经不参与请求了，显示也不能再看它。
+        val chatUrl = c.registry.data.map { data ->
+            val config = data.configs.firstOrNull { it.id == data.defaultConfigId }
+            data.providers.firstOrNull { it.id == config?.providerId }?.baseUrl.orEmpty()
+        }.distinctUntilChanged()
         combine(
             c.db.messages().observe(id),
             combine(c.chat.streaming, c.chat.transcribing) { streaming, transcribing -> streaming to transcribing },
             here,
-            here.map { it.second.apiBaseUrl }.distinctUntilChanged().flatMapLatest { c.secrets.hasKey(it) },
             c.settings.settings,
-        ) { messages, (streaming, transcribing), (conversation, ta), hasKey, s ->
+            combine(chatUrl.flatMapLatest { c.secrets.hasKey(it) }, c.registry.data) { hasKey, data -> hasKey to data },
+        ) { messages, (streaming, transcribing), (conversation, ta), s, (hasKey, registry) ->
             val live = streaming[id]
             // Once the stored copy of the live text is in the list, the live one steps
             // aside: all of it when the reply is over, only the text while tools still run.
             val stored = live?.savedId != null && messages.any { it.id == live.savedId }
+            val defaultConfig = registry.configs.firstOrNull { it.id == registry.defaultConfigId }
+            val defaultProvider = defaultConfig?.let { cc -> registry.providers.firstOrNull { it.id == cc.providerId } }
             ChatUiState(
                 conversationId = id,
                 messages = messages,
@@ -163,8 +173,9 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
                 patVerb = s.patVerb,
                 patSuffix = s.patSuffix,
                 patBuzz = s.patBuzz,
-                model = ta.apiModel,
-                modelUrl = ta.apiBaseUrl,
+                model = defaultConfig?.model ?: ta.apiModel,
+                modelUrl = defaultProvider?.baseUrl ?: ta.apiBaseUrl,
+                modelConfigId = defaultConfig?.id.orEmpty(),
                 recap = conversation?.recap,
                 recapUntil = conversation?.let { cv -> cv.recapUntilAt?.let { at -> at to (cv.recapUntilId ?: Long.MAX_VALUE) } },
                 transcribing = transcribing,
@@ -536,19 +547,21 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
      * 和设置页那份用的是同一个 `ModelChoices.of`，免得两处各列一套、越走越不一样。
      * 当前是哪个 TA，用和 [state] 一样的办法找（会话 → TA），别另起一套。
      */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    /**
+     * 点顶部那个模型名能选的东西：三层结构里的**模型配置**，正在当全局默认的那条标出来。
+     *
+     * 选一条就是把它设成全局默认 —— 配置是共用的，不再有"每个 TA 各一份"这回事。
+     */
     val modelChoices: StateFlow<List<com.cleo.cleos.data.ModelChoices.Choice>> =
-        conversationId.filterNotNull().flatMapLatest { id ->
-            combine(c.db.conversations().observe(id), c.companions.all, c.modelProfiles.profiles) { conversation, list, profiles ->
-                val ta = list.firstOrNull { it.id == conversation?.companionId } ?: list.firstOrNull()
-                if (ta == null) emptyList() else com.cleo.cleos.data.ModelChoices.of(
-                    chatBaseUrl = ta.apiBaseUrl,
-                    chatModel = ta.apiModel,
-                    spokenOn = ta.spokenModelOn,
-                    spokenBaseUrl = ta.spokenApiBaseUrl,
-                    spokenModel = ta.spokenApiModel,
-                    profiles = profiles,
-                    nameOf = { url -> com.cleo.cleos.data.ApiPresets.at(url)?.name },
+        c.registry.data.map { data ->
+            data.configs.mapNotNull { config ->
+                val provider = data.providers.firstOrNull { it.id == config.providerId } ?: return@mapNotNull null
+                com.cleo.cleos.data.ModelChoices.Choice(
+                    label = config.label + if (config.id == data.defaultConfigId) "（现在用的）" else "",
+                    where = provider.name.ifBlank { provider.baseUrl },
+                    baseUrl = provider.baseUrl,
+                    model = config.model,
+                    id = config.id,
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -559,11 +572,9 @@ class ChatViewModel(private val c: AppContainer) : ViewModel() {
      * 改的是**这个 TA 的主模型**，和设置页里改的是同一处。切完立刻生效：
      * 下一条消息就用新模型，不用重新进设置。
      */
-    fun switchModel(companionId: Long, baseUrl: String, model: String) {
-        if (companionId <= 0) return
-        viewModelScope.launch {
-            c.companions.update(companionId) { it.copy(apiBaseUrl = baseUrl.trim(), apiModel = model.trim()) }
-        }
+    fun switchModel(configId: String) {
+        if (configId.isBlank()) return
+        viewModelScope.launch { c.registry.setDefault(configId) }
     }
 
     fun switchTo(companionId: Long) {

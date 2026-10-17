@@ -136,6 +136,15 @@ class ModelRegistry(private val secrets: SecretStore) {
 
     suspend fun current(): ModelRegistryData = decode(secrets.secret(KEY).first())
 
+    /**
+     * 这个功能现在该用哪条 —— [ModelRoutes.resolve] 的便捷写法。
+     *
+     * 调用点想要的通常只是"给我一个能用的模型"，而不是"先读一份配置、再自己解析"。
+     * 把读配置这一步包进来，六个调用点这才写得一样；**[Broken] 里带着那句人话**，
+     * 调用方直接说给人听，不许自己换一个服务商顶上。
+     */
+    suspend fun route(feature: Feature): RouteResult = ModelRoutes.resolve(current(), feature)
+
     /** 读改写一次做完。 */
     suspend fun edit(transform: (ModelRegistryData) -> ModelRegistryData): ModelRegistryData = mutex.withLock {
         val before = decode(secrets.secret(KEY).first())
