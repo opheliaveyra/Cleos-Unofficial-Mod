@@ -717,6 +717,20 @@ internal fun AboutPage() {
     }
     if (feedbackOpen) FeedbackDialog(page = "设置 › 关于", onDismiss = { feedbackOpen = false })
 
+    // 虚拟屏探针：验证「角色在独立虚拟屏里刷抖音」在这台手机上是否可行，只做验证。
+    Section("虚拟屏探针（验证用）") {
+        Text(
+            "分步验证：创建虚拟屏 → 把抖音启动到那块屏 → 读一帧画面 → 往该屏滑动 → 释放。" +
+                "每一步显示真实结果（包括 SecurityException 这类具体错误），不参与聊天。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+        )
+        Chip("打开探针", selected = false) {
+            context.startActivity(
+                android.content.Intent(context, com.cleo.cleos.ui.probe.VirtualScreenProbeActivity::class.java),
+            )
+        }
+    }
+
     // The last crash, to send to whoever makes the app (CrashLog): there only after one.
     var crash by remember { mutableStateOf(CrashLog.read(context)) }
     var crashHint by remember { mutableStateOf<String?>(null) }

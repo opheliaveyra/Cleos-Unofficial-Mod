@@ -33,6 +33,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Cleos">
 
+        <!-- 虚拟屏可行性探针：只做验证（见 ui/probe），不参与聊天。 -->
+        <activity
+            android:name=".ui.probe.VirtualScreenProbeActivity"
+            android:exported="false"
+            android:label="虚拟屏探针" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
