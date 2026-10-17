@@ -578,6 +578,10 @@ private class FakeDiary : DiaryDao {
     val rows = mutableListOf<DiaryEntryEntity>()
     private val newest get() = rows.sortedWith(compareByDescending<DiaryEntryEntity> { it.day }.thenByDescending { it.createdAt })
     override fun observeAll(): Flow<List<DiaryEntryEntity>> = flowOf(newest)
+    // 和真查询同义：这个 TA 写的 + 我在这本书里写的（旧的没归属也算我的）。
+    override fun observeFor(companionId: Long): Flow<List<DiaryEntryEntity>> = flowOf(
+        newest.filter { writtenBy(it, companionId) || (it.author == DiaryEntryEntity.AUTHOR_ME && (it.companionId == null || it.companionId == companionId)) },
+    )
     private fun writtenBy(e: DiaryEntryEntity, ta: Long) = e.author == DiaryEntryEntity.AUTHOR_AI && e.companionId == ta
     override fun observeWrittenBy(companionId: Long): Flow<Int> = flowOf(rows.count { writtenBy(it, companionId) })
     override suspend fun deleteWrittenBy(companionId: Long) {

@@ -59,6 +59,7 @@ import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.fadeUnderTopBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.LocalDate
@@ -81,16 +82,20 @@ private sealed interface DiaryRow {
     data class Entry(val card: DiaryCard) : DiaryRow
 }
 
-/** One book, both writers: these pick whose pages to show, or only the locked ones. */
+/**
+ * 一本书（当前 TA 的），两个作者。**默认只看当前 TA 的这本书**；
+ * 「全部」是主动进去的汇总：所有 TA 和我的页都在里面，每篇会标是谁的。
+ */
 private enum class DiaryFilter(val label: String, val empty: String, val hint: String) {
-    All("全部", "还没有日记", "点右下角的笔，写第一篇"),
+    Current("这个 TA", "TA 还没写过日记", "在聊天里请 TA 写一篇"),
     Mine("我写的", "你还没写过日记", "点右下角的笔，写第一篇"),
     Theirs("TA 写的", "TA 还没写过日记", "在聊天里请 TA 写一篇"),
     Secrets("小秘密", "还没有小秘密", "你和 TA 都可以把想留给自己的话写在这里"),
+    All("全部（所有 TA）", "还没有日记", "点右下角的笔，写第一篇"),
     ;
 
     fun accepts(e: DiaryEntryEntity) = when (this) {
-        All -> true
+        Current, All -> true
         Mine -> e.author == DiaryEntryEntity.AUTHOR_ME
         Theirs -> e.author == DiaryEntryEntity.AUTHOR_AI
         Secrets -> e.secret
@@ -101,9 +106,14 @@ private enum class DiaryFilter(val label: String, val empty: String, val hint: S
 fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) {
     val c = appContainer()
     val palette = LocalGlassPalette.current
-    var filter by rememberSaveable { mutableStateOf(DiaryFilter.All) }
-    val rows by remember(filter) {
-        c.db.diary().observeAll()
+    var filter by rememberSaveable { mutableStateOf(DiaryFilter.Current) }
+    // 当前 TA：**默认就是它的那本书**。切角色时数据源跟着换，不用手动刷新。
+    val ta by remember { c.companions.current }.collectAsStateWithLifecycle(null)
+    val rows by remember(filter, ta?.id) {
+        // 「全部」才看所有 TA 的；其余四种都在当前 TA 的这本书里筛。
+        val source = if (filter == DiaryFilter.All) c.db.diary().observeAll()
+            else ta?.let { c.db.diary().observeFor(it.id) } ?: flowOf(emptyList())
+        source
             .map { entries -> toRows(entries.filter(filter::accepts)) { c.images.file(it) } }
             .flowOn(Dispatchers.Default)
     }.collectAsStateWithLifecycle(null)
@@ -117,7 +127,11 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
         overlay = { page ->
             GlassTopBar(
                 title = "日记",
-                subtitle = if (count > 0) "$count 篇" else null,
+                // 标题下面写清楚正在看谁的书（「全部」时才不写）。
+                subtitle = listOfNotNull(
+                    ta?.name?.trim()?.takeIf { it.isNotEmpty() && filter != DiaryFilter.All },
+                    if (count > 0) "$count 篇" else null,
+                ).joinToString(" · ").ifEmpty { null },
                 backdrop = page,
             )
             // Writing from the secrets page starts locked: that page is where secrets are kept.

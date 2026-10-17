@@ -115,6 +115,9 @@ class DiaryEditorViewModel(private val c: AppContainer, initialId: Long, startSe
                         }
                     }
                 }
+            } else {
+                // 新写的这篇属于**当前 TA 的那本书**（我在这本书里写的）：切角色不会串，改名也不影响。
+                companionId = runCatching { c.companions.current().id }.getOrNull()
             }
             if (blocks.lastOrNull() !is EditorBlock.Text) blocks += EditorBlock.Text(nextKey++, TextFieldValue(""))
             loaded = true

@@ -318,6 +318,13 @@ interface DiaryDao {
     @Query("SELECT * FROM diary_entries ORDER BY day DESC, createdAt DESC")
     fun observeAll(): Flow<List<DiaryEntryEntity>>
 
+    /**
+     * 这个 TA 的那本书：它写的日记，加上我在这本书里写的（companionId = 它）。
+     * 旧的「我写的」没有归属（companionId IS NULL）也留着，否则升级后那些页会凭空消失。
+     */
+    @Query("SELECT * FROM diary_entries WHERE (author = 'ai' AND companionId = :companionId) OR (author = 'me' AND (companionId IS NULL OR companionId = :companionId)) ORDER BY day DESC, createdAt DESC")
+    fun observeFor(companionId: Long): Flow<List<DiaryEntryEntity>>
+
     @Query("SELECT * FROM diary_entries WHERE id = :id")
     suspend fun get(id: Long): DiaryEntryEntity?
 
