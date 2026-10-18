@@ -6,10 +6,27 @@
 
 这是基于 Cleos 的 Android 原生 AI 陪伴聊天应用二次开发分支，使用 Kotlin 与 Jetpack Compose。保留原项目的核心设计，同时持续进行功能扩展、交互调整与问题修复。
 
-- **当前源码版本**：`0.1.62-mod`（从 `app/build.gradle.kts` 读取；安装包版本请以实际发布的 APK 为准）。
+- **当前源码版本**：`0.1.65-mod`（从 `app/build.gradle.kts` 读取；安装包版本请以实际发布的 APK 为准）。
 - **Android 最低版本**：Android 10（API 29）。
 - **源码分支**：`feature/chat-file-upload-and-hold-to-talk`（当前仓库默认分支）。
 - **开发状态**：持续迭代的二改版；部分功能可能仍在测试中。
+
+## 最近在做什么（0.1.63 – 0.1.65）
+
+- **0.1.63-mod**：修 PDF 上传「检测不到文字」。文字放在 Form XObject 里的 PDF 以前整页漏读；
+  读不出时按真实原因分开说（扫描件 / 字体缺 Unicode 映射 / 压缩方式不支持），不再一律说「没有文字」。
+  扫描件 OCR 仍未支持。
+- **0.1.64-mod**：「点开放大」改成**全屏重新加载原始 HTML**，内容重新排版、纵向可滚；
+  气泡里最多先给 360dp，内容超了会明确写「内容较长，点开放大看全部」。
+- **0.1.65-mod**：继续查 HTML 内容不全。用测试确认「字符串 → 解析」这一环不丢内容后，
+  给 `overflow: hidden` 的固定高卡片加了「溢出可见」兜底，并加了可移除的诊断日志（`adb logcat -s CleosWidget`）。
+
+## Windows 桌面客户端（测试中）
+
+仓库里有一个独立的 `desktop/` 模块（Compose Multiplatform Desktop），**和 Android 版是两套代码**，
+互不影响。第一阶段只做：服务商/模型配置、角色、流式聊天与停止、本地保存与重启恢复；
+**还不是安装包**（没有音频、附件、日记、记忆等功能）。构建：`gradlew :desktop:bundleRuntime`。
+详细说明见 `desktop/` 目录与提交记录。
 
 ## 二改版与原版的区别
 
