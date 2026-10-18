@@ -39,6 +39,12 @@ import kotlinx.serialization.Serializable
 object MainRoute
 
 @Serializable
+object GamesRoute
+
+@Serializable
+object TicTacToeRoute
+
+@Serializable
 object FeedRoute
 
 /** [page]: a SettingsPage's name to open straight on, null for the list of them. */
@@ -168,8 +174,11 @@ fun CleosNavHost() {
                 onOpenLetters = { nav.go(LettersRoute) },
                 onOpenMemory = { nav.go(MemoryRoute) },
                 onOpenFavorites = { nav.go(FavoritesRoute) },
+                onOpenGames = { nav.go(GamesRoute) },
             )
         }
+        composable<GamesRoute> { com.cleo.cleos.ui.games.GamesHomeScreen(nav::back) { nav.go(TicTacToeRoute) } }
+        composable<TicTacToeRoute> { com.cleo.cleos.ui.games.TicTacToeScreen(nav::back) }
         composable<FeedRoute> { com.cleo.cleos.ui.feed.FeedScreen(onBack = nav::back, onOpenImage = { nav.go(ImageRoute(it)) }) }
         composable<LettersRoute> { LettersScreen(onBack = nav::back, onOpen = { nav.go(LetterRoute(it)) }) }
         composable<LetterRoute> { entry -> LetterScreen(entry.toRoute<LetterRoute>().id, onBack = nav::back) }

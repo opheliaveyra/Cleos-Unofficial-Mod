@@ -94,7 +94,7 @@ private enum class Who { Me, Ai }
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Unit, onOpenMemory: () -> Unit, onOpenFavorites: () -> Unit) {
+fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Unit, onOpenMemory: () -> Unit, onOpenFavorites: () -> Unit, onOpenGames: () -> Unit) {
     val c = appContainer()
     val palette = LocalGlassPalette.current
     val scope = rememberCoroutineScope()
@@ -233,6 +233,7 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
 
             LetterCard(ai, letters, now, onOpenLetters)
             MemoryCard(ai, remembered.size, onOpenMemory)
+            com.cleo.cleos.ui.games.GamesHomeCard(onOpenGames)
             com.cleo.cleos.ui.favorites.FavoritesHomeCard(ta.id, onOpenFavorites)
         }
 

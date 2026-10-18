@@ -1148,7 +1148,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun restoreBackup(uri: Uri) = runBackup("恢复了") {
         c.groupChat.stopAll()
         try {
-            c.chat.stopAll(); c.feedVisits.stopAll()
+            c.chat.stopAll(); c.feedVisits.stopAll(); c.games.stopForRestore()
             c.backup.restore(uri)
         } finally { c.groupChat.resume(); c.freeTopics.restore(); c.feedVisits.restore() }
     }
@@ -1156,7 +1156,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun undoRestore() = runBackup("撤销了，回到恢复前：") {
         c.groupChat.stopAll()
         try {
-            c.chat.stopAll(); c.feedVisits.stopAll()
+            c.chat.stopAll(); c.feedVisits.stopAll(); c.games.stopForRestore()
             c.backup.undoRestore()
         } finally { c.groupChat.resume(); c.freeTopics.restore(); c.feedVisits.restore() }
     }
