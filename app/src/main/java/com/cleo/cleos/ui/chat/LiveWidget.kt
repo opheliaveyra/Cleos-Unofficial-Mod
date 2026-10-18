@@ -9,12 +9,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,10 +34,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
@@ -212,16 +220,27 @@ internal fun MessageExtras(text: String, modifier: Modifier = Modifier) {
  *
  * 也就是说：它能在这一小块地方里折腾，但伸不到外面。开关在设置里，默认关着。
  */
+/** 气泡里最多先给这么高；再长就只在放大里看 —— 但会明确写出来"内容较长"。 */
+private val BUBBLE_MAX_HEIGHT = 360.dp
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
     var expanded by remember(html) { mutableStateOf(false) }
+    var overflows by remember(html) { mutableStateOf(false) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        WebBox(html, ink, Modifier.fillMaxWidth())
+        WebBox(
+            html = html,
+            ink = ink,
+            modifier = Modifier.fillMaxWidth(),
+            maxHeight = BUBBLE_MAX_HEIGHT,
+            onOverflow = { overflows = it },
+        )
+        // 气泡里露出高度有限，得让人知道"后面还有"。
         Text(
-            "点开放大",
+            if (overflows) "内容较长，点开放大看全部" else "点开放大",
             color = palette.contentSecondary,
             fontSize = 11.sp,
             modifier = Modifier.clickable { expanded = true },
@@ -229,18 +248,34 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
     }
 
     if (expanded) {
-        Dialog(onDismissRequest = { expanded = false }) {
-            GlassSurface(
-                modifier = Modifier.fillMaxWidth(),
-                style = palette.card,
-                shape = GlassShape.Rounded(24.dp),
-                contentPadding = PaddingValues(16.dp),
+        // 放大 = **另一个 WebView，重新加载原始 HTML**：不是把气泡里那一小块拉大。
+        // 全屏 Dialog、内容自己重新排版，纵向可滚。
+        Dialog(
+            onDismissRequest = { expanded = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.94f)
+                    .padding(12.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
-                    WebBox(html, ink, Modifier.fillMaxWidth().height(420.dp))
-                    TextButton(onClick = { expanded = false }, modifier = Modifier.align(Alignment.End)) {
-                        Text("收起", color = palette.content)
+                GlassSurface(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    style = palette.card,
+                    shape = GlassShape.Rounded(24.dp),
+                    contentPadding = PaddingValues(16.dp),
+                ) {
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { expanded = false }) {
+                                Text("收起", color = palette.content)
+                            }
+                        }
+                        // 高度交给父约束，不再固定 420dp —— WebView 自己滚，内容重新排版。
+                        WebBox(html, ink, Modifier.fillMaxWidth().weight(1f), maxHeight = Dp.Unspecified)
                     }
                 }
             }
@@ -251,17 +286,30 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
 /** 真正跑起来的那个框子。气泡里一个、放大后一个 —— 两个 WebView 各跑各的。 */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun WebBox(html: String, ink: Color, modifier: Modifier = Modifier) {
+private fun WebBox(
+    html: String,
+    ink: Color,
+    modifier: Modifier = Modifier,
+    /** 气泡里给个上限；放大时传 Dp.Unspecified，高度由父约束决定（填满、可滚）。 */
+    maxHeight: Dp = Dp.Unspecified,
+    onOverflow: (Boolean) -> Unit = {},
+) {
     val palette = LocalGlassPalette.current
     val density = LocalDensity.current.density
     var heightPx by remember(html) { mutableIntStateOf(0) }
     var failure by remember(html) { mutableStateOf<String?>(null) }
+    val measured = if (heightPx > 0) heightPx / density else 0f
+    val grows = maxHeight != Dp.Unspecified && measured > maxHeight.value
+    LaunchedEffect(measured, maxHeight) { onOverflow(grows) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (heightPx > 0) (heightPx / density).dp else 140.dp)
+                .then(
+                    if (maxHeight == Dp.Unspecified) Modifier.fillMaxHeight()
+                    else Modifier.height((if (measured > 0f) minOf(measured, maxHeight.value) else 140f).dp),
+                )
                 .clip(RoundedCornerShape(14.dp)),
             factory = { context ->
                 WebView(context).apply {
