@@ -47,6 +47,7 @@ import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.avatarLetter
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlin.math.roundToInt
 
 /**
  * 五子棋 P1：邀请真实 TA 对弈。
@@ -239,7 +240,11 @@ private fun statusText(g: Gomoku, busy: Boolean, taName: String): String = when 
     else -> taName + " 的回合（白）"
 }
 
-/** 15×15 棋盘：Canvas 画格线与棋子；最近一步画一个高亮圈。 */
+/**
+ * 15×15 棋盘：棋子落在**线与线的交叉点**上（不是格子里）。
+ * 画布留半格边距，15 条横线 + 15 条竖线，交叉点间距 = span/14；
+ * 点击取最近的交叉点；最近一步画高亮圈。
+ */
 @Composable
 private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Unit) {
     val palette = LocalGlassPalette.current
@@ -252,25 +257,29 @@ private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Un
             .pointerInput(enabled) {
                 detectTapGestures { offset ->
                     if (!enabled) return@detectTapGestures
-                    val step = size.width.toFloat() / GOMOKU_SIZE
-                    val col = (offset.x / step).toInt().coerceIn(0, GOMOKU_SIZE - 1)
-                    val row = (offset.y / step).toInt().coerceIn(0, GOMOKU_SIZE - 1)
+                    val margin = size.width / 30f
+                    val step = (size.width - 2 * margin) / (GOMOKU_SIZE - 1)
+                    val col = ((offset.x - margin) / step).roundToInt().coerceIn(0, GOMOKU_SIZE - 1)
+                    val row = ((offset.y - margin) / step).roundToInt().coerceIn(0, GOMOKU_SIZE - 1)
                     onCell(row, col)
                 }
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val step = size.width / GOMOKU_SIZE
+            val margin = size.width / 30f
+            val step = (size.width - 2 * margin) / (GOMOKU_SIZE - 1)
             val line = palette.contentSecondary.copy(alpha = 0.28f)
-            for (i in 0..GOMOKU_SIZE) {
-                drawLine(line, Offset(i * step, 0f), Offset(i * step, size.height), 1f)
-                drawLine(line, Offset(0f, i * step), Offset(size.width, i * step), 1f)
+            // 15 条线；棋子落在它们的交叉点上
+            for (i in 0 until GOMOKU_SIZE) {
+                val p = margin + i * step
+                drawLine(line, Offset(p, margin), Offset(p, size.height - margin), 1f)
+                drawLine(line, Offset(margin, p), Offset(size.width - margin, p), 1f)
             }
             for (row in 0 until GOMOKU_SIZE) {
                 for (col in 0 until GOMOKU_SIZE) {
                     val v = game.at(row, col)
                     if (v == 0) continue
-                    val center = Offset(col * step + step / 2, row * step + step / 2)
+                    val center = Offset(margin + col * step, margin + row * step)
                     drawCircle(
                         color = if (v == 1) Color(0xFF23232B) else Color.White,
                         radius = step * 0.42f,
@@ -282,10 +291,10 @@ private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Un
                 }
             }
             if (game.lastRow >= 0 && game.lastCol >= 0) {
-                val center = Offset(game.lastCol * step + step / 2, game.lastRow * step + step / 2)
+                val center = Offset(margin + game.lastCol * step, margin + game.lastRow * step)
                 drawCircle(
                     color = palette.accentContent.copy(alpha = 0.9f),
-                    radius = step * 0.5f,
+                    radius = step * 0.52f,
                     center = center,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f),
                 )
