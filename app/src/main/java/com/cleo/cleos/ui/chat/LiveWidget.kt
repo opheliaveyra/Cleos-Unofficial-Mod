@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -321,50 +322,43 @@ private fun WebBox(
     val palette = LocalGlassPalette.current
     val density = LocalDensity.current.density
     val context = LocalContext.current
-    var heightPx by remember(html) { mutableIntStateOf(0) }
+    var measuredPx by remember(html) { mutableIntStateOf(0) }
     var failure by remember(html) { mutableStateOf<String?>(null) }
-    val measured = if (heightPx > 0) heightPx / density else 0f
-    val grows = limit != null && measured > limit.value
-    LaunchedEffect(measured, limit) { onOverflow(grows) }
-    // 加载完成前先按文字量估一个高度：别让气泡在加载那一刻猛地跳一下。
-    val guess = if (limit != null) minOf(limit.value, 80f + html.length / 8f) else 0f
+    val cap = limit?.value ?: (avail?.value ?: 600f)
+    val floor = if (limit != null) 80f else 160f
+    // 高度**从小的起点，按量出来的内容一点点长**。
+    // 不能一步设成「内容高度」：模型常写 min-height:100vh，元素高度跟着视口变，
+    // 视口一大量出来就必然满屏。先给小视口，量出来的才是真实内容；
+    // 只增不减（视口变大会让 100vh 元素变高，来回缩会震荡）。
+    var heightDp by remember(html) { mutableFloatStateOf(floor) }
+    val measured = if (measuredPx > 0) measuredPx / density else 0f
+    LaunchedEffect(measuredPx, cap) {
+        if (measuredPx > 0) {
+            val want = (measuredPx / density).coerceAtMost(cap).coerceAtLeast(floor)
+            if (want > heightDp + 1f) heightDp = want
+        }
+    }
+    val grows = limit != null && heightDp >= limit.value - 1f
+    LaunchedEffect(grows) { onOverflow(grows) }
 
     // 每个 WebBox 自己一个实例：气泡和放大是两个 WebBox，互不借对方的视图。
     val view = remember(html) {
-        makeWebView(context, html, ink, palette.contentSecondary, { px -> heightPx = px }, { failure = it })
+        makeWebView(context, html, ink, palette.contentSecondary, { px -> measuredPx = px }, { failure = it })
     }
     DisposableEffect(view) {
         onDispose { runCatching { view.stopLoading(); view.destroy() } }
     }
 
-    if (limit != null) {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height((if (measured > 0f) minOf(measured, limit.value) else guess).coerceAtLeast(60f).dp)
-                    .clip(RoundedCornerShape(14.dp)),
-                factory = { view },
-                update = {},
-            )
-            failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
-        }
-    } else {
-        // 放大：高度 = min(量出来的内容高, 弹窗给的可用高)。
-        // 短内容贴合内容（弹窗跟着变小、没有大片空白）；长内容最多到可用高，超出在框内滚。
-        val cap = avail?.value ?: 600f
-        val target = (if (measured > 0f) minOf(measured + 2f, cap) else minOf(cap, 240f)).coerceAtLeast(80f)
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(target.dp)
-                    .clip(RoundedCornerShape(14.dp)),
-                factory = { view },
-                update = {},
-            )
-            failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
-        }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(heightDp.coerceAtLeast(floor).dp)
+                .clip(RoundedCornerShape(14.dp)),
+            factory = { view },
+            update = {},
+        )
+        failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
     }
 }
 
