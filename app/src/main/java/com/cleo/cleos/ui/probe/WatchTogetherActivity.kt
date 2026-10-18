@@ -96,18 +96,26 @@ private fun WatchTogetherScreen() {
             try {
                 val now = System.currentTimeMillis()
                 if (now - lastSentAt < FRAME_INTERVAL_MS) return@setOnImageAvailableListener
+                // ImageReader 的 buffer 可能带 rowPadding：直接用 width×height 的 bitmap 会斜切/出条纹。
                 val plane = image.planes[0]
-                val buffer = plane.buffer
-                val bytes = ByteArray(buffer.remaining())
-                buffer.get(bytes)
-                val bmp = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-                bmp.copyPixelsFromBuffer(java.nio.ByteBuffer.wrap(bytes))
+                val rowStride = plane.rowStride
+                val pixelStride = plane.pixelStride
+                val rowPadding = rowStride - pixelStride * image.width
+                val padded = Bitmap.createBitmap(
+                    image.width + rowPadding / pixelStride,
+                    image.height,
+                    Bitmap.Config.ARGB_8888,
+                )
+                padded.copyPixelsFromBuffer(plane.buffer)
+                val bmp = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
+                if (padded !== bmp) padded.recycle()
                 val scaled = Bitmap.createScaledBitmap(
                     bmp,
                     (bmp.width * MAX_WIDTH / bmp.height).coerceAtLeast(1),
                     MAX_WIDTH,
                     true,
                 )
+                bmp.recycle()
                 val out = ByteArrayOutputStream()
                 scaled.compress(Bitmap.CompressFormat.JPEG, 60, out)
                 val jpeg = out.toByteArray()
