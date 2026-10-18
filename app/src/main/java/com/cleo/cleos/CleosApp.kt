@@ -148,6 +148,9 @@ class AppContainer(private val context: Context) {
      */
     val registry = com.cleo.cleos.data.ModelRegistry(secrets)
 
+    /** 能接着下的棋局（井字棋）：只存棋盘/回合/revision，见 data/db/GameSessionEntity.kt。 */
+    val gameSessions = com.cleo.cleos.data.GameSessions(db)
+
     init {
         // 桌面图标：系统把 alias 的开关存在自己那里（重装、恢复备份都不带过来），
         // 所以每次启动照存着的值校一遍；已经一致时 ensure 一个写操作都不做（见 data/AppIcons）。

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,13 +62,42 @@ fun TicTacToeScreen(onBack: () -> Unit) {
     var session by remember { mutableStateOf<GameSession?>(null) }
     var showInvite by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    /** 上次退出时有一笔请求在途（进程被杀）：恢复后**不自动重试**。 */
+    var interrupted by remember { mutableStateOf(false) }
     val busy = session?.pending != null
+
+    fun persist(next: GameSession) {
+        session = next
+        scope.launch { c.gameSessions.save(next) }
+    }
+
+    // 进页面恢复最近一局；TA 被删或存档坏了都明说，不默默清掉别的数据。
+    LaunchedEffect(Unit) {
+        val restored = c.gameSessions.restore() ?: return@LaunchedEffect
+        val row = restored.row
+        val ta = c.companions.get(row.taId)
+        if (ta == null) {
+            c.gameSessions.clear()
+            error = "上一局的 TA 已经不在了（可能被删过），这局就到这里 —— 重新邀请一个吧。"
+            return@LaunchedEffect
+        }
+        val restoredSession = restored.session
+        if (restoredSession == null) {
+            c.gameSessions.clear()
+            error = "上一局的存档读不出来了，这一局已清掉；聊天、日记等其它数据不受影响。"
+            return@LaunchedEffect
+        }
+        invited = ta
+        session = restoredSession
+        interrupted = row.pending && !restoredSession.game.over
+    }
 
     fun startWith(ta: CompanionEntity) {
         invited = ta
-        session = GameSession.newGame(ta.id)
         error = null
+        interrupted = false
         showInvite = false
+        persist(GameSession.newGame(ta.id))
     }
 
     /** 认领一次请求再发（防双击）；结果回来时核对局 id，旧局的回复直接丢。 */
@@ -76,15 +106,17 @@ fun TicTacToeScreen(onBack: () -> Unit) {
         val requestId = UUID.randomUUID().toString()
         val claimed = cur.claimTaMove(requestId) ?: return
         session = claimed
+        // 先把"有请求在途"存下去：进程被杀后恢复时才知道这局被打断了。
+        scope.launch { c.gameSessions.save(claimed) }
         error = null
         scope.launch {
             val result = GameAi.askMove(app, claimed)
             val now = session
             if (now == null || now.id != claimed.id) return@launch // 期间重开/换 TA：丢弃
             when (result) {
-                is MoveResult.Ok -> now.resolveTa(requestId, result.cell)?.let { session = it }
+                is MoveResult.Ok -> now.resolveTa(requestId, result.cell)?.let { persist(it) }
                 is MoveResult.Failed -> {
-                    now.failTa(requestId)?.let { session = it }
+                    now.failTa(requestId)?.let { persist(it) }
                     error = result.why
                 }
             }
@@ -127,8 +159,9 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                         )
                     }
                     TextButton(enabled = !busy, onClick = {
-                        session = (session ?: GameSession.newGame(ta.id)).restart()
                         error = null
+                        interrupted = false
+                        persist((session ?: GameSession.newGame(ta.id)).restart())
                     }) { Text("重开", color = palette.accentContent) }
                 }
             }
@@ -140,6 +173,16 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                     color = palette.content,
                     fontSize = 14.sp,
                 )
+                if (interrupted && !busy) {
+                    Text(
+                        "上次的棋局被打断了（轮到 TA 还没走）—— 不会自动重试，点下面继续。",
+                        color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+                    )
+                    TextButton(enabled = !s.game.over, onClick = {
+                        interrupted = false
+                        taMove(s)
+                    }) { Text("继续 TA 的回合", color = palette.accentContent) }
+                }
                 error?.let { why ->
                     Text(why, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp)
                     TextButton(enabled = !busy, onClick = { taMove(s) }) {
@@ -147,10 +190,10 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                     }
                 }
                 Board(s.game, enabled = !busy && !s.game.over && s.game.turn == 1) { cell ->
-                    humanPlay(s, cell, apply = { session = it }, thenTa = { taMove(it) })
+                    humanPlay(s, cell, apply = { persist(it) }, thenTa = { taMove(it) })
                 }
                 if (s.game.over) {
-                    TextButton(onClick = { session = s.restart(); error = null }) {
+                    TextButton(onClick = { error = null; interrupted = false; persist(s.restart()) }) {
                         Text("再来一局", color = palette.accentContent)
                     }
                 }

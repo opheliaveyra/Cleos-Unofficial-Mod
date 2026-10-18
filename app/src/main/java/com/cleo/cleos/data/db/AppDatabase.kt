@@ -36,8 +36,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GroupMemoryEntity::class,
         TokenUsageEntity::class,
         VideoUnderstandingEntity::class,
+        GameSessionEntity::class,
     ],
-    version = 44,
+    version = 45,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -121,6 +122,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 42, to = 43),
         // 43 -> 44: 视频理解结果（一张新表：视频 + 模型指纹 → 描述），供后续追问和群聊复用。
         AutoMigration(from = 43, to = 44),
+        // 44 -> 45: 可以接着下的棋局（一张新表；只存棋盘/回合/revision，不含聊天）。
+        AutoMigration(from = 44, to = 45),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -143,6 +146,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun lore(): LoreDao
     abstract fun usage(): UsageDao
     abstract fun videoUnderstanding(): VideoUnderstandingDao
+    abstract fun gameSessions(): GameSessionDao
 
     /**
      * Before version 5 there was one TA, so every entry a TA wrote was TA 1's. (Conversations
