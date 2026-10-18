@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "cleos"
 include(":app")
+include(":desktop")
