@@ -55,7 +55,7 @@ class WatchTogetherActivity : ComponentActivity() {
 }
 
 private const val FRAME_INTERVAL_MS = 5_000L
-private const val MAX_WIDTH = 480
+private const val MAX_WIDTH = 720
 
 @Composable
 private fun WatchTogetherScreen() {
@@ -129,7 +129,7 @@ private fun WatchTogetherScreen() {
                     val stored = c.images.save(scaled, "watch-")
                     val ok = c.chat.send(
                         id,
-                        "（一起看）这是我正在看的画面。看到了什么就随口说说，别像在念稿子。",
+                        "（一起看）这是我手机屏幕的截图，我正在看这个。别猜那是什么设备的输出，就按你看到的画面随口说说。",
                         pictures = listOf(MessageImage(stored, scaled.width, scaled.height)),
                     )
                     scaled.recycle()
@@ -148,6 +148,10 @@ private fun WatchTogetherScreen() {
         )
         running = true
         status = "正在一起看（每 5 秒最多一帧，画面没换就跳过）"
+        // 把自己藏到后台：不然截到的都是这个页面，看不到你真正在刷的东西。
+        Handler(Looper.getMainLooper()).postDelayed({
+            runCatching { (context as? android.app.Activity)?.moveTaskToBack(true) }
+        }, 1500)
     }
 
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
