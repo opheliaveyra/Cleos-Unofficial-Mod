@@ -12,23 +12,30 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.AlertDialog
@@ -46,6 +53,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -61,6 +70,7 @@ import com.cleo.cleos.Releases
 import com.cleo.cleos.ai.SearchService
 import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.ai.Voice
+import com.cleo.cleos.data.AppIcons
 import com.cleo.cleos.data.WorkspaceEntry
 import com.cleo.cleos.data.GlassMode
 import com.cleo.cleos.data.PatRecord
@@ -475,6 +485,32 @@ private fun whenText(at: Long): String {
     }
 }
 
+/**
+ * 原画 PNG（mipmap-*dpi/ic_appicon_XX_art）：键 → 资源，顺序对应 01…16。
+ *
+ * 不直接用 @mipmap/ic_appicon_XX：那个名字在 API 26+ 会解析到 mipmap-anydpi 的自适应图标
+ * XML，而 Compose 的 painterResource 既不当 vector（根节点不是 <vector>）也不当 bitmap
+ * （BitmapFactory 解不出来），直接抛。_art 是同一张原画的 PNG 副本，BitmapPainter 画得了。
+ */
+private val APP_ICON_ART: Map<String, Int> = mapOf(
+    "01" to R.mipmap.ic_appicon_01_art,
+    "02" to R.mipmap.ic_appicon_02_art,
+    "03" to R.mipmap.ic_appicon_03_art,
+    "04" to R.mipmap.ic_appicon_04_art,
+    "05" to R.mipmap.ic_appicon_05_art,
+    "06" to R.mipmap.ic_appicon_06_art,
+    "07" to R.mipmap.ic_appicon_07_art,
+    "08" to R.mipmap.ic_appicon_08_art,
+    "09" to R.mipmap.ic_appicon_09_art,
+    "10" to R.mipmap.ic_appicon_10_art,
+    "11" to R.mipmap.ic_appicon_11_art,
+    "12" to R.mipmap.ic_appicon_12_art,
+    "13" to R.mipmap.ic_appicon_13_art,
+    "14" to R.mipmap.ic_appicon_14_art,
+    "15" to R.mipmap.ic_appicon_15_art,
+    "16" to R.mipmap.ic_appicon_16_art,
+)
+
 /** The wallpaper, the glass over it, and the colour of the person's own bubbles. */
 @Composable
 internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubbleLab: () -> Unit) {
@@ -527,6 +563,116 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
             }
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
+    }
+
+    // 桌面图标：17 个都用同一种格子画，点一下就换（见 data/AppIcons）。
+    Section("应用图标") {
+        // 四列，手工排：设置页整页是 verticalScroll，里面再嵌 LazyVerticalGrid 会因为高度无限而崩。
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            AppIcons.KEYS.chunked(4).forEach { line ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    line.forEach { key ->
+                        IconChoice(
+                            key = key,
+                            selected = settings.appIcon == key,
+                            modifier = Modifier.weight(1f),
+                        ) { vm.setAppIcon(key) }
+                    }
+                    // 最后一行不满四个也把空位撑开，格子和上面的对齐、大小一致。
+                    repeat(4 - line.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("恢复默认", selected = settings.appIcon == AppIcons.DEFAULT) { vm.setAppIcon(AppIcons.DEFAULT) }
+        }
+        Text(
+            "换完桌面可能要过几秒才刷新（个别桌面要等下一次重启才换）；选的是哪个会被记住，下次打开还是它。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        )
+    }
+}
+
+/**
+ * 一个图标候选：图 + 名字，选中的加一圈 accent、右下角打勾。
+ *
+ * 圆角跟桌面上的样子接近；这里不用玻璃 —— 玻璃透的是壁纸，垫在图标后面会把颜色搅浑，
+ * 反倒看不清每一款本来长什么样。
+ *
+ * 默认那一格不能 painterResource(@mipmap/ic_launcher)：它是 adaptive-icon XML，Compose
+ * 既不当 vector（根节点不是 <vector>）也不当 bitmap（BitmapFactory 解不出来），会直接抛。
+ * 所以照着它的两层 drawable 自己重画：两张都画成 84dp（108dp 画布 / 72dp 可见区 = 1.5，
+ * 56 × 1.5），再按 56dp 的格子裁一次 —— 正好裁掉自适应图标的安全区，和预设图标
+ * （原画 PNG 本身就是 72dp 的画面）并排看着一样大、一样满。
+ */
+@Composable
+private fun IconChoice(
+    key: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val palette = LocalGlassPalette.current
+    val tileShape = RoundedCornerShape(percent = 22)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(interactionSource = null, indication = null, onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            val frame = Modifier
+                .size(56.dp)
+                .clip(tileShape)
+                .then(if (selected) Modifier.border(2.dp, palette.accent, tileShape) else Modifier)
+            if (key == AppIcons.DEFAULT) {
+                Box(frame) {
+                    Box(Modifier.size(84.dp).align(Alignment.Center)) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_background),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            } else {
+                Image(
+                    painter = painterResource(APP_ICON_ART.getValue(key)),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = frame,
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = "正在用",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(18.dp)
+                        .background(palette.accent, CircleShape)
+                        .padding(3.dp),
+                )
+            }
+        }
+        Text(
+            AppIcons.label(key),
+            color = if (selected) palette.accentContent else palette.contentSecondary,
+            fontSize = 12.sp,
+            maxLines = 1,
+        )
     }
 }
 

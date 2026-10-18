@@ -29,6 +29,7 @@ import com.cleo.cleos.ai.SecretRequests
 import com.cleo.cleos.ai.Speaker
 import com.cleo.cleos.ai.ToolBox
 import com.cleo.cleos.ai.Transcriber
+import com.cleo.cleos.data.AppIcons
 import com.cleo.cleos.data.BackupService
 import com.cleo.cleos.data.Companions
 import com.cleo.cleos.data.ForeignImport
@@ -100,6 +101,20 @@ class AppContainer(private val context: Context) {
     val files = FileStore(context)
 
     /**
+     * 桌面图标换一个（见 data/AppIcons）：系统那边的组件状态在 IO 里动，不挡界面。
+     * 换不成只记一笔（CrashLog），App 照常用 —— 图标不是能让人打不开 App 的事。
+     *
+     * 不接"要换成的那个键"，而是在 IO 里重新读一次存着的值：连点几个图标时，
+     * 每个任务都是"把现在的选择校一遍"，谁后跑完桌面都是最后点的那个；
+     * 传进来的旧键晚到一步，也不会把桌面切回上一个。
+     */
+    fun applyAppIcon() {
+        appScope.launch(Dispatchers.IO) {
+            runCatching { AppIcons.ensure(context, settings.current().appIcon) }
+        }
+    }
+
+    /**
      * 一个 TA 自己的工作区：**跟着角色走**。切到另一个 TA 就是另一个文件夹，
      * 它写的笔记别的 TA 读不到、也覆盖不到。
      */
@@ -134,6 +149,12 @@ class AppContainer(private val context: Context) {
     val registry = com.cleo.cleos.data.ModelRegistry(secrets)
 
     init {
+        // 桌面图标：系统把 alias 的开关存在自己那里（重装、恢复备份都不带过来），
+        // 所以每次启动照存着的值校一遍；已经一致时 ensure 一个写操作都不做（见 data/AppIcons）。
+        // 放在 IO 里、不等它：首帧不该为一个图标停一下。
+        appScope.launch(Dispatchers.IO) {
+            runCatching { AppIcons.ensure(context, settings.current().appIcon) }
+        }
         // 老版本的工作区是大家共用一个文件夹（filesDir/workspace 底下直接放文件）。
         // 现在按 TA 分开，把那些直接躺在那儿的归给第一个 TA —— 只有一个 TA 时就是他的。
         appScope.launch {

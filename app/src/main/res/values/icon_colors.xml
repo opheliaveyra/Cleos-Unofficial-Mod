@@ -1,0 +1,18 @@
+<resources>
+    <color name="ic_appicon_01_bg">#F5EFEC</color>
+    <color name="ic_appicon_02_bg">#AEB5DC</color>
+    <color name="ic_appicon_03_bg">#8BC9FC</color>
+    <color name="ic_appicon_04_bg">#BA8E67</color>
+    <color name="ic_appicon_05_bg">#0C111B</color>
+    <color name="ic_appicon_06_bg">#6D8839</color>
+    <color name="ic_appicon_07_bg">#381858</color>
+    <color name="ic_appicon_08_bg">#CFDEFD</color>
+    <color name="ic_appicon_09_bg">#59361D</color>
+    <color name="ic_appicon_10_bg">#BADDD4</color>
+    <color name="ic_appicon_11_bg">#FDA151</color>
+    <color name="ic_appicon_12_bg">#8F69D0</color>
+    <color name="ic_appicon_13_bg">#B3A45D</color>
+    <color name="ic_appicon_14_bg">#EED1B6</color>
+    <color name="ic_appicon_15_bg">#131518</color>
+    <color name="ic_appicon_16_bg">#F6CFCA</color>
+</resources>

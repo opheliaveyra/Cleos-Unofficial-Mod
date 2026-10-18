@@ -41,6 +41,8 @@ data class AppSettings(
     /** File name inside ImageStore, or null for the built-in wallpaper. */
     val wallpaper: String? = null,
     val glassMode: GlassMode = GlassMode.Auto,
+    /** 桌面图标（data/AppIcons 的键）：出厂那个是 [AppIcons.DEFAULT]，其余是 01…16。 */
+    val appIcon: String = AppIcons.DEFAULT,
     /** Wallpaper analysis, cached so startup doesn't decode the image to pick colours. */
     val wallpaperDark: Boolean? = null,
     val wallpaperHue: Float? = null,
@@ -232,6 +234,7 @@ class SettingsRepository(private val context: Context) {
         val historySize = intPreferencesKey("history_size")
         val wallpaper = stringPreferencesKey("wallpaper")
         val glassMode = stringPreferencesKey("glass_mode")
+        val appIcon = stringPreferencesKey("app_icon")
         val wallpaperDark = stringPreferencesKey("wallpaper_dark")
         val wallpaperHue = floatPreferencesKey("wallpaper_hue")
         val wallpaperChroma = floatPreferencesKey("wallpaper_chroma")
@@ -309,6 +312,7 @@ class SettingsRepository(private val context: Context) {
             historySize = this[Keys.historySize] ?: d.historySize,
             wallpaper = this[Keys.wallpaper],
             glassMode = this[Keys.glassMode]?.let { runCatching { GlassMode.valueOf(it) }.getOrNull() } ?: d.glassMode,
+            appIcon = AppIcons.normalize(this[Keys.appIcon]),
             wallpaperDark = this[Keys.wallpaperDark]?.toBooleanStrictOrNull(),
             wallpaperHue = this[Keys.wallpaperHue],
             wallpaperChroma = this[Keys.wallpaperChroma],
@@ -360,6 +364,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.userName] = next.userName
             prefs[Keys.historySize] = next.historySize
             prefs[Keys.glassMode] = next.glassMode.name
+            prefs[Keys.appIcon] = AppIcons.normalize(next.appIcon)
             if (next.wallpaper != null) prefs[Keys.wallpaper] = next.wallpaper else prefs.remove(Keys.wallpaper)
             if (next.wallpaperDark != null) prefs[Keys.wallpaperDark] = next.wallpaperDark.toString() else prefs.remove(Keys.wallpaperDark)
             if (next.wallpaperHue != null) prefs[Keys.wallpaperHue] = next.wallpaperHue else prefs.remove(Keys.wallpaperHue)

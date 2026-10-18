@@ -26,6 +26,7 @@ import com.cleo.cleos.ai.VoiceService
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import com.cleo.cleos.ai.VoicePreset
+import com.cleo.cleos.data.AppIcons
 import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.data.McpServer
 import com.cleo.cleos.data.Companions
@@ -994,6 +995,22 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
 
     fun setGlassMode(mode: GlassMode) {
         viewModelScope.launch { c.settings.update { it.copy(glassMode = mode) } }
+    }
+
+    /**
+     * 桌面图标换一个（见 [AppIcons]）：先记下来，再真的去开关 alias。
+     * 界面上的高亮跟着 [settings] 走，写进去就变了；系统那边的开关在 IO 里做，
+     * 不在这里等 —— 关掉图标不会因为换图标慢半拍。
+     */
+    fun setAppIcon(key: String) {
+        val value = AppIcons.normalize(key)
+        if (settings.value.appIcon == value) return
+        viewModelScope.launch {
+            c.settings.update { it.copy(appIcon = value) }
+            // 不把 value 传下去：apply 自己去读存好的值 —— 连点几个图标时，
+            // 谁后跑完桌面就是最后点的那个，旧键晚到一步也不会切回去。
+            c.applyAppIcon()
+        }
     }
 
     /** The colour of the person's own bubbles (ARGB); null follows the wallpaper. */
