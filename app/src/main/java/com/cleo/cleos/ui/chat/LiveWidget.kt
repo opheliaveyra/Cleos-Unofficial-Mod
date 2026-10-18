@@ -335,7 +335,8 @@ private fun WidgetBox(
     onClipped: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
-    val density = LocalDensity.current.density
+    // 注意：WebView 里 getBoundingClientRect() 给的是 CSS px；页面 viewport 是 width=device-width，
+    // 所以 1 CSS px = 1dp（**不要再除 density**，除一次内容就会只剩 1/3，看起来就是被裁）。
     val context = LocalContext.current
     val floor = 72f
     var measuredPx by remember(html) { mutableIntStateOf(0) }
@@ -343,7 +344,7 @@ private fun WidgetBox(
     var heightDp by remember(html) { mutableFloatStateOf(floor) }
     LaunchedEffect(measuredPx, maxHeight) {
         if (measuredPx > 0) {
-            val want = (measuredPx / density).coerceAtMost(maxHeight.value).coerceAtLeast(floor)
+            val want = measuredPx.toFloat().coerceAtMost(maxHeight.value).coerceAtLeast(floor)
             // 只增不减：视口变大会让 min-height:100vh 的元素变高，来回缩会震荡。
             if (want > heightDp + 1f) heightDp = want
         }
@@ -411,6 +412,8 @@ private fun makeWebView(
             view.postDelayed({ measureOnce(view, html, onHeight) }, 350)
             view.postDelayed({ measureOnce(view, html, onHeight) }, 1200)
             view.postDelayed({ measureOnce(view, html, onHeight) }, 2200)
+            // 有些页面 3 秒后才长内容（动画/延迟脚本）：再补一次，别让它一直露一半。
+            view.postDelayed({ measureOnce(view, html, onHeight) }, 4000)
         }
     }
     runCatching { loadDataWithBaseURL(null, page(html, ink, secondary), "text/html", "utf-8", null) }

@@ -895,6 +895,18 @@ internal fun AboutPage() {
         }
     }
 
+    // HTML 渲染自检：真机上看「聊天内预览 / 放大」两种模式（测试专用，不动聊天数据）。
+    var htmlTestOpen by remember { mutableStateOf(false) }
+    Section("HTML 渲染自检（验证用）") {
+        Text(
+            "六种典型 HTML：短、长、宽表格、按钮、输入框、动态内容。每块都能点开放大，" +
+                "用来确认「预览 80% 截断 / 放大可滚可交互」在这台机上是否正常。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+        )
+        Chip("打开自检", selected = false) { htmlTestOpen = true }
+    }
+    if (htmlTestOpen) HtmlSelfTestDialog(onClose = { htmlTestOpen = false })
+
     // The last crash, to send to whoever makes the app (CrashLog): there only after one.
     var crash by remember { mutableStateOf(CrashLog.read(context)) }
     var crashHint by remember { mutableStateOf<String?>(null) }
