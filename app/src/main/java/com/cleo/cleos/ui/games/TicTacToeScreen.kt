@@ -27,11 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cleo.cleos.CleosApp
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
@@ -55,15 +57,30 @@ fun TicTacToeScreen(onBack: () -> Unit) {
     val companions by c.companions.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
 
+    val app = LocalContext.current.applicationContext as CleosApp
     var invited by remember { mutableStateOf<CompanionEntity?>(null) }
     var game by remember { mutableStateOf<TicTacToe?>(null) }
     var showInvite by remember { mutableStateOf(false) }
     var thinking by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     fun startWith(ta: CompanionEntity) {
         invited = ta
         game = TicTacToe()
         showInvite = false
+    }
+
+    /** 请 TA 落子：真模型（P0-B）。失败就明说，不替它下。 */
+    fun taMove(after: TicTacToe) {
+        thinking = true
+        error = null
+        scope.launch {
+            when (val result = GameAi.askMove(app, after)) {
+                is MoveResult.Ok -> game = after.play(result.cell, 2)
+                is MoveResult.Failed -> error = result.why
+            }
+            thinking = false
+        }
     }
 
     fun humanPlay(cell: Int) {
@@ -72,14 +89,7 @@ fun TicTacToeScreen(onBack: () -> Unit) {
         val after = g.play(cell, 1)
         game = after
         if (after.over) return
-        // 模拟 TA（P0-A）：延迟一下，看起来像在想。
-        thinking = true
-        scope.launch {
-            delay(450)
-            val move = after.suggestedMove(2)
-            if (move != null) game = after.play(move, 2)
-            thinking = false
-        }
+        taMove(after)
     }
 
     Column(
@@ -114,7 +124,7 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                     Column(Modifier.weight(1f)) {
                         Text(ta.name.ifBlank { "TA" }, color = palette.content, fontSize = 14.sp)
                         Text(
-                            "你 = X（先手） · TA = O（模拟对手，还没接模型）",
+                            "你 = X（先手） · TA = O（会真的调模型来下）",
                             color = palette.contentSecondary, fontSize = 11.sp,
                         )
                     }
@@ -125,6 +135,10 @@ fun TicTacToeScreen(onBack: () -> Unit) {
             val g = game
             if (g != null) {
                 Text(statusText(g, thinking, ta.name.ifBlank { "TA" }), color = palette.content, fontSize = 14.sp)
+                error?.let { why ->
+                    Text(why, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+                    TextButton(onClick = { taMove(g) }) { Text("让它再试一次", color = palette.accentContent) }
+                }
                 Board(g, enabled = !thinking) { humanPlay(it) }
                 if (g.over) {
                     TextButton(onClick = { game = TicTacToe() }) { Text("再来一局", color = palette.accentContent) }
