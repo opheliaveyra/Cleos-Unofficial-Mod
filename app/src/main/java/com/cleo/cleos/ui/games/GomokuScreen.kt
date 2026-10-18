@@ -291,7 +291,8 @@ private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Un
                     }
                 }
             }
-            if (game.lastRow >= 0 && game.lastCol >= 0) {
+            // 恢复的旧局可能还没有"最近一步"（last 默认 0,0）—— 只在真有棋子的位置画高亮圈。
+            if (game.lastRow >= 0 && game.lastCol >= 0 && game.at(game.lastRow, game.lastCol) != 0) {
                 val center = Offset(margin + game.lastCol * step, margin + game.lastRow * step)
                 drawCircle(
                     color = palette.accentContent.copy(alpha = 0.9f),
