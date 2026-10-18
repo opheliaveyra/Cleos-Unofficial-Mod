@@ -90,6 +90,14 @@ tasks.register("bundleRuntime") {
                 "\"%JAVA%\" -cp \"%DIR%desktop.jar;%DIR%libs\\*\" com.cleo.desktop.MainKt %*\r\n",
             Charsets.UTF_8,
         )
+        // 双击用这个：VBS 把 bat 藏起来跑，不会先弹一个黑框再出窗口。
+        val vbs = """
+            Set fso = CreateObject("Scripting.FileSystemObject")
+            Set shell = CreateObject("WScript.Shell")
+            dir = fso.GetParentFolderName(WScript.ScriptFullName)
+            shell.Run "cmd /c " & Chr(34) & dir & "\CleosDesktop.bat" & Chr(34), 0, False
+        """.trimIndent()
+        File(dir, "CleosDesktop.vbs").writeText(vbs + "\r\n", Charsets.UTF_8)
     }
 }
 
