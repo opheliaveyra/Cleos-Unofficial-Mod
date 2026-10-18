@@ -2,6 +2,7 @@ package com.cleo.cleos.ui.chat
 
 import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -223,6 +224,9 @@ internal fun MessageExtras(text: String, modifier: Modifier = Modifier) {
 /** 气泡里最多先给这么高；再长就只在放大里看 —— 但会明确写出来"内容较长"。 */
 private val BUBBLE_MAX_HEIGHT = 360.dp
 
+/** 诊断标签：`adb logcat -s CleosWidget`。排查完可以整段删掉。 */
+private const val TAG = "CleosWidget"
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier) {
@@ -333,9 +337,17 @@ private fun WebBox(
 
                         override fun onPageFinished(view: WebView, url: String?) {
                             // 让框子跟着内容长：量一次文档高度，换算成 dp。
-                            view.evaluateJavascript("document.documentElement.scrollHeight") { value ->
+                            view.evaluateJavascript(
+                                "Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)",
+                            ) { value ->
                                 val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
                                 if (px > 0) heightPx = px.coerceIn(60, 2400)
+                            }
+                            // 诊断（可移除）：页子里实际有多少内容、视口多高 —— 判断是内容丢了还是被布局裁了。
+                            view.evaluateJavascript(
+                                "'html=' + document.documentElement.innerHTML.length + ' text=' + (document.body ? document.body.innerText.length : 0) + ' doc=' + document.documentElement.scrollHeight + ' view=' + window.innerHeight + ' imgFail=' + Array.from(document.images).filter(function(i){return !i.complete || i.naturalWidth === 0}).length",
+                            ) { value ->
+                                Log.d(TAG, "loaded " + value + " srcHtml=" + html.length)
                             }
                         }
                     }
@@ -361,7 +373,10 @@ private fun page(body: String, ink: Color, secondary: Color): String = """
       html, body { margin: 0; padding: 6px; background: transparent;
         color: ${hex(ink)}; font-size: 14px; line-height: 1.5;
         font-family: -apple-system, "Noto Sans SC", sans-serif; overflow-x: hidden;
-        -webkit-user-select: none; user-select: none; }
+        -webkit-user-select: none; user-select: none; height: auto; }
+      /* 兜底：模型常写「固定高度 + overflow:hidden」的卡片，长内容就被裁掉、
+         看起来像「后面没了」。只让溢出可见，不改它自己的高度和布局。 */
+      div, section, article, main, header, footer, aside, form { overflow: visible !important; }
       button { font: inherit; color: inherit; background: ${hex(ink)}1a;
         border: 1px solid ${hex(ink)}33; border-radius: 10px; padding: 8px 14px; margin: 3px; }
       button:active { background: ${hex(ink)}33; }
