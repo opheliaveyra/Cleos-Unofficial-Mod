@@ -54,6 +54,41 @@
 - `:app:testDebugUnitTest`：**139 套件 / 993 用例全绿**（含 `LiveWidgetSampleTest` 2 个）。
 - 新增/更新的报告：本文件。
 
+
+---
+
+## 补充：0.1.67-mod（截图反馈后）
+
+截图现象：弹窗几乎占满屏幕，HTML 只显示顶部一个粉紫卡片（约 230dp），下面全是弹窗背景；
+并且弹窗能上下滑，但内容只有一点点。
+
+### 已确认的根因
+
+1. **弹窗本身撑满 94% 屏幕**。0.1.66 里放大 `Dialog` 用的是
+   `Column(fillMaxHeight(0.94f))` + `GlassSurface(weight(1f))` —— 无论内容多高，玻璃背景都占满 94%。
+   内容小的时候，下面那一大片就是**弹窗背景**，不是 HTML。
+2. **用 `scrollHeight` 测量在放大框里必然失败**。WebView 视口（= 弹窗高度）很大时，
+   `document.documentElement.scrollHeight` 恒等于视口高 —— 量出来永远是「满屏」，
+   于是 `min(measured, avail)` 永远等于 avail，弹窗缩不下来也不奇怪。
+3. **模型页面常写 `min-height: 100vh` / `height: 100%`**，把 body 撑满视口，
+   同样让「内容高度」不可信。
+
+### 修复
+
+- 弹窗高度**跟内容走**：`Dialog` 里 `BoxWithConstraints` 取屏幕可用高 × 0.94，
+  内层 `Column` / `GlassSurface` 改成 `wrapContentHeight()`，不再 `weight(1f)` / `fillMaxHeight`。
+- `WebBox` 放大分支接收弹窗给的 `avail`，高度 = `min(内容高, avail)`；短内容贴合、长内容框内滚。
+- **测量改为按内容实际边界**：`body.getBoundingClientRect().height` 与所有后代元素
+  `getBoundingClientRect().bottom` 取最大，再 +6px；不再依赖 `scrollHeight`。
+- `page()` CSS 增加 `html, body { min-height: 0 !important }` 和
+  `body > * { min-height: 0 !important; max-height: none !important }`，抵消模型把页面撑满的写法。
+
+### 验证
+
+- `:app:assembleDebug`：BUILD SUCCESSFUL
+- 全量单测：139 套件 / 993 用例全绿
+- 真机：未验证（需要装 0.1.67 看效果）。验证方法同上：`adb logcat -s CleosWidget` 看
+  `measure srcHtml=… px=…`，`px` 应接近卡片实际高度而不是满屏。
 ## 四、尚未解决的问题与复现方式
 
 **无法在本机验证的（需要真机）**：

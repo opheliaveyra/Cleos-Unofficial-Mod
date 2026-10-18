@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -254,36 +255,39 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
             modifier = Modifier.clickable { expanded = true },
         )
     }
-
     if (expanded) {
-        // 放大 = **另一个 WebView，重新加载原始 HTML**：不是把气泡里那一小块拉大。
-        // 全屏 Dialog、内容自己重新排版，纵向可滚。
+        // 放大 = 另一个 WebView 重新加载原始 HTML。
+        // 弹窗高度**跟着内容走**：短内容贴合、长内容最多到屏幕 94%（框内可滚），
+        // 不再把整块 94% 屏幕都画成背景。
         Dialog(
             onDismissRequest = { expanded = false },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.94f)
-                    .padding(12.dp),
-            ) {
-                GlassSurface(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    style = palette.card,
-                    shape = GlassShape.Rounded(24.dp),
-                    contentPadding = PaddingValues(16.dp),
-                ) {
-                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { expanded = false }) {
-                                Text("收起", color = palette.content)
+            BoxWithConstraints(Modifier.fillMaxSize().padding(12.dp)) {
+                val maxH = this.maxHeight * 0.94f
+                Column(Modifier.fillMaxWidth().wrapContentHeight()) {
+                    GlassSurface(
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                        style = palette.card,
+                        shape = GlassShape.Rounded(24.dp),
+                        contentPadding = PaddingValues(16.dp),
+                    ) {
+                        Column(Modifier.wrapContentHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = { expanded = false }) {
+                                    Text("收起", color = palette.content)
+                                }
                             }
+                            // 可用高度 = 屏幕 94% 减去标题行；WebView 取 min(内容高, 可用高)。
+                            WebBox(
+                                html, ink,
+                                Modifier.fillMaxWidth().wrapContentHeight(),
+                                limit = null,
+                                avail = (maxH - 56.dp).coerceAtLeast(120.dp),
+                            )
                         }
-                        // 高度交给父约束，不再固定 420dp —— WebView 自己滚，内容重新排版。
-                        WebBox(html, ink, Modifier.fillMaxWidth().weight(1f), limit = null)
                     }
                 }
             }
@@ -307,6 +311,8 @@ private fun WebBox(
     modifier: Modifier = Modifier,
     /** 气泡里给上限；放大传 null（按内容与可用高度自适应）。 */
     limit: Dp? = null,
+    /** 放大时由弹窗给出的可用高度（已经减掉标题行）；气泡不用。 */
+    avail: Dp? = null,
     onOverflow: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
@@ -341,18 +347,20 @@ private fun WebBox(
             failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
         }
     } else {
-        // 放大：可用高度来自父约束（Dialog 的 weight 区域），短内容按内容高、长内容填满可滚。
-        BoxWithConstraints(modifier) {
-            val avail = this.maxHeight
-            val target = if (measured > 0f) minOf(measured, avail.value) else minOf(avail.value, avail.value * 0.6f)
+        // 放大：高度 = min(量出来的内容高, 弹窗给的可用高)。
+        // 短内容贴合内容（弹窗跟着变小、没有大片空白）；长内容最多到可用高，超出在框内滚。
+        val cap = avail?.value ?: 600f
+        val target = (if (measured > 0f) minOf(measured, cap) else minOf(cap, 240f)).coerceAtLeast(80f)
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(target.coerceAtLeast(120f).dp)
+                    .height(target.dp)
                     .clip(RoundedCornerShape(14.dp)),
                 factory = { view },
                 update = {},
             )
+            failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
         }
     }
 }
@@ -400,12 +408,18 @@ private fun makeWebView(
         .onFailure { onFailure(it.message) }
 }
 
-/** 量页面高度：html/body 的 scrollHeight 和 body 的盒模型高度三者取最大。 */
+/**
+ * 量内容高度。**不能用 `scrollHeight`**：WebView 视口已经很大时（放大框），
+ * `scrollHeight` 恒等于视口高 —— 量出来永远是「满屏」，弹窗就缩不下来。
+ * 这里取 body 盒高 + 所有后代元素 bottom 的最大值，按元素实际占的位置算。
+ */
 private fun measureOnce(view: WebView, html: String, onHeight: (Int) -> Unit) {
     view.evaluateJavascript(
-        "(function(){var d=document.documentElement,b=document.body;" +
-            "var h=Math.max(d?d.scrollHeight:0,b?b.scrollHeight:0,b?Math.ceil(b.getBoundingClientRect().height):0);" +
-            "return Math.ceil(h);})()",
+        "(function(){var b=document.body;if(!b)return 0;" +
+            "var h=b.getBoundingClientRect().height;" +
+            "var els=b.querySelectorAll('*');" +
+            "for(var i=0;i<els.length;i++){var r=els[i].getBoundingClientRect();if(r.width>0&&r.height>0)h=Math.max(h,r.bottom);}" +
+            "return Math.ceil(h+6);})()",
     ) { value ->
         val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
         if (px > 0) {
@@ -424,7 +438,10 @@ private fun page(body: String, ink: Color, secondary: Color): String = """
       html, body { margin: 0; padding: 6px; background: transparent;
         color: ${hex(ink)}; font-size: 14px; line-height: 1.5;
         font-family: -apple-system, "Noto Sans SC", sans-serif;
-        -webkit-user-select: none; user-select: none; height: auto; }
+        -webkit-user-select: none; user-select: none; height: auto; min-height: 0 !important; }
+      /* 模型常写 min-height:100vh / height:100% 把页面撑满：那样量出来的高度永远等于
+         视口，弹窗就缩不下来、只剩一大片背景。这里把根和一级容器的最小高度压回内容高度。 */
+      body > * { min-height: 0 !important; max-height: none !important; }
       /* 宽内容：先响应式压缩，压不下去就允许横向滚，别静默裁掉。 */
       body { overflow-x: auto; overflow-y: visible; }
       table { max-width: none; }
