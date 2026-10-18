@@ -253,7 +253,8 @@ private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Un
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp))
-            .background(palette.card.tint.copy(alpha = 0.35f))
+            // 五子棋棋盘用浅木色（跟围棋/五子棋的传统观感一致），不再是白色玻璃。
+            .background(Color(0xFFEAD9B8))
             .pointerInput(enabled) {
                 detectTapGestures { offset ->
                     if (!enabled) return@detectTapGestures
@@ -268,7 +269,7 @@ private fun GomokuBoard(game: Gomoku, enabled: Boolean, onCell: (Int, Int) -> Un
         Canvas(Modifier.fillMaxSize()) {
             val margin = size.width / 30f
             val step = (size.width - 2 * margin) / (GOMOKU_SIZE - 1)
-            val line = palette.contentSecondary.copy(alpha = 0.28f)
+            val line = Color(0x998A6A3E) // 深棕色的线，落在木色底上更清楚
             // 15 条线；棋子落在它们的交叉点上
             for (i in 0 until GOMOKU_SIZE) {
                 val p = margin + i * step
