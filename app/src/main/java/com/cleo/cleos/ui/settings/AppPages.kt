@@ -895,6 +895,20 @@ internal fun AboutPage() {
         }
     }
 
+    // 一起看：把你正在看的屏幕定时截给 TA，让 TA 陪你看（需要投屏授权）。
+    Section("一起看（验证用）") {
+        Text(
+            "你刷视频时让 TA 看同一块屏幕并开口：每 5 秒最多一帧，画面没换就跳过；" +
+                "需要系统投屏授权，不需要 root / Shizuku。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+        )
+        Chip("打开一起看", selected = false) {
+            context.startActivity(
+                android.content.Intent(context, com.cleo.cleos.ui.probe.WatchTogetherActivity::class.java),
+            )
+        }
+    }
+
     // HTML 渲染自检：真机上看「聊天内预览 / 放大」两种模式（测试专用，不动聊天数据）。
     var htmlTestOpen by remember { mutableStateOf(false) }
     Section("HTML 渲染自检（验证用）") {

@@ -46,6 +46,10 @@
             android:name=".ui.probe.VirtualScreenProbeActivity"
             android:exported="false"
             android:label="虚拟屏探针" />
+        <activity
+            android:name=".ui.probe.WatchTogetherActivity"
+            android:exported="false"
+            android:label="一起看" />
         <service
             android:name=".ui.probe.MediaProjectionService"
             android:exported="false"
