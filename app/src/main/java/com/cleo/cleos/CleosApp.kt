@@ -225,6 +225,9 @@ class AppContainer(private val context: Context) {
         com.cleo.cleos.ai.OpenversePhotos(http, version) { toolDiagnostics.record(it) },
         com.cleo.cleos.ai.WordPressPhotos(http, version) { toolDiagnostics.record(it) },
     ) { settings.current().photoLibrary }
+    private val gameDatabase = Room.databaseBuilder(context, com.cleo.cleos.games.GameDatabase::class.java, "cleos-games.db").build()
+    val games = com.cleo.cleos.games.Games(gameDatabase.games(), db, registry, secrets, chatClient, appScope)
+
     val feedAi = com.cleo.cleos.ai.FeedAi(db, settings, secrets, registry, chatClient, feedNews, feed, images, photoSource)
     private val calendar = PhoneCalendar(context)
 
