@@ -125,9 +125,12 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
     PageNote("服务商是「哪一家」：接口地址 + 接口类型。Key 按地址存，换型号不用重填；一家下面可以挂好几条模型配置。")
     MessageLine(vm.registryMessage)
 
+    // 添加按钮放最上面：入口不该埋在列表底下让人翻。
+    TextButton(onClick = { adding = true }, enabled = !vm.registryBusy) { Text("＋ 添加服务商", fontSize = 13.sp) }
+
     Section("已添加") {
         if (data.providers.isEmpty()) {
-            Text("还没有。点下面的「添加服务商」，填上地址和 Key。", color = LocalGlassPalette.current.contentSecondary, fontSize = 13.sp)
+            Text("还没有。点上面的「＋ 添加服务商」，填上地址和 Key。", color = LocalGlassPalette.current.contentSecondary, fontSize = 13.sp)
         }
         data.providers.forEach { provider ->
             val configs = data.configs.filter { it.providerId == provider.id }
@@ -145,7 +148,6 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
             }
             RowDivider(inset = 0.dp)
         }
-        TextButton(onClick = { adding = true }, enabled = !vm.registryBusy) { Text("＋ 添加服务商") }
     }
 
     if (adding || editing != null) {
@@ -296,6 +298,21 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
 
+    // 添加按钮放最上面（单个 / 批量都在），不埋到列表底下。
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(
+            onClick = { adding = true },
+            enabled = !vm.registryBusy && data.providers.isNotEmpty(),
+        ) { Text(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置", fontSize = 13.sp) }
+        TextButton(
+            onClick = {
+                batchOpen = true
+                vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
+            },
+            enabled = !vm.registryBusy && data.providers.isNotEmpty(),
+        ) { Text("＋ 批量添加模型", fontSize = 13.sp) }
+    }
+
     Section("已添加") {
         if (data.configs.isEmpty()) {
             Text("还没有。先加一条服务商，再来加型号。", color = palette.contentSecondary, fontSize = 13.sp)
@@ -324,20 +341,6 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 vm.capabilityResult?.takeIf { it.first == config.id }?.let { (_, result) -> ProbeResultLine(result) }
             }
             RowDivider(inset = 0.dp)
-        }
-        // **入口永远在**：加过多少条也不藏。批量那条是从服务商拉列表、一次加多个。
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(
-                onClick = { adding = true },
-                enabled = !vm.registryBusy && data.providers.isNotEmpty(),
-            ) { Text(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置", fontSize = 12.sp) }
-            TextButton(
-                onClick = {
-                    batchOpen = true
-                    vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
-                },
-                enabled = !vm.registryBusy && data.providers.isNotEmpty(),
-            ) { Text("＋ 批量添加模型", fontSize = 12.sp) }
         }
     }
 
