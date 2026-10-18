@@ -287,6 +287,7 @@ private fun WidgetZoom(html: String, ink: Color, onClose: () -> Unit) {
     val palette = LocalGlassPalette.current
     val screenW = LocalConfiguration.current.screenWidthDp.dp
     val screenH = LocalConfiguration.current.screenHeightDp.dp
+    var resetCount by remember { mutableIntStateOf(0) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.Center) {
             // 弹窗本身按内容走：宽度最多 80% 屏，高度由里面的 WebView 决定（≤80% 屏）。
@@ -305,6 +306,9 @@ private fun WidgetZoom(html: String, ink: Color, onClose: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
                             Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { resetCount++ }) {
+                                Text("重置状态", color = palette.contentSecondary, fontSize = 12.sp)
+                            }
                             TextButton(onClick = onClose) { Text("收起", color = palette.content) }
                         }
                         WidgetBox(
@@ -313,6 +317,7 @@ private fun WidgetZoom(html: String, ink: Color, onClose: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             maxHeight = screenH * MODE_RATIO,
                             interactive = true,
+                            resetSignal = resetCount,
                         )
                     }
                 }
@@ -333,6 +338,8 @@ private fun WidgetBox(
     modifier: Modifier = Modifier,
     maxHeight: Dp,
     interactive: Boolean,
+    /** 放大弹窗的「重置状态」：每 +1 清一次本 key 的 localStorage 并重载页面。 */
+    resetSignal: Int = 0,
     onClipped: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
@@ -353,16 +360,25 @@ private fun WidgetBox(
     val clipped = heightDp >= maxHeight.value - 1f
     LaunchedEffect(clipped) { onClipped(clipped) }
 
+    val stateKey = remember(html) { stableKey(html) }
     val view = remember(html, interactive) {
         makeWebView(
             context, html, ink, palette.contentSecondary, interactive,
-            stateKey = stableKey(html),
+            stateKey = stateKey,
             onHeight = { px -> measuredPx = px },
             onFailure = { failure = it },
         )
     }
     DisposableEffect(view) {
         onDispose { runCatching { view.stopLoading(); view.destroy() } }
+    }
+    LaunchedEffect(view, resetSignal) {
+        if (resetSignal > 0) {
+            view.evaluateJavascript(
+                "try{localStorage.removeItem('cleos.widget." + stateKey + "')}catch(e){};location.reload();",
+                null,
+            )
+        }
     }
 
     Column(modifier) {
