@@ -77,10 +77,12 @@ private fun ProbeScreen() {
 
     fun add(title: String, ok: Boolean, detail: String) { steps.add(Step(title, ok, detail)) }
 
-    // Shizuku（ADB 权限）：am start --display / input -d 都靠它。没装或没授权时返回 null。
-    // 本版不用 Shizuku 库：App 内的 am/input 需要系统权限，这里交给电脑上的 adb 执行
-    // （adb shell 与 Shizuku 给的是同一档 ADB 权限）。
-    fun adbHint(cmd: String): String = "请用电脑 adb 执行：adb shell $cmd"
+    // Shizuku 集成留到下一版（它的 IShizukuService AIDL 不在公开 api 包里）；
+    // 本版用电脑 adb（与 Shizuku 同一档 ADB 权限），launch/swipe 会把命令写出来。
+    fun shizukuReady(): Boolean = false
+    fun shizukuPermitted(): Boolean = false
+    fun shizukuRun(cmd: String): Pair<Boolean, String> =
+        false to "本版未集成 Shizuku；请在电脑上 adb shell $cmd"
 
     fun createVirtualDisplay(mp: android.media.projection.MediaProjection) {
         try {
@@ -92,7 +94,7 @@ private fun ProbeScreen() {
                 android.os.Handler(android.os.Looper.getMainLooper()),
             )
             if (reader == null) reader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 2)
-            // 签名是 (name, width, height, densityDpi, **flags**, surface, callback, handler) —— 第 5 个是 flags。
+            // 签名是 (name, width, height, densityDpi, flags, surface, callback, handler)。
             val vd = mp.createVirtualDisplay(
                 "cleos-probe", W, H, DPI,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
@@ -137,12 +139,12 @@ private fun ProbeScreen() {
         val douyin = runCatching { pm.getPackageInfo(DOUYIN, 0) }.getOrNull()
         val shizuku = runCatching { pm.getPackageInfo(SHIZUKU, 0) }.getOrNull()
         val root = listOf("/system/xbin/su", "/system/bin/su", "/sbin/su").any { File(it).exists() }
-        val shizukuUp = false
+        val shizukuUp = shizukuReady()
         add("系统信息", true, buildString {
             appendLine("Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）")
             appendLine("${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("抖音：${if (douyin != null) "已安装 ${douyin.versionName}" else "没装（或不是这个包名）"}")
-            appendLine("Shizuku：${if (shizuku != null) "已安装（本版探针不用它，改用电脑 adb）" else "没装"}")
+            appendLine("Shizuku：${if (shizuku != null) "已安装" else "没装"}；服务：${if (shizukuUp) "运行中" else "没在跑"}；授权：${if (shizukuPermitted()) "已授权" else "未授权"}")
             appendLine("su 可执行文件：${if (root) "有" else "没有"}（有也不代表给了权限）")
             appendLine("公开虚拟屏 API：${if (Build.VERSION.SDK_INT >= 30) "有（API 30+；创建需要 MediaProjection 或系统权限）" else "没有（系统低于 Android 11）"}")
         })
@@ -178,7 +180,8 @@ private fun ProbeScreen() {
         } catch (e: Throwable) {
             add("启动抖音到虚拟屏", false, "App 直接启动失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}。改用电脑 adb 启动。")
         }
-        add("用 adb 启动（推荐）", true, adbHint("am start --display $displayId -n com.ss.android.ugc.aweme/.splash.SplashActivity"))
+        val (ok, msg) = shizukuRun("am start --display $displayId -n com.ss.android.ugc.aweme/.splash.SplashActivity")
+        add("Shizuku 启动抖音", ok, if (ok) (msg.ifEmpty { "已发出" }) else msg)
     }
 
     fun frame() {
@@ -218,7 +221,8 @@ private fun ProbeScreen() {
 fun swipe() {
         if (displayId < 0) { add("向虚拟屏滑动", false, "先创建虚拟屏"); return }
         // App 自己注入手势预期 SecurityException（保留作对照）；真正的滑动交给电脑 adb。
-        add("用 adb 滑动（推荐）", true, adbHint("input -d $displayId swipe ${W / 2} ${(H * 0.8).toInt()} ${W / 2} ${(H * 0.2).toInt()} 300"))
+        val (ok, msg) = shizukuRun("input -d $displayId swipe ${W / 2} ${(H * 0.8).toInt()} ${W / 2} ${(H * 0.2).toInt()} 300")
+        add("Shizuku 滑动", ok, if (ok) (msg.ifEmpty { "已发出" }) else msg)
         try {
             val instrument = Instrumentation()
             val now = SystemClock.uptimeMillis()

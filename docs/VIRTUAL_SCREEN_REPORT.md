@@ -39,3 +39,16 @@
 1. 探针加"导出帧到 Download"（或直接屏幕外截图对比），确认画面就是抖音。
 2. 生产化：集成 Shizuku（App 内调 `am/input`）或明确的 ADB 辅助模式。
 3. 在 0.1.85 里把探针的 adb 命令显示做成可复制。
+
+## Operit 是怎么做的（参考）
+
+看了本地参考实现 `C:\Users\15536\.dsh\work\operit-ref`：
+
+- Operit 的"虚拟屏"叫 **Shower**：`ShowerController` 提供 ensureDisplay / launchApp / tap / swipe / key / requestScreenshot。
+- 它的 `PhoneAgent` 有**硬门槛**：`hasDebuggerShizukuAccess` —— 没 Shizuku（或 root）就不让用设备自动化。
+- 执行命令走 **Shizuku 的 AIDL**：`moe.shizuku.server.IShizukuService`（`DebuggerShellExecutor` 里 `service.newProcess(...)`）。
+  **这个 AIDL 不在公开的 `dev.rikka.shizuku:api` aar 里**（我解包确认：只有 `rikka.shizuku.*`，没有 `moe.shizuku.*`）。
+  所以 App 内集成 Shizuku 要么自己放 AIDL、要么找别的 artifact —— 不是加一行依赖就能用。
+- 结论与我们实测一致：**免 root 必须有 ADB 级权限**；区别只是"命令由谁执行"（Operit 用 Shizuku 在手机内执行，本版用电脑 adb）。
+
+本轮因此**不强行集成 Shizuku**（回退到 adb 版），下一版如果要"手机内独立跑"，需要先解决 IShizukuService AIDL。
