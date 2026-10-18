@@ -1,6 +1,7 @@
 package com.cleo.cleos.ui.chat
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.util.Log
 import android.webkit.WebResourceRequest
@@ -8,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -239,7 +243,7 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
             html = html,
             ink = ink,
             modifier = Modifier.fillMaxWidth(),
-            maxHeight = BUBBLE_MAX_HEIGHT,
+            limit = BUBBLE_MAX_HEIGHT,
             onOverflow = { overflows = it },
         )
         // 气泡里露出高度有限，得让人知道"后面还有"。
@@ -279,7 +283,7 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
                             }
                         }
                         // 高度交给父约束，不再固定 420dp —— WebView 自己滚，内容重新排版。
-                        WebBox(html, ink, Modifier.fillMaxWidth().weight(1f), maxHeight = Dp.Unspecified)
+                        WebBox(html, ink, Modifier.fillMaxWidth().weight(1f), limit = null)
                     }
                 }
             }
@@ -287,80 +291,127 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
     }
 }
 
-/** 真正跑起来的那个框子。气泡里一个、放大后一个 —— 两个 WebView 各跑各的。 */
+/**
+ * 真正跑起来的那个框子。气泡里一个、放大后一个 —— 两个 WebView 各跑各的。
+ *
+ * 高度分两种：
+ * · 气泡（`limit` 非空）：min(量出来的高度, 上限)；超了由调用方提示「点开放大」。
+ * · 放大（`limit == null`）：min(内容高度, 可用高度) —— 短内容贴合内容、不留大片空白，
+ *   长内容填满可用区域并让 WebView 自己滚。高度**由测量值决定**，不是写死的大数字。
+ */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun WebBox(
     html: String,
     ink: Color,
     modifier: Modifier = Modifier,
-    /** 气泡里给个上限；放大时传 Dp.Unspecified，高度由父约束决定（填满、可滚）。 */
-    maxHeight: Dp = Dp.Unspecified,
+    /** 气泡里给上限；放大传 null（按内容与可用高度自适应）。 */
+    limit: Dp? = null,
     onOverflow: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
     val density = LocalDensity.current.density
+    val context = LocalContext.current
     var heightPx by remember(html) { mutableIntStateOf(0) }
     var failure by remember(html) { mutableStateOf<String?>(null) }
     val measured = if (heightPx > 0) heightPx / density else 0f
-    val grows = maxHeight != Dp.Unspecified && measured > maxHeight.value
-    LaunchedEffect(measured, maxHeight) { onOverflow(grows) }
+    val grows = limit != null && measured > limit.value
+    LaunchedEffect(measured, limit) { onOverflow(grows) }
+    // 加载完成前先按文字量估一个高度：别让气泡在加载那一刻猛地跳一下。
+    val guess = if (limit != null) minOf(limit.value, 80f + html.length / 8f) else 0f
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        AndroidView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (maxHeight == Dp.Unspecified) Modifier.fillMaxHeight()
-                    else Modifier.height((if (measured > 0f) minOf(measured, maxHeight.value) else 140f).dp),
-                )
-                .clip(RoundedCornerShape(14.dp)),
-            factory = { context ->
-                WebView(context).apply {
-                    setBackgroundColor(AndroidColor.TRANSPARENT)
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = false
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.blockNetworkLoads = true
-                    settings.setSupportZoom(false)
-                    settings.builtInZoomControls = false
-                    settings.displayZoomControls = false
-                    isVerticalScrollBarEnabled = false
-                    isHorizontalScrollBarEnabled = false
-                    webViewClient = object : WebViewClient() {
-                        // 点什么都不许跳出去：这是给人玩的一小块地方，不是浏览器。
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+    // 每个 WebBox 自己一个实例：气泡和放大是两个 WebBox，互不借对方的视图。
+    val view = remember(html) {
+        makeWebView(context, html, ink, palette.contentSecondary, { px -> heightPx = px }, { failure = it })
+    }
+    DisposableEffect(view) {
+        onDispose { runCatching { view.stopLoading(); view.destroy() } }
+    }
 
-                        @Deprecated("Kept for older WebViews")
-                        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
+    if (limit != null) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height((if (measured > 0f) minOf(measured, limit.value) else guess).coerceAtLeast(60f).dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                factory = { view },
+                update = {},
+            )
+            failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
+        }
+    } else {
+        // 放大：可用高度来自父约束（Dialog 的 weight 区域），短内容按内容高、长内容填满可滚。
+        BoxWithConstraints(modifier) {
+            val avail = this.maxHeight
+            val target = if (measured > 0f) minOf(measured, avail.value) else minOf(avail.value, avail.value * 0.6f)
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(target.coerceAtLeast(120f).dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                factory = { view },
+                update = {},
+            )
+        }
+    }
+}
 
-                        override fun onPageFinished(view: WebView, url: String?) {
-                            // 让框子跟着内容长：量一次文档高度，换算成 dp。
-                            view.evaluateJavascript(
-                                "Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)",
-                            ) { value ->
-                                val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
-                                if (px > 0) heightPx = px.coerceIn(60, 2400)
-                            }
-                            // 诊断（可移除）：页子里实际有多少内容、视口多高 —— 判断是内容丢了还是被布局裁了。
-                            view.evaluateJavascript(
-                                "'html=' + document.documentElement.innerHTML.length + ' text=' + (document.body ? document.body.innerText.length : 0) + ' doc=' + document.documentElement.scrollHeight + ' view=' + window.innerHeight + ' imgFail=' + Array.from(document.images).filter(function(i){return !i.complete || i.naturalWidth === 0}).length",
-                            ) { value ->
-                                Log.d(TAG, "loaded " + value + " srcHtml=" + html.length)
-                            }
-                        }
-                    }
-                }
-            },
-            update = { web ->
-                if (web.tag as? String == html) return@AndroidView
-                web.tag = html
-                runCatching { web.loadDataWithBaseURL(null, page(html, ink, palette.contentSecondary), "text/html", "utf-8", null) }
-                    .onFailure { failure = it.message }
-            },
-        )
-        failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
+/**
+ * 建一个 WebView：安全策略全在这儿 —— 不联网、不碰文件、不许跳出去、没有 JS 桥。
+ * `onHeight` 在加载完成和图片/字体加载后各喂一次高度（有上限，不会无限循环）。
+ */
+@SuppressLint("SetJavaScriptEnabled")
+private fun makeWebView(
+    context: Context,
+    html: String,
+    ink: Color,
+    secondary: Color,
+    onHeight: (Int) -> Unit,
+    onFailure: (String?) -> Unit,
+): WebView = WebView(context).apply {
+    setBackgroundColor(AndroidColor.TRANSPARENT)
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = false
+    settings.allowFileAccess = false
+    settings.allowContentAccess = false
+    settings.blockNetworkLoads = true
+    settings.setSupportZoom(false)
+    settings.builtInZoomControls = false
+    settings.displayZoomControls = false
+    // 放大时允许在框内上下/左右滚；气泡里由外层列表管手势（高度本身就是内容高）。
+    isVerticalScrollBarEnabled = true
+    isHorizontalScrollBarEnabled = true
+    webViewClient = object : WebViewClient() {
+        // 点什么都不许跳出去：这是给人玩的一小块地方，不是浏览器。
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+
+        @Deprecated("Kept for older WebViews")
+        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
+
+        override fun onPageFinished(view: WebView, url: String?) {
+            measureOnce(view, html, onHeight)
+            // 图片、字体加载完高度会变：再量两次（固定次数，防死循环）。
+            view.postDelayed({ measureOnce(view, html, onHeight) }, 350)
+            view.postDelayed({ measureOnce(view, html, onHeight) }, 1200)
+        }
+    }
+    runCatching { loadDataWithBaseURL(null, page(html, ink, secondary), "text/html", "utf-8", null) }
+        .onFailure { onFailure(it.message) }
+}
+
+/** 量页面高度：html/body 的 scrollHeight 和 body 的盒模型高度三者取最大。 */
+private fun measureOnce(view: WebView, html: String, onHeight: (Int) -> Unit) {
+    view.evaluateJavascript(
+        "(function(){var d=document.documentElement,b=document.body;" +
+            "var h=Math.max(d?d.scrollHeight:0,b?b.scrollHeight:0,b?Math.ceil(b.getBoundingClientRect().height):0);" +
+            "return Math.ceil(h);})()",
+    ) { value ->
+        val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
+        if (px > 0) {
+            Log.d(TAG, "measure srcHtml=" + html.length + " px=" + px)
+            onHeight(px.coerceIn(60, 6000))
+        }
     }
 }
 
@@ -372,8 +423,11 @@ private fun page(body: String, ink: Color, secondary: Color): String = """
     <style>
       html, body { margin: 0; padding: 6px; background: transparent;
         color: ${hex(ink)}; font-size: 14px; line-height: 1.5;
-        font-family: -apple-system, "Noto Sans SC", sans-serif; overflow-x: hidden;
+        font-family: -apple-system, "Noto Sans SC", sans-serif;
         -webkit-user-select: none; user-select: none; height: auto; }
+      /* 宽内容：先响应式压缩，压不下去就允许横向滚，别静默裁掉。 */
+      body { overflow-x: auto; overflow-y: visible; }
+      table { max-width: none; }
       /* 兜底：模型常写「固定高度 + overflow:hidden」的卡片，长内容就被裁掉、
          看起来像「后面没了」。只让溢出可见，不改它自己的高度和布局。 */
       div, section, article, main, header, footer, aside, form { overflow: visible !important; }
