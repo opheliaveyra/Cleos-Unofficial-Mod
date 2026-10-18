@@ -10,17 +10,17 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 一局可恢复的棋（目前只有井字棋）。
+ * 一局可恢复的棋（井字棋 / 五子棋）。
  *
- * 本地规则仍是唯一权威：模型只给行动；这里只存"棋盘/回合/状态/revision"。
- * [pending] 为 true 表示保存时有一笔 TA 请求在途 —— 进程被杀后它不会自己回来，
- * 恢复时转成「已中断，可继续」，**不自动重试付费**。
+ * [gameType] 区分游戏：每种游戏各自保留最近一局，**互不覆盖**。
+ * [pending] 为 true 表示保存时有一笔 TA 请求在途 —— 进程被杀后恢复时转成「已中断，可继续」。
  */
 @Entity(tableName = "game_sessions")
 data class GameSessionEntity(
     @PrimaryKey val id: String,
+    @ColumnInfo(defaultValue = "'tic_tac_toe'") val gameType: String,
     val taId: Long,
-    /** 9 个 0/1/2，逗号分隔：0 空、1 人（X）、2 TA（O）。 */
+    /** 棋盘：井字棋 9 个 0/1/2；五子棋 225 个 0/1/2（逗号分隔）。 */
     val board: String,
     val turn: Int,
     val winner: Int,
@@ -33,18 +33,22 @@ data class GameSessionEntity(
 
 @Dao
 interface GameSessionDao {
-    @Query("SELECT * FROM game_sessions ORDER BY updatedAt DESC LIMIT 1")
-    fun observeLatest(): Flow<GameSessionEntity?>
+    @Query("SELECT * FROM game_sessions WHERE gameType = :gameType ORDER BY updatedAt DESC LIMIT 1")
+    fun observeLatest(gameType: String): Flow<GameSessionEntity?>
 
-    @Query("SELECT * FROM game_sessions ORDER BY updatedAt DESC LIMIT 1")
-    suspend fun latest(): GameSessionEntity?
+    @Query("SELECT * FROM game_sessions WHERE gameType = :gameType ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun latest(gameType: String): GameSessionEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(entity: GameSessionEntity)
 
-    @Query("DELETE FROM game_sessions WHERE id != :keep")
-    suspend fun keepOnly(keep: String)
+    /** 只保留同一游戏类型的这一局；别的游戏不受影响。 */
+    @Query("DELETE FROM game_sessions WHERE gameType = :gameType AND id != :keep")
+    suspend fun keepOnly(gameType: String, keep: String)
+
+    @Query("DELETE FROM game_sessions WHERE gameType = :gameType")
+    suspend fun clear(gameType: String)
 
     @Query("DELETE FROM game_sessions")
-    suspend fun clear()
+    suspend fun clearAll()
 }

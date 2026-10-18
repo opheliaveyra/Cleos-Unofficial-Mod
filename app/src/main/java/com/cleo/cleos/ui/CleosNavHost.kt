@@ -116,6 +116,10 @@ object GamesRoute
 @Serializable
 object TicTacToeRoute
 
+/** 五子棋一局。 */
+@Serializable
+object GomokuRoute
+
 /**
  * Screens cross-fade rather than slide. Glass samples what is behind it at the position
  * it was last laid out at; a screen sliding in via a transform moves without being laid
@@ -223,8 +227,15 @@ fun CleosNavHost() {
         }
         composable<ImageRoute> { entry -> ImageViewerScreen(entry.toRoute<ImageRoute>().file, onBack = nav::back) }
         composable<CallRoute> { CallScreen() }
-        composable<GamesRoute> { com.cleo.cleos.ui.games.GamesHomeScreen(onBack = nav::back, onOpenTicTacToe = { nav.go(TicTacToeRoute) }) }
+        composable<GamesRoute> {
+            com.cleo.cleos.ui.games.GamesHomeScreen(
+                onBack = nav::back,
+                onOpenTicTacToe = { nav.go(TicTacToeRoute) },
+                onOpenGomoku = { nav.go(GomokuRoute) },
+            )
+        }
         composable<TicTacToeRoute> { com.cleo.cleos.ui.games.TicTacToeScreen(onBack = nav::back) }
+        composable<GomokuRoute> { com.cleo.cleos.ui.games.GomokuScreen(onBack = nav::back) }
     }
 }
 

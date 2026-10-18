@@ -77,13 +77,13 @@ fun TicTacToeScreen(onBack: () -> Unit) {
         val row = restored.row
         val ta = c.companions.get(row.taId)
         if (ta == null) {
-            c.gameSessions.clear()
+            c.gameSessions.clear("tic_tac_toe")
             error = "上一局的 TA 已经不在了（可能被删过），这局就到这里 —— 重新邀请一个吧。"
             return@LaunchedEffect
         }
         val restoredSession = restored.session
         if (restoredSession == null) {
-            c.gameSessions.clear()
+            c.gameSessions.clear("tic_tac_toe")
             error = "上一局的存档读不出来了，这一局已清掉；聊天、日记等其它数据不受影响。"
             return@LaunchedEffect
         }

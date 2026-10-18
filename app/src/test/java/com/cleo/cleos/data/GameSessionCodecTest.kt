@@ -15,22 +15,22 @@ class GameSessionCodecTest {
         revision: Long = 2,
         pending: Boolean = true,
     ) = GameSessionEntity(
-        id = "g1", taId = 7L, board = board, turn = turn, winner = winner, moves = moves,
+        id = "g1", gameType = "tic_tac_toe", taId = 7L, board = board, turn = turn, winner = winner, moves = moves,
         revision = revision, createdAt = 0, updatedAt = 0, pending = pending,
     )
 
     @Test
     fun aBoardSurvivesTheRoundTrip() {
         val board = listOf(1, 0, 0, 0, 2, 0, 0, 0, 0)
-        assertEquals(board, GameSessionCodec.decode(GameSessionCodec.encode(board)))
+        assertEquals(board, GameSessionCodec.decode(GameSessionCodec.encode(board), 9))
     }
 
     @Test
     fun aBrokenBoardIsRefused() {
-        assertNull(GameSessionCodec.decode("1,0,0"))
-        assertNull(GameSessionCodec.decode("1,0,0,0,2,0,0,0,x"))
-        assertNull(GameSessionCodec.decode("1,0,0,0,3,0,0,0,0"))
-        assertNull(GameSessionCodec.decode(""))
+        assertNull(GameSessionCodec.decode("1,0,0", 9))
+        assertNull(GameSessionCodec.decode("1,0,0,0,2,0,0,0,x", 9))
+        assertNull(GameSessionCodec.decode("1,0,0,0,3,0,0,0,0", 9))
+        assertNull(GameSessionCodec.decode("", 9))
     }
 
     @Test

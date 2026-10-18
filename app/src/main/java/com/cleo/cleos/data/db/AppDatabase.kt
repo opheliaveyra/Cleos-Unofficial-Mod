@@ -38,7 +38,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         VideoUnderstandingEntity::class,
         GameSessionEntity::class,
     ],
-    version = 45,
+    version = 46,
     exportSchema = true,
     autoMigrations = [
         // 1 -> 2: tool calls on messages (four nullable columns, nothing rewritten).
@@ -124,6 +124,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 43, to = 44),
         // 44 -> 45: 可以接着下的棋局（一张新表；只存棋盘/回合/revision，不含聊天）。
         AutoMigration(from = 44, to = 45),
+        // 45 -> 46: 棋局区分游戏类型（井字棋/五子棋各自保留存档；默认值把旧局归为井字棋）。
+        AutoMigration(from = 45, to = 46),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

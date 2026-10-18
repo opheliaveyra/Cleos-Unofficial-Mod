@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.GridOn
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -26,9 +27,9 @@ import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
 
-/** 小游戏中心：现在只有井字棋（P0）。围棋、五子棋、联机都还没做。 */
+/** 小游戏中心：井字棋、五子棋。围棋、多人联机还没做。 */
 @Composable
-fun GamesHomeScreen(onBack: () -> Unit, onOpenTicTacToe: () -> Unit) {
+fun GamesHomeScreen(onBack: () -> Unit, onOpenTicTacToe: () -> Unit, onOpenGomoku: () -> Unit) {
     val palette = LocalGlassPalette.current
     Column(
         Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp),
@@ -56,8 +57,23 @@ fun GamesHomeScreen(onBack: () -> Unit, onOpenTicTacToe: () -> Unit) {
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
             }
         }
+        GlassSurface(
+            modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "打开五子棋", onClick = onOpenGomoku),
+            shape = GlassShape.Rounded(24.dp),
+            contentPadding = PaddingValues(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.GridOn, contentDescription = null, tint = palette.contentSecondary)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("五子棋", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text("15×15，邀请 TA 真模型对弈", color = palette.contentSecondary, fontSize = 12.sp)
+                }
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            }
+        }
         Text(
-            "现在只有井字棋；围棋、五子棋、多人联机还没做。TA 的落子现在是本地模拟（还没接模型）。",
+            "围棋、多人联机还没做。两个游戏都直接调用 TA 已配置的模型；各自的棋局存档分开保存。",
             color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
         )
     }
