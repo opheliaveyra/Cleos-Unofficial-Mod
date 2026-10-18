@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -37,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -227,71 +230,89 @@ internal fun MessageExtras(text: String, modifier: Modifier = Modifier) {
  *
  * 也就是说：它能在这一小块地方里折腾，但伸不到外面。开关在设置里，默认关着。
  */
-/** 气泡里最多先给这么高；再长就只在放大里看 —— 但会明确写出来"内容较长"。 */
-private val BUBBLE_MAX_HEIGHT = 360.dp
+/** 两种模式的上限：都取可用屏幕的 80%。 */
+private const val MODE_RATIO = 0.8f
 
 /** 诊断标签：`adb logcat -s CleosWidget`。排查完可以整段删掉。 */
 private const val TAG = "CleosWidget"
 
-@SuppressLint("SetJavaScriptEnabled")
+/**
+ * 聊天里的小玩意儿。**两种模式，不共用同一套截断/交互**：
+ *
+ * · 预览（[WidgetPreview]）：宽最多 80% 屏宽、高最多 80% 屏高，按内容自适应；
+ *   超出就裁掉，**不滚动、不消费触摸**（聊天列表照常滚），按钮也点不动；
+ * · 放大（[WidgetZoom]）：同一个 HTML 重新加载，宽高最多 80% 屏，内容超出时内部可滚，
+ *   按钮/输入框正常可用。
+ */
 @Composable
 internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
     var expanded by remember(html) { mutableStateOf(false) }
-    var overflows by remember(html) { mutableStateOf(false) }
+    var clipped by remember(html) { mutableStateOf(false) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        WebBox(
-            html = html,
-            ink = ink,
-            modifier = Modifier.fillMaxWidth(),
-            limit = BUBBLE_MAX_HEIGHT,
-            onOverflow = { overflows = it },
-        )
-        // 气泡里露出高度有限，得让人知道"后面还有"。
+        WidgetPreview(html, ink, onClipped = { clipped = it })
+        // 被裁的时候说清楚「后面还有」，别让人以为就这么多。
         Text(
-            if (overflows) "内容较长，点开放大看全部" else "点开放大",
+            if (clipped) "内容较长，点开放大看全部" else "点开放大",
             color = palette.contentSecondary,
             fontSize = 11.sp,
             modifier = Modifier.clickable { expanded = true },
         )
     }
     if (expanded) {
-        // 放大 = 另一个 WebView 重新加载原始 HTML。
-        // 弹窗高度**跟着内容走**：短内容贴合、长内容最多到屏幕 94%（框内可滚），
-        // 不再把整块 94% 屏幕都画成背景。
-        Dialog(
-            onDismissRequest = { expanded = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            BoxWithConstraints(
-                Modifier.fillMaxSize().padding(12.dp),
-                contentAlignment = Alignment.Center,
+        WidgetZoom(html, ink, onClose = { expanded = false })
+    }
+}
+
+/** 模式一：聊天里的预览。宽 80% 屏、高按内容（最多 80% 屏），**不滚动、不消费触摸**。 */
+@Composable
+private fun WidgetPreview(html: String, ink: Color, onClipped: (Boolean) -> Unit) {
+    val screenW = LocalConfiguration.current.screenWidthDp.dp
+    val screenH = LocalConfiguration.current.screenHeightDp.dp
+    WidgetBox(
+        html = html,
+        ink = ink,
+        modifier = Modifier.fillMaxWidth().widthIn(max = screenW * MODE_RATIO),
+        maxHeight = screenH * MODE_RATIO,
+        interactive = false,
+        onClipped = onClipped,
+    )
+}
+
+/** 模式二：放大。同一个 HTML 重新加载；宽高最多 80% 屏，超了内部自己滚，交互正常。 */
+@Composable
+private fun WidgetZoom(html: String, ink: Color, onClose: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    val screenW = LocalConfiguration.current.screenWidthDp.dp
+    val screenH = LocalConfiguration.current.screenHeightDp.dp
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.Center) {
+            // 弹窗本身按内容走：宽度最多 80% 屏，高度由里面的 WebView 决定（≤80% 屏）。
+            Column(
+                Modifier
+                    .widthIn(max = screenW * MODE_RATIO)
+                    .wrapContentHeight(),
             ) {
-                val maxH = this.maxHeight * 0.94f
-                Column(Modifier.fillMaxWidth().wrapContentHeight()) {
-                    GlassSurface(
-                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                        style = palette.card,
-                        shape = GlassShape.Rounded(24.dp),
-                        contentPadding = PaddingValues(16.dp),
-                    ) {
-                        Column(Modifier.wrapContentHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
-                                Spacer(Modifier.weight(1f))
-                                TextButton(onClick = { expanded = false }) {
-                                    Text("收起", color = palette.content)
-                                }
-                            }
-                            // 可用高度 = 屏幕 94% 减去标题行；WebView 取 min(内容高, 可用高)。
-                            WebBox(
-                                html, ink,
-                                Modifier.fillMaxWidth().wrapContentHeight(),
-                                limit = null,
-                                avail = (maxH - 56.dp).coerceAtLeast(120.dp),
-                            )
+                GlassSurface(
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                    style = palette.card,
+                    shape = GlassShape.Rounded(24.dp),
+                    contentPadding = PaddingValues(12.dp),
+                ) {
+                    Column(Modifier.wrapContentHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = onClose) { Text("收起", color = palette.content) }
                         }
+                        WidgetBox(
+                            html = html,
+                            ink = ink,
+                            modifier = Modifier.fillMaxWidth(),
+                            maxHeight = screenH * MODE_RATIO,
+                            interactive = true,
+                        )
                     }
                 }
             }
@@ -300,56 +321,44 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
 }
 
 /**
- * 真正跑起来的那个框子。气泡里一个、放大后一个 —— 两个 WebView 各跑各的。
- *
- * 高度分两种：
- * · 气泡（`limit` 非空）：min(量出来的高度, 上限)；超了由调用方提示「点开放大」。
- * · 放大（`limit == null`）：min(内容高度, 可用高度) —— 短内容贴合内容、不留大片空白，
- *   长内容填满可用区域并让 WebView 自己滚。高度**由测量值决定**，不是写死的大数字。
+ * 两种模式共用的「测量 + 容器」：高度从小往上长（**只增不减**），最多到 [maxHeight]。
+ * 超过上限的部分由 WebView 视口裁掉 —— 预览不滚；放大模式 WebView 自己滚。
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun WebBox(
+private fun WidgetBox(
     html: String,
     ink: Color,
     modifier: Modifier = Modifier,
-    /** 气泡里给上限；放大传 null（按内容与可用高度自适应）。 */
-    limit: Dp? = null,
-    /** 放大时由弹窗给出的可用高度（已经减掉标题行）；气泡不用。 */
-    avail: Dp? = null,
-    onOverflow: (Boolean) -> Unit = {},
+    maxHeight: Dp,
+    interactive: Boolean,
+    onClipped: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
     val density = LocalDensity.current.density
     val context = LocalContext.current
+    val floor = 72f
     var measuredPx by remember(html) { mutableIntStateOf(0) }
     var failure by remember(html) { mutableStateOf<String?>(null) }
-    val cap = limit?.value ?: (avail?.value ?: 600f)
-    val floor = if (limit != null) 80f else 160f
-    // 高度**从小的起点，按量出来的内容一点点长**。
-    // 不能一步设成「内容高度」：模型常写 min-height:100vh，元素高度跟着视口变，
-    // 视口一大量出来就必然满屏。先给小视口，量出来的才是真实内容；
-    // 只增不减（视口变大会让 100vh 元素变高，来回缩会震荡）。
     var heightDp by remember(html) { mutableFloatStateOf(floor) }
-    val measured = if (measuredPx > 0) measuredPx / density else 0f
-    LaunchedEffect(measuredPx, cap) {
+    LaunchedEffect(measuredPx, maxHeight) {
         if (measuredPx > 0) {
-            val want = (measuredPx / density).coerceAtMost(cap).coerceAtLeast(floor)
+            val want = (measuredPx / density).coerceAtMost(maxHeight.value).coerceAtLeast(floor)
+            // 只增不减：视口变大会让 min-height:100vh 的元素变高，来回缩会震荡。
             if (want > heightDp + 1f) heightDp = want
         }
     }
-    val grows = limit != null && heightDp >= limit.value - 1f
-    LaunchedEffect(grows) { onOverflow(grows) }
+    val clipped = heightDp >= maxHeight.value - 1f
+    LaunchedEffect(clipped) { onClipped(clipped) }
 
-    // 每个 WebBox 自己一个实例：气泡和放大是两个 WebBox，互不借对方的视图。
-    val view = remember(html) {
-        makeWebView(context, html, ink, palette.contentSecondary, { px -> measuredPx = px }, { failure = it })
+    val view = remember(html, interactive) {
+        makeWebView(context, html, ink, palette.contentSecondary, interactive, { px -> measuredPx = px }, { failure = it })
     }
     DisposableEffect(view) {
         onDispose { runCatching { view.stopLoading(); view.destroy() } }
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
@@ -372,9 +381,11 @@ private fun makeWebView(
     html: String,
     ink: Color,
     secondary: Color,
+    /** false = 预览（不消费触摸）；true = 放大（可滚、可交互）。 */
+    interactive: Boolean,
     onHeight: (Int) -> Unit,
     onFailure: (String?) -> Unit,
-): WebView = WebView(context).apply {
+): WebView = (if (interactive) WebView(context) else PreviewWebView(context)).apply {
     setBackgroundColor(AndroidColor.TRANSPARENT)
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = false
@@ -384,9 +395,9 @@ private fun makeWebView(
     settings.setSupportZoom(false)
     settings.builtInZoomControls = false
     settings.displayZoomControls = false
-    // 放大时允许在框内上下/左右滚；气泡里由外层列表管手势（高度本身就是内容高）。
-    isVerticalScrollBarEnabled = true
-    isHorizontalScrollBarEnabled = true
+    // 放大才允许框内滚动；预览模式不消费触摸（见 PreviewWebView），滚动交给聊天列表。
+    isVerticalScrollBarEnabled = interactive
+    isHorizontalScrollBarEnabled = interactive
     webViewClient = object : WebViewClient() {
         // 点什么都不许跳出去：这是给人玩的一小块地方，不是浏览器。
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
@@ -434,6 +445,14 @@ private fun measureOnce(view: WebView, html: String, onHeight: (Int) -> Unit) {
             onHeight(px.coerceIn(60, 6000))
         }
     }
+}
+
+/**
+ * 预览用的 WebView：**不消费任何触摸事件** —— 聊天列表照常滚，预览里的按钮也点不动。
+ * 这是「模式一不执行交互」的实现方式：不截断 HTML，只挡触摸。
+ */
+private class PreviewWebView(context: Context) : WebView(context) {
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean = false
 }
 
 /** 把 TA 写的一段东西套成一张页面：透明底、跟着气泡的颜色走、不许横向溢出。 */

@@ -89,6 +89,37 @@
 - 全量单测：139 套件 / 993 用例全绿
 - 真机：未验证（需要装 0.1.67 看效果）。验证方法同上：`adb logcat -s CleosWidget` 看
   `measure srcHtml=… px=…`，`px` 应接近卡片实际高度而不是满屏。
+
+---
+
+## 0.1.72-mod：按需求拆成两种模式（预览 / 放大不共用截断与交互逻辑）
+
+| | 聊天内预览 | 放大查看 |
+|---|---|---|
+| 宽 | ≤ 屏幕 80% | ≤ 屏幕 80% |
+| 高 | 按内容自适应，≤ 屏幕 80% | 按内容自适应，≤ 屏幕 80% |
+| 超出上限 | 裁掉，底部提示「内容较长，点开放大看全部」 | 容器锁在上限，WebView 内部纵向/横向滚动 |
+| 滚动 | **不允许**；触摸事件不下发（`PreviewWebView.dispatchTouchEvent = false`），聊天列表照常滚 | 允许 |
+| 交互（按钮/输入框） | **不执行**（触摸不消费，点不动） | 正常 |
+| HTML 源码 | **同一份完整 HTML**（不截断字符串，只裁可见区域） | 同一份完整 HTML，重新 `loadDataWithBaseURL` |
+
+实现要点（`LiveWidget.kt`）：
+- `LiveWidget` = `WidgetPreview` + 「点开放大」入口；点击进入 `WidgetZoom`（全屏 Dialog、内容居中）。
+- `WidgetBox(html, ink, maxHeight, interactive)`：高度从 72dp 起、**只增不减**地按测量值长到 `maxHeight`；
+  超出部分由 WebView 视口裁掉（预览不滚；放大由 WebView 自己滚）。
+- `PreviewWebView`：`dispatchTouchEvent` 恒返回 false —— 预览不拦列表滚动，也不执行按钮。
+- 测量仍用「跳过撑满视口容器」的 JS，避免 `min-height:100vh` 把高度量成满屏。
+- 安全设置不变：`blockNetworkLoads`、禁文件访问、跳转全拦、无 JS 桥。
+
+### 实测结果（本机）
+
+- `:app:assembleDebug`：BUILD SUCCESSFUL（0.1.72-mod / versionCode 244）。
+- `:app:testDebugUnitTest`：**140 套件 / 996 用例全绿**（0 失败）。
+- `LiveWidgetSampleTest`：短/长/按钮/输入框/宽表格样例的 HTML 在 `split` 阶段逐字符完整。
+
+**未能实测（需要真机）**：短 HTML、长 HTML、宽表格、交互按钮、输入框、动态内容在两种模式下的
+实际表现；80% 上限在不同屏幕尺寸/安全区下的观感；预览不拦列表滚动的手感。
+复现与定位：`adb logcat -s CleosWidget` 看 `measure srcHtml=… px=…`。
 ## 四、尚未解决的问题与复现方式
 
 **无法在本机验证的（需要真机）**：
