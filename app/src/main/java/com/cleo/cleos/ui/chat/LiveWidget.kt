@@ -415,15 +415,24 @@ private fun makeWebView(
 /**
  * 量内容高度。**不能用 `scrollHeight`**：WebView 视口已经很大时（放大框），
  * `scrollHeight` 恒等于视口高 —— 量出来永远是「满屏」，弹窗就缩不下来。
- * 这里取 body 盒高 + 所有后代元素 bottom 的最大值，按元素实际占的位置算。
+ *
+ * 也不能直接把所有元素的 bottom 取最大：模型常写 `min-height:100vh` 的容器，
+ * 它的 bottom 就是视口底 —— 一样会量成满屏。
+ *
+ * 所以：撑满视口（≥ 视口 90%）的**容器**跳过，其余元素（含卡片本身、叶子节点）
+ * 的 bottom 取最大 —— 卡片高度真实就用卡片，卡片被撑满就只看里面的文字/按钮。
  */
 private fun measureOnce(view: WebView, html: String, onHeight: (Int) -> Unit) {
     view.evaluateJavascript(
         "(function(){var b=document.body;if(!b)return 0;" +
-            "var h=b.getBoundingClientRect().height;" +
+            "var vh=window.innerHeight||1;var maxB=0;" +
             "var els=b.querySelectorAll('*');" +
-            "for(var i=0;i<els.length;i++){var r=els[i].getBoundingClientRect();if(r.width>0&&r.height>0)h=Math.max(h,r.bottom);}" +
-            "return Math.ceil(h+6);})()",
+            "for(var i=0;i<els.length;i++){var el=els[i];var r=el.getBoundingClientRect();" +
+            "if(!(r.width>0&&r.height>0))continue;" +
+            "if(el.children&&el.children.length>0&&r.height>=vh*0.9)continue;" +
+            "if(r.bottom>maxB)maxB=r.bottom;}" +
+            "if(maxB<=0)maxB=b.getBoundingClientRect().height;" +
+            "return Math.ceil(maxB+10);})()",
     ) { value ->
         val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
         if (px > 0) {
