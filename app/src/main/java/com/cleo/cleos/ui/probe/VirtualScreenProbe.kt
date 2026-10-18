@@ -77,43 +77,96 @@ private fun ProbeScreen() {
 
     fun add(title: String, ok: Boolean, detail: String) { steps.add(Step(title, ok, detail)) }
 
-    fun systemInfo() {
-        val pm = context.packageManager
-        val douyin = runCatching { pm.getPackageInfo(DOUYIN, 0) }.getOrNull()
-        val shizuku = runCatching { pm.getPackageInfo(SHIZUKU, 0) }.getOrNull()
-        val root = listOf("/system/xbin/su", "/system/bin/su", "/sbin/su").any { File(it).exists() }
-        add("系统信息", true, buildString {
-            appendLine("Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）")
-            appendLine("${Build.MANUFACTURER} ${Build.MODEL}")
-            appendLine("抖音：${if (douyin != null) "已安装 ${douyin.versionName}" else "没装（或不是这个包名）"}")
-            appendLine("Shizuku：${if (shizuku != null) "已安装" else "没装"}")
-            appendLine("su 可执行文件：${if (root) "有" else "没有"}（有也不代表给了权限）")
-            appendLine("公开虚拟屏 API：${if (Build.VERSION.SDK_INT >= 30) "有（API 30+）" else "没有（系统低于 Android 11）"}")
-        })
-    }
+    // Shizuku（ADB 权限）：am start --display / input -d 都靠它。没装或没授权时返回 null。
+    // 本版不用 Shizuku 库：App 内的 am/input 需要系统权限，这里交给电脑上的 adb 执行
+    // （adb shell 与 Shizuku 给的是同一档 ADB 权限）。
+    fun adbHint(cmd: String): String = "请用电脑 adb 执行：adb shell $cmd"
 
-    fun create() {
-        val dm = context.getSystemService(DisplayManager::class.java)
-        if (Build.VERSION.SDK_INT < 30) {
-            add("创建虚拟屏", false, "这台 Android ${Build.VERSION.RELEASE} 低于 Android 11，没有公开的 createVirtualDisplay；旧版只能反射隐藏 API，不保证能用。")
-            return
-        }
+    fun createVirtualDisplay(mp: android.media.projection.MediaProjection) {
         try {
-            if (reader == null) reader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 2)
-            val vd = dm.createVirtualDisplay(
-                "cleos-probe", W, H, DPI, reader!!.surface,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
+            // Android 14：建屏前必须注册 MediaProjection.Callback（否则 IllegalStateException）。
+            mp.registerCallback(
+                object : android.media.projection.MediaProjection.Callback() {
+                    override fun onStop() { /* 用户/系统停止了投屏 */ }
+                },
+                android.os.Handler(android.os.Looper.getMainLooper()),
             )
+            if (reader == null) reader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 2)
+            // 签名是 (name, width, height, densityDpi, **flags**, surface, callback, handler) —— 第 5 个是 flags。
+            val vd = mp.createVirtualDisplay(
+                "cleos-probe", W, H, DPI,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC,
+                reader!!.surface,
+                null, null,
+            )
+            if (vd == null) { add("创建虚拟屏", false, "createVirtualDisplay 返回 null"); return }
             display = vd
             displayId = vd.display.displayId
-            add("创建虚拟屏", true, "成功：displayId=${vd.display.displayId}，${W}×${H}，dpi $DPI。屏幕状态：${vd.display.state}")
+            add("创建虚拟屏", true, "成功（MediaProjection）：displayId=${vd.display.displayId}，${W}×${H}，dpi $DPI。屏幕状态：${vd.display.state}")
         } catch (e: Throwable) {
             add("创建虚拟屏", false, "失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}")
         }
     }
 
+    val projectionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val data = result.data
+        if (result.resultCode != android.app.Activity.RESULT_OK || data == null) {
+            add("创建虚拟屏", false, "投屏授权被取消/拒绝（MediaProjection 必须由用户点头）")
+            return@rememberLauncherForActivityResult
+        }
+        val mpm = context.getSystemService(android.media.projection.MediaProjectionManager::class.java)
+        // Android 14：必须**先**有 mediaProjection 类型的前台服务在跑，getMediaProjection 才给 token。
+        androidx.core.content.ContextCompat.startForegroundService(
+            context, Intent(context, MediaProjectionService::class.java),
+        )
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            val mp = runCatching { mpm.getMediaProjection(result.resultCode, data) }.getOrNull()
+            if (mp == null) {
+                add("创建虚拟屏", false, "拿到投屏 token 失败（前台服务可能还没起来；再点一次「创建虚拟屏」试试）")
+                return@postDelayed
+            }
+            MediaProjectionService.projection = mp
+            createVirtualDisplay(mp)
+        }, 1200)
+    }
+
+    fun systemInfo() {
+        val pm = context.packageManager
+        val douyin = runCatching { pm.getPackageInfo(DOUYIN, 0) }.getOrNull()
+        val shizuku = runCatching { pm.getPackageInfo(SHIZUKU, 0) }.getOrNull()
+        val root = listOf("/system/xbin/su", "/system/bin/su", "/sbin/su").any { File(it).exists() }
+        val shizukuUp = false
+        add("系统信息", true, buildString {
+            appendLine("Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）")
+            appendLine("${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("抖音：${if (douyin != null) "已安装 ${douyin.versionName}" else "没装（或不是这个包名）"}")
+            appendLine("Shizuku：${if (shizuku != null) "已安装（本版探针不用它，改用电脑 adb）" else "没装"}")
+            appendLine("su 可执行文件：${if (root) "有" else "没有"}（有也不代表给了权限）")
+            appendLine("公开虚拟屏 API：${if (Build.VERSION.SDK_INT >= 30) "有（API 30+；创建需要 MediaProjection 或系统权限）" else "没有（系统低于 Android 11）"}")
+        })
+    }
+
+    /** 第一步：没有投屏 token 就弹授权；有了就直接建屏。 */
+    fun create() {
+        if (Build.VERSION.SDK_INT < 30) {
+            add("创建虚拟屏", false, "这台 Android ${Build.VERSION.RELEASE} 低于 Android 11，没有公开的 createVirtualDisplay。")
+            return
+        }
+        val existing = MediaProjectionService.projection
+        if (existing != null) {
+            createVirtualDisplay(existing)
+            return
+        }
+        val mpm = context.getSystemService(android.media.projection.MediaProjectionManager::class.java)
+        projectionLauncher.launch(mpm.createScreenCaptureIntent())
+    }
+
     fun launch() {
         if (displayId < 0) { add("启动抖音到虚拟屏", false, "先创建虚拟屏"); return }
+        // App 自己 startActivity 到别的屏：普通权限预期 SecurityException（保留作对照）；
+        // 真正的启动交给电脑 adb（adb shell 与 Shizuku 是同一档 ADB 权限）。
         val pm = context.packageManager
         val intent = pm.getLaunchIntentForPackage(DOUYIN)
         if (intent == null) { add("启动抖音到虚拟屏", false, "没装抖音，或者包名不是 $DOUYIN"); return }
@@ -121,10 +174,11 @@ private fun ProbeScreen() {
             val options = ActivityOptions.makeBasic()
             options.launchDisplayId = displayId
             context.startActivity(intent, options.toBundle())
-            add("启动抖音到虚拟屏", true, "startActivity 已发出（displayId=$displayId）。注意：这一步不报错不等于抖音真的显示在那块屏上，要看下一步读到的画面。")
+            add("启动抖音到虚拟屏", true, "startActivity 已发出（普通权限）。不报错不等于真的显示在那块屏上，看下一步画面。")
         } catch (e: Throwable) {
-            add("启动抖音到虚拟屏", false, "失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}（普通应用通常需要 MANAGE_ACTIVITY_TASKS / INTERNAL_SYSTEM_WINDOW，只有系统/root/ADB 能给）")
+            add("启动抖音到虚拟屏", false, "App 直接启动失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}。改用电脑 adb 启动。")
         }
+        add("用 adb 启动（推荐）", true, adbHint("am start --display $displayId -n com.ss.android.ugc.aweme/.splash.SplashActivity"))
     }
 
     fun frame() {
@@ -161,8 +215,10 @@ private fun ProbeScreen() {
         }
     }
 
-    fun swipe() {
+fun swipe() {
         if (displayId < 0) { add("向虚拟屏滑动", false, "先创建虚拟屏"); return }
+        // App 自己注入手势预期 SecurityException（保留作对照）；真正的滑动交给电脑 adb。
+        add("用 adb 滑动（推荐）", true, adbHint("input -d $displayId swipe ${W / 2} ${(H * 0.8).toInt()} ${W / 2} ${(H * 0.2).toInt()} 300"))
         try {
             val instrument = Instrumentation()
             val now = SystemClock.uptimeMillis()
@@ -174,9 +230,9 @@ private fun ProbeScreen() {
             instrument.sendPointerSync(down)
             instrument.sendPointerSync(move)
             instrument.sendPointerSync(up)
-            add("向虚拟屏滑动", true, "sendPointerSync 没报错（但事件很可能落在主屏，不一定进了虚拟屏 —— 要真机看抖音有没有翻页）")
+            add("向虚拟屏滑动", true, "sendPointerSync 没报错（事件很可能落在主屏；要真机看抖音有没有翻页）")
         } catch (e: Throwable) {
-            add("向虚拟屏滑动", false, "失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}（注入手势需要 INJECT_EVENTS，只有系统签名能给；普通应用和无障碍服务都进不了指定虚拟屏）")
+            add("向虚拟屏滑动", false, "App 直接注入失败：${e.javaClass.simpleName}：${e.message ?: "没有说明"}（需要 INJECT_EVENTS；改用上面的 adb 命令）")
         }
     }
 

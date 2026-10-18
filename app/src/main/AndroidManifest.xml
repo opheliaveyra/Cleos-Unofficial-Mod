@@ -21,6 +21,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- CallService: a call with a TA goes on with the screen off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- 虚拟屏探针：Android 14 要求投屏会话跑在 mediaProjection 类型的前台服务里。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+    <!-- 虚拟屏探针要查抖音和 Shizuku 是否安装（Android 11+ 的包可见性）。 -->
+    <queries>
+        <package android:name="com.ss.android.ugc.aweme" />
+        <package android:name="moe.shizuku.privileged.api" />
+    </queries>
 
     <application
         android:name=".CleosApp"
@@ -38,6 +46,10 @@
             android:name=".ui.probe.VirtualScreenProbeActivity"
             android:exported="false"
             android:label="虚拟屏探针" />
+        <service
+            android:name=".ui.probe.MediaProjectionService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!--
             桌面图标：真正的启动器组件是下面这些 activity-alias（见 data/AppIcons）。
