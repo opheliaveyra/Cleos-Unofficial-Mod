@@ -1,9 +1,12 @@
 package com.cleo.cleos.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -33,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -115,6 +119,30 @@ private fun OptionRow(title: String, detail: String, chosen: Boolean, onClick: (
  * 「测试连接」**真发一条最小请求**，而不是"能列出模型就算通"：
  * 地址对、Key 少了一半的服务，列模型常常也是成功的，那样测出来的"通了"是假的。
  */
+/**
+ * 添加类入口：**实心按钮**（不靠半透明底色），放在页面顶部一眼能看到。
+ * 之前用 7% 透明的 Chip，压在背景插画上像一行糊掉的字。
+ */
+@Composable
+private fun AddButton(text: String, onClick: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    Box(
+        Modifier
+            .background(palette.accentContent, CircleShape)
+            .clickable(interactionSource = null, indication = null, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
 @Composable
 internal fun ProvidersPage(vm: SettingsViewModel) {
     val data by vm.registry.collectAsStateWithLifecycle()
@@ -125,8 +153,8 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
     PageNote("服务商是「哪一家」：接口地址 + 接口类型。Key 按地址存，换型号不用重填；一家下面可以挂好几条模型配置。")
     MessageLine(vm.registryMessage)
 
-    // 添加按钮放最上面，而且是颗**真的按钮**（胶囊底色），不是一行小字。
-    Chip("＋ 添加服务商", selected = false) { if (!vm.registryBusy) adding = true }
+    // 添加按钮放最上面，而且是颗**实心按钮**，不靠透明底色。
+    AddButton("＋ 添加服务商") { if (!vm.registryBusy) adding = true }
 
     Section("已添加") {
         if (data.providers.isEmpty()) {
@@ -298,15 +326,12 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
 
-    // 添加按钮放最上面，并且是**真的按钮**（胶囊底色），不是一行小字。
+    // 添加按钮放最上面，并且是**实心按钮**，不靠透明底色。
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Chip(
-            if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置",
-            selected = false,
-        ) {
+        AddButton(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置") {
             if (!vm.registryBusy && data.providers.isNotEmpty()) adding = true
         }
-        Chip("＋ 批量添加模型", selected = false) {
+        AddButton("＋ 批量添加模型") {
             if (!vm.registryBusy && data.providers.isNotEmpty()) {
                 batchOpen = true
                 vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
