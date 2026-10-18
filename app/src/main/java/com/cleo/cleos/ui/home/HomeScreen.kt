@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.MailOutline
 import androidx.compose.material.icons.rounded.MarkEmailUnread
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -94,7 +95,7 @@ private enum class Who { Me, Ai }
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Unit, onOpenMemory: () -> Unit, onOpenFavorites: () -> Unit) {
+fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Unit, onOpenMemory: () -> Unit, onOpenFavorites: () -> Unit, onOpenGames: () -> Unit) {
     val c = appContainer()
     val palette = LocalGlassPalette.current
     val scope = rememberCoroutineScope()
@@ -233,6 +234,7 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
 
             LetterCard(ai, letters, now, onOpenLetters)
             MemoryCard(ai, remembered.size, onOpenMemory)
+            GamesHomeCard(onOpenGames)
             com.cleo.cleos.ui.favorites.FavoritesHomeCard(ta.id, onOpenFavorites)
         }
 
@@ -293,6 +295,27 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                     }
                 },
             ) { DatePicker(state) }
+        }
+    }
+}
+
+/** 小游戏中心入口：一行，点开去游戏页（井字棋）。 */
+@Composable
+private fun GamesHomeCard(onOpen: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "打开小游戏", onClick = onOpen),
+        shape = GlassShape.Rounded(24.dp),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("小游戏", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("和 TA 下一局井字棋", color = palette.contentSecondary, fontSize = 12.sp)
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 }

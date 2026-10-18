@@ -108,6 +108,14 @@ data class LoreEditRoute(val id: Long)
 @Serializable
 object CallRoute
 
+/** 小游戏中心。 */
+@Serializable
+object GamesRoute
+
+/** 井字棋一局。 */
+@Serializable
+object TicTacToeRoute
+
 /**
  * Screens cross-fade rather than slide. Glass samples what is behind it at the position
  * it was last laid out at; a screen sliding in via a transform moves without being laid
@@ -168,6 +176,7 @@ fun CleosNavHost() {
                 onOpenLetters = { nav.go(LettersRoute) },
                 onOpenMemory = { nav.go(MemoryRoute) },
                 onOpenFavorites = { nav.go(FavoritesRoute) },
+                onOpenGames = { nav.go(GamesRoute) },
             )
         }
         composable<FeedRoute> { com.cleo.cleos.ui.feed.FeedScreen(onBack = nav::back, onOpenImage = { nav.go(ImageRoute(it)) }) }
@@ -214,6 +223,8 @@ fun CleosNavHost() {
         }
         composable<ImageRoute> { entry -> ImageViewerScreen(entry.toRoute<ImageRoute>().file, onBack = nav::back) }
         composable<CallRoute> { CallScreen() }
+        composable<GamesRoute> { com.cleo.cleos.ui.games.GamesHomeScreen(onBack = nav::back, onOpenTicTacToe = { nav.go(TicTacToeRoute) }) }
+        composable<TicTacToeRoute> { com.cleo.cleos.ui.games.TicTacToeScreen(onBack = nav::back) }
     }
 }
 
