@@ -86,6 +86,52 @@
 - **防并发双步**：邀请弹窗/落子期间没有 sessionId + revision 校验（单机单人低风险，但任务书要求）；
 - 迟到响应丢弃：当前实现是「请求期间棋盘锁（thinking）」，没有 revision 级别校验；
 - 「TA 接受/拒绝邀请」的对话：没有。
+
+---
+
+## 0.1.79-mod：P0-C 优先级一（正确性）已做；持久化未做
+
+### 已完成（优先级一）
+
+1. **请求归属校验**：新增 `ui/games/GameSession.kt`（纯 Kotlin 状态机）——
+   每局唯一 `id`、每次落子 `revision + 1`、每次请求 `requestId`；`resolveTa(requestId, move)` 只在
+   requestId + revision 都对得上且格子能下时才落子。页面在回复回来时再核对 `session.id`，
+   **旧局的回复直接丢弃**。
+2. **防重**：`claimTaMove` 原子认领（已有待处理请求 → null）；UI 在请求期间禁用棋盘/重开/换 TA/重试；
+   双击、重入不会发两次请求。重试按钮 `enabled = !busy`。
+3. **共享客户端 + 用量**：`GameAi` 不再自建 `OkHttpClient`，改走 `AppContainer.chatClient`；
+   每次调用带 `UsageTag(scope = SCOPE_TA, scopeId = 受邀 TA, purpose = "game_tic_tac_toe")`。
+   非法动作的自动重试也是独立一次实际调用（各自计入用量）。
+4. **角色身份**：`askMove` 用 `companions.get(taId)` 取真实角色，名字（+ 设定前 300 字）进 prompt；
+   角色被删 → `MoveFailure.TaMissing` 明确提示。仍沿用统一 `Feature.Chat` 路由，界面如实写「会真的调模型来下」。
+5. **严格解析**：`parseMove` 只接受整段（trim 后）恰好一个能下的 0..8 数字；
+   解释文字、多数字、负数、越界、占用、空输出全部拒绝（原「从文字里扫数字」的测试已改写）。
+6. **失败类型化**：`MoveFailure` 枚举（NotConfigured / NoKey / TaMissing / Network / Timeout / IllegalMove / NotClaimed）；
+   自动重试**只对 IllegalMove**，网络/配置/超时直接返回，不重复付费；`attempts` 是总调用次数；
+   45 秒超时、回答长度上限 200 字符；`CancellationException` 原样抛出。
+7. 清理过时注释/未用 import（不再有「P0-A 本地模拟」字样）。
+
+### 测试
+
+- 新增 `GameSessionTest` 10 个：双击只一请求、错 requestId 丢弃、旧 revision 丢弃、重复回复无效、
+  重开使旧请求失效、失败保留棋盘可继续、非回合/越界/结束后不可落子。
+- `GameAiTest` 改写为严格解析：单数字接受；解释文字/多数字/「3。」/负号/越界/占用/空全部拒绝；
+  prompt 带 TA 名字与设定。
+- 全量 **143 套件 / 1020 用例全绿**；`:app:assembleDebug` 成功。
+
+### 真机（荣耀 YAL-AL50 / Android 10 / 入梦 Flash，0.1.79-mod）
+
+- 安装 → 主页 › 小游戏 › 井字棋 → 邀请 TA → 人下中心 X → 数秒后 TA 用真实模型落左上 O ✓
+- 截图：`dev/p0c_1.png`。
+
+### 明确未做（优先级二）
+
+- **棋局持久化**：没有新增 Room 表/迁移；退出页面或杀进程后棋局不保留（当前只在内存）。
+  因此「杀进程恢复 O 回合、不自动重试付费」这项**未实现也未验证**。
+- session/revision 校验只在**页面内**有效；跨进程无状态可校验。
+- 角色删除/备份恢复后的身份处理：仅做了「TA 不存在」提示，没有稳定身份映射与旧局迁移。
+- 「请求中重开」当前的做法是**禁用重开按钮**（比让旧请求失效更保守）；任务书建议的「先失效再新建」
+  等价效果已由 `session.id` 校验保证。
 ## 五、验收路径（设备接上后）
 
 1. 装 0.1.75 → 主页（第 4 个底栏）→ 看到「小游戏」卡片；

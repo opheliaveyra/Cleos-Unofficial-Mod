@@ -1,11 +1,12 @@
 package com.cleo.cleos.ui.games
 
+import com.cleo.cleos.data.db.CompanionEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** P0-B 的解析：模型只说 0..8 的一个数字才算数。 */
+/** P0-C：严格解析（不再从整段文字里扫数字）与 prompt 形状。 */
 class GameAiTest {
     private fun game(vararg cells: Int): TicTacToe {
         var g = TicTacToe()
@@ -13,42 +14,51 @@ class GameAiTest {
         return g
     }
 
+    private fun ta(name: String = "肖恩", persona: String = "温柔、话少") =
+        CompanionEntity(id = 1L, name = name, persona = persona, apiBaseUrl = "https://example.com/v1", apiModel = "m", createdAt = 0L)
+
     @Test
-    fun aPlainNumberIsTaken() {
+    fun aSingleNumberIsTaken() {
         val g = game(4) // X 在中心，轮到 O
         assertEquals(0, GameAi.parseMove("0", g))
-        assertEquals(8, GameAi.parseMove("8", g))
+        assertEquals(8, GameAi.parseMove(" 8 ", g))
     }
 
     @Test
-    fun numbersAroundTheAnswerAreIgnored() {
+    fun explanationsAndMultipleNumbersAreRefused() {
         val g = game(4)
-        assertEquals(3, GameAi.parseMove("我下 3 吧", g))
-        assertEquals(5, GameAi.parseMove("5。", g))
+        assertNull(GameAi.parseMove("我下 3 吧", g))
+        assertNull(GameAi.parseMove("考虑 0 或 2", g))
+        assertNull(GameAi.parseMove("0 2", g))
+        assertNull(GameAi.parseMove("3。", g))
+        assertNull(GameAi.parseMove("", g))
+        assertNull(GameAi.parseMove("   ", g))
     }
 
     @Test
-    fun anOccupiedCellIsRefused() {
-        val g = game(4) // 4 被 X 占
-        assertNull(GameAi.parseMove("4", g))
-    }
-
-    @Test
-    fun outOfRangeIsRefused() {
+    fun negativesAndOutOfRangeAreRefused() {
         val g = game(4)
+        assertNull(GameAi.parseMove("-1", g))
         assertNull(GameAi.parseMove("9", g))
         assertNull(GameAi.parseMove("99", g))
         assertNull(GameAi.parseMove("hello", g))
     }
 
     @Test
-    fun thePromptNamesTheEmptyCellsAndAsksForOneNumber() {
+    fun anOccupiedCellIsRefused() {
         val g = game(4)
-        val p = GameAi.prompt(g)
+        assertNull(GameAi.parseMove("4", g))
+    }
+
+    @Test
+    fun thePromptCarriesTheTaIdentityAndTheEmptyCells() {
+        val g = game(4)
+        val p = GameAi.prompt(g, ta())
+        assertTrue(p.contains("肖恩"))
+        assertTrue(p.contains("温柔"))
         assertTrue(p.contains("X"))
         assertTrue(p.contains("O"))
-        assertTrue(p.contains("0"))
-        assertTrue(p.contains("8"))
-        assertTrue(p.contains("编号"))
+        assertTrue(p.contains("0 1 2")) // 编号图
+        assertTrue(p.contains("只能从这些数字里选"))
     }
 }

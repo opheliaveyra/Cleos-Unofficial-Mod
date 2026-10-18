@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -41,14 +39,15 @@ import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.avatarLetter
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
- * 井字棋 P0-A：邀请一个**真实的 TA**（从 Companions 列表来），人执 X 先手，TA 执 O。
+ * 井字棋 P0-B/C：邀请一个**真实的 TA**，人执 X 先手，TA 执 O。
  *
- * 现在 TA 的落子是**本地模拟**（能赢就赢/能堵就堵），页面上明确写着「模拟对手」，
- * 等接上 Provider 再换成真模型（任务书 P0-B）。本地状态机在 [TicTacToe] 里，模型不碰它。
+ * TA 的落子走 [GameAi]（真实模型，走共享 chatClient、带用量标签）。
+ * 一局的状态与请求认领在 [GameSession] 里：双击不会发两次请求；重开/换 TA 之后，
+ * 旧请求的结果回来也**不会覆盖新局**（id/revision 对不上就丢弃）。
  */
 @Composable
 fun TicTacToeScreen(onBack: () -> Unit) {
@@ -56,40 +55,40 @@ fun TicTacToeScreen(onBack: () -> Unit) {
     val palette = LocalGlassPalette.current
     val companions by c.companions.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
-
     val app = LocalContext.current.applicationContext as CleosApp
+
     var invited by remember { mutableStateOf<CompanionEntity?>(null) }
-    var game by remember { mutableStateOf<TicTacToe?>(null) }
+    var session by remember { mutableStateOf<GameSession?>(null) }
     var showInvite by remember { mutableStateOf(false) }
-    var thinking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val busy = session?.pending != null
 
     fun startWith(ta: CompanionEntity) {
         invited = ta
-        game = TicTacToe()
+        session = GameSession.newGame(ta.id)
+        error = null
         showInvite = false
     }
 
-    /** 请 TA 落子：真模型（P0-B）。失败就明说，不替它下。 */
-    fun taMove(after: TicTacToe) {
-        thinking = true
+    /** 认领一次请求再发（防双击）；结果回来时核对局 id，旧局的回复直接丢。 */
+    fun taMove(cur: GameSession) {
+        if (cur.pending != null) return
+        val requestId = UUID.randomUUID().toString()
+        val claimed = cur.claimTaMove(requestId) ?: return
+        session = claimed
         error = null
         scope.launch {
-            when (val result = GameAi.askMove(app, after)) {
-                is MoveResult.Ok -> game = after.play(result.cell, 2)
-                is MoveResult.Failed -> error = result.why
+            val result = GameAi.askMove(app, claimed)
+            val now = session
+            if (now == null || now.id != claimed.id) return@launch // 期间重开/换 TA：丢弃
+            when (result) {
+                is MoveResult.Ok -> now.resolveTa(requestId, result.cell)?.let { session = it }
+                is MoveResult.Failed -> {
+                    now.failTa(requestId)?.let { session = it }
+                    error = result.why
+                }
             }
-            thinking = false
         }
-    }
-
-    fun humanPlay(cell: Int) {
-        val g = game ?: return
-        if (thinking || g.over || g.turn != 1 || !g.canPlay(cell, 1)) return
-        val after = g.play(cell, 1)
-        game = after
-        if (after.over) return
-        taMove(after)
     }
 
     Column(
@@ -101,7 +100,6 @@ fun TicTacToeScreen(onBack: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Text("井字棋", color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            // 占位，让标题居中
             Spacer(Modifier.width(56.dp))
         }
 
@@ -111,7 +109,7 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("邀请 TA 一起玩", color = palette.content, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "TA 从你已有的角色里选。你执 X 先手，TA 执 O。",
+                        "TA 从你已有的角色里选。你执 X 先手，TA 执 O；TA 的落子会真的调用它的模型。",
                         color = palette.contentSecondary, fontSize = 13.sp,
                     )
                     TextButton(onClick = { showInvite = true }) { Text("选一个 TA", color = palette.accentContent) }
@@ -128,24 +126,39 @@ fun TicTacToeScreen(onBack: () -> Unit) {
                             color = palette.contentSecondary, fontSize = 11.sp,
                         )
                     }
-                    TextButton(onClick = { game = TicTacToe() }) { Text("重开", color = palette.accentContent) }
+                    TextButton(enabled = !busy, onClick = {
+                        session = (session ?: GameSession.newGame(ta.id)).restart()
+                        error = null
+                    }) { Text("重开", color = palette.accentContent) }
                 }
             }
 
-            val g = game
-            if (g != null) {
-                Text(statusText(g, thinking, ta.name.ifBlank { "TA" }), color = palette.content, fontSize = 14.sp)
+            val s = session
+            if (s != null) {
+                Text(
+                    statusText(s.game, busy, ta.name.ifBlank { "TA" }),
+                    color = palette.content,
+                    fontSize = 14.sp,
+                )
                 error?.let { why ->
                     Text(why, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp)
-                    TextButton(onClick = { taMove(g) }) { Text("让它再试一次", color = palette.accentContent) }
+                    TextButton(enabled = !busy, onClick = { taMove(s) }) {
+                        Text("让它再试一次", color = palette.accentContent)
+                    }
                 }
-                Board(g, enabled = !thinking) { humanPlay(it) }
-                if (g.over) {
-                    TextButton(onClick = { game = TicTacToe() }) { Text("再来一局", color = palette.accentContent) }
+                Board(s.game, enabled = !busy && !s.game.over && s.game.turn == 1) { cell ->
+                    humanPlay(s, cell, apply = { session = it }, thenTa = { taMove(it) })
+                }
+                if (s.game.over) {
+                    TextButton(onClick = { session = s.restart(); error = null }) {
+                        Text("再来一局", color = palette.accentContent)
+                    }
                 }
             }
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = { showInvite = true }) { Text("换一个 TA", color = palette.contentSecondary) }
+            TextButton(enabled = !busy, onClick = { showInvite = true }) {
+                Text("换一个 TA", color = palette.contentSecondary)
+            }
         }
     }
 
@@ -177,11 +190,18 @@ fun TicTacToeScreen(onBack: () -> Unit) {
     }
 }
 
-private fun statusText(g: TicTacToe, thinking: Boolean, taName: String): String = when {
+/** 人落子；成功后交给 TA（[taMove] 会认领请求）。 */
+private fun humanPlay(cur: GameSession, cell: Int, apply: (GameSession) -> Unit, thenTa: (GameSession) -> Unit) {
+    val next = cur.playAsHuman(cell) ?: return
+    apply(next)
+    if (!next.game.over) thenTa(next)
+}
+
+private fun statusText(g: TicTacToe, busy: Boolean, taName: String): String = when {
     g.winner == 1 -> "你赢了 🎉"
     g.winner == 2 -> taName + " 赢了"
     g.winner == 3 -> "平局"
-    thinking -> taName + " 在想…"
+    busy -> taName + " 在想…"
     g.turn == 1 -> "轮到你（X）"
     else -> taName + " 的回合（O）"
 }
@@ -196,7 +216,7 @@ private fun Board(game: TicTacToe, enabled: Boolean, onCell: (Int) -> Unit) {
                 for (col in 0 until 3) {
                     val cell = row * 3 + col
                     val mark = game.board[cell]
-                    val playable = enabled && mark == 0 && !game.over && game.turn == 1
+                    val playable = enabled && mark == 0
                     Box(
                         Modifier
                             .weight(1f)
