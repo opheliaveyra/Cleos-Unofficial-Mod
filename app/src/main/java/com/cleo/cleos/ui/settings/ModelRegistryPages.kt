@@ -125,8 +125,8 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
     PageNote("服务商是「哪一家」：接口地址 + 接口类型。Key 按地址存，换型号不用重填；一家下面可以挂好几条模型配置。")
     MessageLine(vm.registryMessage)
 
-    // 添加按钮放最上面：入口不该埋在列表底下让人翻。
-    TextButton(onClick = { adding = true }, enabled = !vm.registryBusy) { Text("＋ 添加服务商", fontSize = 13.sp) }
+    // 添加按钮放最上面，而且是颗**真的按钮**（胶囊底色），不是一行小字。
+    Chip("＋ 添加服务商", selected = false) { if (!vm.registryBusy) adding = true }
 
     Section("已添加") {
         if (data.providers.isEmpty()) {
@@ -298,19 +298,20 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
 
-    // 添加按钮放最上面（单个 / 批量都在），不埋到列表底下。
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        TextButton(
-            onClick = { adding = true },
-            enabled = !vm.registryBusy && data.providers.isNotEmpty(),
-        ) { Text(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置", fontSize = 13.sp) }
-        TextButton(
-            onClick = {
+    // 添加按钮放最上面，并且是**真的按钮**（胶囊底色），不是一行小字。
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Chip(
+            if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置",
+            selected = false,
+        ) {
+            if (!vm.registryBusy && data.providers.isNotEmpty()) adding = true
+        }
+        Chip("＋ 批量添加模型", selected = false) {
+            if (!vm.registryBusy && data.providers.isNotEmpty()) {
                 batchOpen = true
                 vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
-            },
-            enabled = !vm.registryBusy && data.providers.isNotEmpty(),
-        ) { Text("＋ 批量添加模型", fontSize = 13.sp) }
+            }
+        }
     }
 
     Section("已添加") {
