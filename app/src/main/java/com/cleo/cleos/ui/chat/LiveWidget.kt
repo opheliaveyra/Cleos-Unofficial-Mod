@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.util.Log
 import android.view.MotionEvent
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -353,7 +354,12 @@ private fun WidgetBox(
     LaunchedEffect(clipped) { onClipped(clipped) }
 
     val view = remember(html, interactive) {
-        makeWebView(context, html, ink, palette.contentSecondary, interactive, { px -> measuredPx = px }, { failure = it })
+        makeWebView(
+            context, html, ink, palette.contentSecondary, interactive,
+            stateKey = stableKey(html),
+            onHeight = { px -> measuredPx = px },
+            onFailure = { failure = it },
+        )
     }
     DisposableEffect(view) {
         onDispose { runCatching { view.stopLoading(); view.destroy() } }
@@ -384,12 +390,19 @@ private fun makeWebView(
     secondary: Color,
     /** false = 预览（不消费触摸）；true = 放大（可滚、可交互）。 */
     interactive: Boolean,
+    /** 这段 HTML 的状态作用域（见 [stableKey]）：同一段 HTML 的 localStorage 共享。 */
+    stateKey: String,
     onHeight: (Int) -> Unit,
     onFailure: (String?) -> Unit,
 ): WebView = (if (interactive) WebView(context) else PreviewWebView(context)).apply {
     setBackgroundColor(AndroidColor.TRANSPARENT)
+    // 放大模式下要能点进输入框、弹出键盘（预览模式仍由 PreviewWebView 挡住触摸）。
+    isFocusable = true
+    isFocusableInTouchMode = true
     settings.javaScriptEnabled = true
-    settings.domStorageEnabled = false
+    // 状态恢复靠 Web Storage：同一个 HTML 的输入/滚动存到它自己的 localStorage（origin 按 stateKey 隔离）。
+    settings.domStorageEnabled = true
+    runCatching { CookieManager.getInstance().setAcceptCookie(false) }
     settings.allowFileAccess = false
     settings.allowContentAccess = false
     settings.blockNetworkLoads = true
@@ -416,7 +429,10 @@ private fun makeWebView(
             view.postDelayed({ measureOnce(view, html, onHeight) }, 4000)
         }
     }
-    runCatching { loadDataWithBaseURL(null, page(html, ink, secondary), "text/html", "utf-8", null) }
+    // 固定 origin（按 stateKey 区分）：页面拿到的 localStorage 是按这段 HTML 隔离的；
+    // blockNetworkLoads 已经禁止联网，这个假域名只用来给存储分区，不指向任何真实服务。
+    val origin = "https://cleos.widget/" + stateKey + "/"
+    runCatching { loadDataWithBaseURL(origin, page(html, ink, secondary, stateKey), "text/html", "utf-8", null) }
         .onFailure { onFailure(it.message) }
 }
 
@@ -459,7 +475,7 @@ private class PreviewWebView(context: Context) : WebView(context) {
 }
 
 /** 把 TA 写的一段东西套成一张页面：透明底、跟着气泡的颜色走、不许横向溢出。 */
-private fun page(body: String, ink: Color, secondary: Color): String = """
+private fun page(body: String, ink: Color, secondary: Color, stateKey: String): String = """
     <!doctype html>
     <html><head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -484,8 +500,63 @@ private fun page(body: String, ink: Color, secondary: Color): String = """
         border: 1px solid ${hex(ink)}44; border-radius: 8px; padding: 6px 8px; }
       * { max-width: 100%; }
     </style>
-    </head><body>$body</body></html>
+    </head><body>$body
+    <script>${stateScript(stateKey)}</script>
+    </body></html>
 """.trimIndent()
 
 /** 颜色写成 #rrggbb：页面得被告知，它自己看不见 App 的调色板。 */
 private fun hex(color: Color): String = String.format("#%06X", 0xFFFFFF and color.toArgb())
+
+/**
+ * 同一段 HTML（同一条消息里的同一个小玩意儿）→ 同一个状态作用域。
+ * 内容变了就是另一份状态 —— 旧存档自然隔离，不会串到新版本上。
+ */
+internal fun stableKey(html: String): String {
+    val digest = java.security.MessageDigest.getInstance("SHA-1").digest(html.toByteArray())
+    return digest.take(10).joinToString("") { "%02x".format(it) }
+}
+
+/**
+ * 状态脚本：表单值（text/textarea/select/checkbox）和滚动位置存进本 origin 的 localStorage，
+ * 重新打开同一个 HTML 时恢复。**只恢复这些可识别的 UI 状态** —— JS 闭包、定时器、
+ * Canvas/WebGL 像素不在能力范围内（报告里写清楚）。
+ */
+private fun stateScript(stateKey: String): String = """
+(function(){
+  var KEY = 'cleos.widget.$stateKey';
+  var restored = false;
+  function els(){ return document.querySelectorAll('input,textarea,select'); }
+  function save(){
+    try {
+      var list = els(), vals = [];
+      for (var i = 0; i < list.length; i++) {
+        var e = list[i];
+        vals.push(e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? '1' : '0') : e.value);
+      }
+      localStorage.setItem(KEY, JSON.stringify({ v: vals, scroll: window.scrollY || 0 }));
+    } catch (e) {}
+  }
+  function restore(){
+    if (restored) return;
+    restored = true;
+    var raw = null;
+    try { raw = localStorage.getItem(KEY); } catch (e) { return; }
+    if (!raw) return;
+    var data = null;
+    try { data = JSON.parse(raw); } catch (e) { return; }
+    var list = els();
+    for (var i = 0; i < list.length && data.v && i < data.v.length; i++) {
+      var e = list[i];
+      if (e.type === 'checkbox' || e.type === 'radio') e.checked = data.v[i] === '1';
+      else if (e.type !== 'file') e.value = data.v[i];
+    }
+    if (data.scroll) window.scrollTo(0, data.scroll);
+  }
+  document.addEventListener('input', save, true);
+  document.addEventListener('change', save, true);
+  window.addEventListener('scroll', save, true);
+  restore();
+  setTimeout(restore, 300);
+})();
+""".trimIndent()
