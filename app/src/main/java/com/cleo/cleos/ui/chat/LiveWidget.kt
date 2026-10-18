@@ -263,7 +263,10 @@ internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier)
             onDismissRequest = { expanded = false },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            BoxWithConstraints(Modifier.fillMaxSize().padding(12.dp)) {
+            BoxWithConstraints(
+                Modifier.fillMaxSize().padding(12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 val maxH = this.maxHeight * 0.94f
                 Column(Modifier.fillMaxWidth().wrapContentHeight()) {
                     GlassSurface(
@@ -350,7 +353,7 @@ private fun WebBox(
         // 放大：高度 = min(量出来的内容高, 弹窗给的可用高)。
         // 短内容贴合内容（弹窗跟着变小、没有大片空白）；长内容最多到可用高，超出在框内滚。
         val cap = avail?.value ?: 600f
-        val target = (if (measured > 0f) minOf(measured, cap) else minOf(cap, 240f)).coerceAtLeast(80f)
+        val target = (if (measured > 0f) minOf(measured + 2f, cap) else minOf(cap, 240f)).coerceAtLeast(80f)
         Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             AndroidView(
                 modifier = Modifier
@@ -402,6 +405,7 @@ private fun makeWebView(
             // 图片、字体加载完高度会变：再量两次（固定次数，防死循环）。
             view.postDelayed({ measureOnce(view, html, onHeight) }, 350)
             view.postDelayed({ measureOnce(view, html, onHeight) }, 1200)
+            view.postDelayed({ measureOnce(view, html, onHeight) }, 2200)
         }
     }
     runCatching { loadDataWithBaseURL(null, page(html, ink, secondary), "text/html", "utf-8", null) }
@@ -439,9 +443,9 @@ private fun page(body: String, ink: Color, secondary: Color): String = """
         color: ${hex(ink)}; font-size: 14px; line-height: 1.5;
         font-family: -apple-system, "Noto Sans SC", sans-serif;
         -webkit-user-select: none; user-select: none; height: auto; min-height: 0 !important; }
-      /* 模型常写 min-height:100vh / height:100% 把页面撑满：那样量出来的高度永远等于
-         视口，弹窗就缩不下来、只剩一大片背景。这里把根和一级容器的最小高度压回内容高度。 */
-      body > * { min-height: 0 !important; max-height: none !important; }
+      /* 只压 html/body 的最小高度（模型常写 min-height:100vh 把页面撑满）；
+         **不要**去压 body 的一级子元素 —— 那会把模型给卡片设的 min-height 也压掉，
+         卡片塌缩、内容反而被裁。 */
       /* 宽内容：先响应式压缩，压不下去就允许横向滚，别静默裁掉。 */
       body { overflow-x: auto; overflow-y: visible; }
       table { max-width: none; }
