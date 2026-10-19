@@ -15,6 +15,9 @@ import com.cleo.cleos.ai.Speech
 import com.cleo.cleos.ai.ToolGroup
 import com.cleo.cleos.glass.GlassPart
 import com.cleo.cleos.glass.GlassTuning
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -41,6 +44,8 @@ data class AppSettings(
     /** File name inside ImageStore, or null for the built-in wallpaper. */
     val wallpaper: String? = null,
     val glassMode: GlassMode = GlassMode.Auto,
+    /** Optional mod theme; absent/invalid values always resolve to the native appearance. */
+    val visualTheme: String = VisualTheme.NATIVE,
     /** 桌面图标（data/AppIcons 的键）：出厂那个是 [AppIcons.DEFAULT]，其余是 01…32。 */
     val appIcon: String = AppIcons.DEFAULT,
     /** Wallpaper analysis, cached so startup doesn't decode the image to pick colours. */
@@ -233,6 +238,7 @@ class SettingsRepository(private val context: Context) {
         val userName = stringPreferencesKey("user_name")
         val historySize = intPreferencesKey("history_size")
         val wallpaper = stringPreferencesKey("wallpaper")
+        val visualTheme = stringPreferencesKey("mod_visual_theme")
         val glassMode = stringPreferencesKey("glass_mode")
         val appIcon = stringPreferencesKey("app_icon")
         val wallpaperDark = stringPreferencesKey("wallpaper_dark")
@@ -289,7 +295,21 @@ class SettingsRepository(private val context: Context) {
         val nightGreeted = longPreferencesKey("night_greeted")
     }
 
-    val settings: Flow<AppSettings> = context.settingsStore.data.map { it.toSettings() }
+    private val nativeThemeFallback = MutableStateFlow(false)
+    val settings: Flow<AppSettings> = combine(context.settingsStore.data, nativeThemeFallback) { prefs, fallback ->
+        prefs.toSettings().let { if (fallback) it.copy(visualTheme = VisualTheme.NATIVE) else it }
+    }
+
+    /** A failed write must not leave a partially applied optional renderer on screen. */
+    suspend fun selectVisualTheme(id: String) {
+        try {
+            update { it.copy(visualTheme = VisualTheme.normalize(id)) }
+            nativeThemeFallback.value = false
+        } catch (error: IOException) {
+            nativeThemeFallback.value = true
+            throw error
+        }
+    }
 
     suspend fun current(): AppSettings = settings.first()
 
@@ -311,6 +331,7 @@ class SettingsRepository(private val context: Context) {
             userName = this[Keys.userName] ?: d.userName,
             historySize = this[Keys.historySize] ?: d.historySize,
             wallpaper = this[Keys.wallpaper],
+            visualTheme = VisualTheme.normalize(this[Keys.visualTheme]),
             glassMode = this[Keys.glassMode]?.let { runCatching { GlassMode.valueOf(it) }.getOrNull() } ?: d.glassMode,
             appIcon = AppIcons.normalize(this[Keys.appIcon]),
             wallpaperDark = this[Keys.wallpaperDark]?.toBooleanStrictOrNull(),
@@ -363,6 +384,7 @@ class SettingsRepository(private val context: Context) {
             val next = transform(prefs.toSettings())
             prefs[Keys.userName] = next.userName
             prefs[Keys.historySize] = next.historySize
+            prefs[Keys.visualTheme] = VisualTheme.normalize(next.visualTheme)
             prefs[Keys.glassMode] = next.glassMode.name
             prefs[Keys.appIcon] = AppIcons.normalize(next.appIcon)
             if (next.wallpaper != null) prefs[Keys.wallpaper] = next.wallpaper else prefs.remove(Keys.wallpaper)

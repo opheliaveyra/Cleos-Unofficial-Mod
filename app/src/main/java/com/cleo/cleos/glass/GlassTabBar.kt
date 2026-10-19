@@ -82,6 +82,10 @@ fun GlassTabBar(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
 ) {
+    if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
+        com.cleo.cleos.ui.theme.ScrapbookTabBar(tabs, selectedIndex, onSelect, modifier)
+        return
+    }
     val palette = LocalGlassPalette.current
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current

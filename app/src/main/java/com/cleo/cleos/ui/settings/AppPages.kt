@@ -536,6 +536,12 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
         if (uri != null) vm.setWallpaper(uri)
     }
 
+    Section("界面主题") {
+        com.cleo.cleos.ui.theme.VisualThemePicker(settings.visualTheme, vm::setVisualTheme)
+        Text("原版默认保留现有壁纸、玻璃和气泡设置。紫雾手账为可选试用主题。", color = palette.contentSecondary, fontSize = 12.sp)
+        vm.visualThemeError?.let { Text(it, color = palette.error, fontSize = 13.sp) }
+    }
+
     Section("壁纸") {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Chip(if (vm.wallpaperBusy) "正在换…" else "换壁纸", selected = false) {

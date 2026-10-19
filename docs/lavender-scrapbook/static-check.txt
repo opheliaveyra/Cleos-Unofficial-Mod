@@ -1,0 +1,7 @@
+UNCHANGED app/src/main/res
+UNCHANGED app/src/main/AndroidManifest.xml
+UNCHANGED app/src/main/java/com/cleo/cleos/ui/MainScreen.kt
+UNCHANGED app/src/main/java/com/cleo/cleos/glass/GlassTheme.kt
+UNCHANGED app/src/main/java/com/cleo/cleos/glass/GlassStyle.kt
+UNCHANGED original LiquidGlassElement and complete renderer implementation
+PRESENT separate settings/backup field (source inspection only)
