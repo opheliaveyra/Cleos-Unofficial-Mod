@@ -24,8 +24,8 @@ object AppIcons {
     /** 出厂的那个图标（.LauncherDefault）。 */
     const val DEFAULT = "default"
 
-    /** 能换的图标：默认，加上 01…16。存进 DataStore、界面上用的都是这里的字符串。 */
-    val KEYS: List<String> = listOf(DEFAULT) + (1..16).map { it.toString().padStart(2, '0') }
+    /** 能换的图标：默认，加上 01…32。存进 DataStore、界面上用的都是这里的字符串。 */
+    val KEYS: List<String> = listOf(DEFAULT) + (1..32).map { it.toString().padStart(2, '0') }
 
     /** 不认识的键（老设置、手改过的备份）就当默认：总得有一个图标在桌面上。 */
     fun normalize(key: String?): String = if (key != null && key in KEYS) key else DEFAULT

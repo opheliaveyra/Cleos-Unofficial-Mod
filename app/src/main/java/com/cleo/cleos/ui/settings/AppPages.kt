@@ -486,7 +486,7 @@ private fun whenText(at: Long): String {
 }
 
 /**
- * 原画 PNG（mipmap-*dpi/ic_appicon_XX_art）：键 → 资源，顺序对应 01…16。
+ * 原画 PNG（mipmap-*dpi/ic_appicon_XX_art）：键 → 资源，顺序对应 01…32。
  *
  * 不直接用 @mipmap/ic_appicon_XX：那个名字在 API 26+ 会解析到 mipmap-anydpi 的自适应图标
  * XML，而 Compose 的 painterResource 既不当 vector（根节点不是 <vector>）也不当 bitmap
@@ -509,6 +509,22 @@ private val APP_ICON_ART: Map<String, Int> = mapOf(
     "14" to R.mipmap.ic_appicon_14_art,
     "15" to R.mipmap.ic_appicon_15_art,
     "16" to R.mipmap.ic_appicon_16_art,
+    "17" to R.mipmap.ic_appicon_17_art,
+    "18" to R.mipmap.ic_appicon_18_art,
+    "19" to R.mipmap.ic_appicon_19_art,
+    "20" to R.mipmap.ic_appicon_20_art,
+    "21" to R.mipmap.ic_appicon_21_art,
+    "22" to R.mipmap.ic_appicon_22_art,
+    "23" to R.mipmap.ic_appicon_23_art,
+    "24" to R.mipmap.ic_appicon_24_art,
+    "25" to R.mipmap.ic_appicon_25_art,
+    "26" to R.mipmap.ic_appicon_26_art,
+    "27" to R.mipmap.ic_appicon_27_art,
+    "28" to R.mipmap.ic_appicon_28_art,
+    "29" to R.mipmap.ic_appicon_29_art,
+    "30" to R.mipmap.ic_appicon_30_art,
+    "31" to R.mipmap.ic_appicon_31_art,
+    "32" to R.mipmap.ic_appicon_32_art,
 )
 
 /** The wallpaper, the glass over it, and the colour of the person's own bubbles. */
@@ -565,7 +581,7 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
         }
     }
 
-    // 桌面图标：17 个都用同一种格子画，点一下就换（见 data/AppIcons）。
+    // 桌面图标：33 个都用同一种格子画，点一下就换（见 data/AppIcons）。
     Section("应用图标") {
         // 四列，手工排：设置页整页是 verticalScroll，里面再嵌 LazyVerticalGrid 会因为高度无限而崩。
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

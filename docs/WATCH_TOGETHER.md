@@ -31,3 +31,27 @@
 1. 修帧质量（stride/递归），确认发出去的是真实屏幕内容。
 2. 把开关放到聊天页，做成「一起看」模式（顶栏按钮 + 状态条）。
 3. 节流策略可调（场景变化才发），费用提示。
+
+---
+
+## 0.1.92：修掉「截到自己界面」+ 真机验证
+
+**根因**：以前只判断「本页在不在前台」（Activity 的 onResume/onPause），
+切回 App 的聊天页/设置页时本页已经 pause，于是照样截屏发给 TA —— TA 看到的是聊天界面，
+所以会回一些莫名其妙的话。
+
+**改的**：
+- 按**整个 App** 是否在前台判断（进程内 resumed 的 Activity 计数 + 切走 600ms 的缓冲），
+  App 在前面时一帧都不发。
+- 截帧/缩放/编码移到后台线程（原来在主线程，一起看时手机会卡）。
+- **Android 10 会崩**：用了 API 30 才有的 `WindowManager.currentWindowMetrics`，荣耀 YAL-AL50 是 API 29 ——
+  改用 `displayMetrics`。
+- 横屏宽度不封顶：原来固定「高 720」，横屏时宽会到 1560；改成**最长边 720**。
+- 点「停止」后 `stopService` 没收，通知栏一直挂着；Bitmap 重复 recycle、`scaled` 在
+  `conversationId == null` 时没回收；状态被 onStop 回调改成「投屏被系统停止了」。
+- 页面说明补上「本页面在前台时不会发帧」。
+
+**真机（荣耀 YAL-AL50 / Android 10）**：
+- 授权 → 自动退桌面 → 发 3 帧 `348x720`，从 `files/images/watch-*.png` 取出帧图确认是**真实桌面**（无虚线、非 App 界面）。
+- TA 回复内容对得上桌面（截图里的 OurPlay / Termux / 中国电信 / Cleos / DSH Mobile、底栏三个图标、状态栏时间）。
+- 切回 App 后等 15 秒：`logcat -s CleosWatch` 无新帧。

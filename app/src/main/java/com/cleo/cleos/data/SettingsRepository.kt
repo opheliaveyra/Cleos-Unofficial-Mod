@@ -41,7 +41,7 @@ data class AppSettings(
     /** File name inside ImageStore, or null for the built-in wallpaper. */
     val wallpaper: String? = null,
     val glassMode: GlassMode = GlassMode.Auto,
-    /** 桌面图标（data/AppIcons 的键）：出厂那个是 [AppIcons.DEFAULT]，其余是 01…16。 */
+    /** 桌面图标（data/AppIcons 的键）：出厂那个是 [AppIcons.DEFAULT]，其余是 01…32。 */
     val appIcon: String = AppIcons.DEFAULT,
     /** Wallpaper analysis, cached so startup doesn't decode the image to pick colours. */
     val wallpaperDark: Boolean? = null,
