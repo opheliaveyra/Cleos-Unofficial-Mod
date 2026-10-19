@@ -33,6 +33,7 @@ import com.cleo.cleos.ui.common.Dates
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import com.cleo.cleos.ui.theme.CleosIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +70,7 @@ fun TodoEditDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Event, contentDescription = null, modifier = Modifier.size(18.dp))
+                    CleosIcon(Icons.Rounded.Event, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     TextButton(onClick = { picking = true }) {
                         Text(due?.let { Dates.due(it) + " · " + Dates.monthDay(it) } ?: "加个日期")

@@ -80,6 +80,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** Whose words a search looks through: [role] as the messages have it, null for both. */
 private enum class Side(val role: String?) { All(null), Ta("assistant"), Me("user") }
@@ -204,13 +205,13 @@ fun SearchScreen(onBack: () -> Unit, onFound: () -> Unit) {
                         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(22.dp))
+                            CleosIcon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text("按日期查找", color = palette.content, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                                 Text("聊过天的日子都标出来了，点一天就到那天", color = palette.contentSecondary, fontSize = 12.sp)
                             }
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+                            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
                         }
                     }
                 }

@@ -71,6 +71,7 @@ import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.avatarLetter
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * The pages behind the settings' list of groups. Everything used to be on one page, ten
@@ -359,14 +360,14 @@ private fun Entry(icon: ImageVector, title: String, summary: String, summaryColo
                 .background(palette.accent.copy(alpha = 0.12f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
+            CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Text(summary, color = summaryColor ?: palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+        CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
     }
 }
 
@@ -405,7 +406,7 @@ internal fun ExplainedSwitch(title: String, line: String, full: String?, checked
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (full != null) {
-                        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
+                        CleosIcon(Icons.Rounded.ExpandMore, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
                     }
                 }
             }

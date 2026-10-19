@@ -56,6 +56,7 @@ import com.cleo.cleos.data.db.Feature
 import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.LocalGlassPalette
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * 三层结构的三个页面：**服务商 / 模型配置 / 功能绑定**。
@@ -651,7 +652,7 @@ internal fun FeatureRoutesPage(vm: SettingsViewModel) {
                 }
                 if (problem != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = palette.error, modifier = Modifier.size(13.dp))
+                        CleosIcon(Icons.Rounded.WarningAmber, contentDescription = null, tint = palette.error, modifier = Modifier.size(13.dp))
                         Text(problem, color = palette.error, fontSize = 11.sp, lineHeight = 15.sp)
                     }
                 }

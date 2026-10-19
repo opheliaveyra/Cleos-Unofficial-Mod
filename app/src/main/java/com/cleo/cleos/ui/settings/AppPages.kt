@@ -84,6 +84,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** How the person is called, how much of the conversation goes along, and the avatars beside messages. */
 @Composable
@@ -391,7 +392,7 @@ internal fun WorkspacePage(vm: SettingsViewModel) {
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
+                CleosIcon(
                     if (entry.directory) Icons.Rounded.Folder else Icons.Rounded.Description,
                     contentDescription = null,
                     tint = palette.contentSecondary,
@@ -406,7 +407,7 @@ internal fun WorkspacePage(vm: SettingsViewModel) {
                         fontSize = 11.sp,
                     )
                 }
-                Icon(
+                CleosIcon(
                     Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
                     tint = palette.contentSecondary,
@@ -571,7 +572,7 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
                 Text("玻璃实验室", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Text("拖一块玻璃，看每个参数在做什么", color = palette.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 
@@ -583,7 +584,7 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
                 Text("我：${choices[settings.myBubbleTheme] ?: "默认玻璃"} · TA：${choices[settings.taBubbleThemes[vm.companionId.toString()]] ?: "默认玻璃"}",
                     color = palette.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 
@@ -677,7 +678,7 @@ private fun IconChoice(
                 )
             }
             if (selected) {
-                Icon(
+                CleosIcon(
                     Icons.Rounded.Check,
                     contentDescription = "正在用",
                     tint = Color.White,

@@ -66,6 +66,7 @@ import com.cleo.cleos.ui.common.TopBarHeight
 import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.appViewModel
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * One memory, as the person edits it. Saved on leaving; a new one is kept only once it has
@@ -226,7 +227,7 @@ fun MemoryEditScreen(id: Long, onBack: () -> Unit) {
                                 modifier = Modifier.weight(1f),
                             )
                             IconButton(onClick = { vm.details.removeAt(i) }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "去掉这条", tint = palette.contentSecondary)
+                                CleosIcon(Icons.Rounded.Close, contentDescription = "去掉这条", tint = palette.contentSecondary)
                             }
                         }
                     }

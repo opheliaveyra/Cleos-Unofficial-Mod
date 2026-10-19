@@ -70,6 +70,7 @@ import com.cleo.cleos.glass.rememberBackdrop
 import com.cleo.cleos.ui.common.appContainer
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * A playground for the glass, and where the app's glass gets tuned.
@@ -258,7 +259,7 @@ private fun BoxScope.PieceContent(part: GlassPart?, palette: GlassPalette) {
             }
         }
         GlassPart.TopBar -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Forum, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))
+            CleosIcon(Icons.Rounded.Forum, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Text("聊天", color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -281,7 +282,7 @@ private fun BoxScope.PieceContent(part: GlassPart?, palette: GlassPalette) {
 @Composable
 private fun TabPreview(icon: ImageVector, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        CleosIcon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
         Text(label, color = color, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }

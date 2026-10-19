@@ -217,6 +217,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** A gap longer than this between two messages gets a time line between them. */
 private const val TIME_GAP_MS = 10 * 60 * 1000L
@@ -996,7 +997,7 @@ fun ChatTab(
                                         )
                                     }
                                 },
-                                trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = "正在用") }) else null,
+                                trailingIcon = if (here) ({ CleosIcon(Icons.Rounded.Check, contentDescription = "正在用") }) else null,
                                 onClick = {
                                     modelMenu = false
                                     if (!here) vm.switchModel(choice.id)
@@ -1021,7 +1022,7 @@ fun ChatTab(
                             DropdownMenuItem(
                                 text = { Text(ta.name.ifBlank { "TA" }, fontWeight = if (here) FontWeight.SemiBold else FontWeight.Normal) },
                                 leadingIcon = { Avatar(ta.avatar, ta.avatarEmoji ?: avatarLetter(ta.name, "TA"), 28.dp) },
-                                trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = "正在聊") }) else null,
+                                trailingIcon = if (here) ({ CleosIcon(Icons.Rounded.Check, contentDescription = "正在聊") }) else null,
                                 onClick = {
                                     switching = false
                                     if (!here) vm.switchTo(ta.id)
@@ -1030,7 +1031,7 @@ fun ChatTab(
                         }
                         DropdownMenuItem(
                             text = { Text("添加一个 TA") },
-                            leadingIcon = { Icon(Icons.Rounded.PersonAdd, contentDescription = null) },
+                            leadingIcon = { CleosIcon(Icons.Rounded.PersonAdd, contentDescription = null) },
                             onClick = {
                                 switching = false
                                 vm.addCompanion(onOpenSettings)
@@ -1852,7 +1853,7 @@ private fun VoiceBubble(
     ) { ink ->
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
+                CleosIcon(
                     if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
                     contentDescription = if (playing) "停下" else "播放语音",
                     tint = ink,
@@ -1871,7 +1872,7 @@ private fun VoiceBubble(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(if (expanded) "收起文字" else "查看文字", color = ink.copy(alpha = 0.75f), fontSize = 13.sp)
-                        Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        CleosIcon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                             contentDescription = null, tint = ink.copy(alpha = 0.75f), modifier = Modifier.size(18.dp))
                     }
                     if (expanded) MessageText(transcript, color = ink.copy(alpha = 0.85f), style = LocalChatType.current.small)
@@ -1965,7 +1966,7 @@ private fun SentVideoCard(
             // 抽帧失败（编码器挑食）时不装作有封面，给一块安静的底。
             Box(Modifier.fillMaxSize().background(palette.content.copy(alpha = 0.10f)))
         }
-        Icon(
+        CleosIcon(
             Icons.Rounded.PlayCircle,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.92f),
@@ -2056,7 +2057,7 @@ private fun VideoThumb(file: File, durationMs: Long, onRemove: (() -> Unit)?) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize().background(palette.content.copy(alpha = 0.10f)),
         )
-        Icon(
+        CleosIcon(
             Icons.Rounded.PlayCircle,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.9f),
@@ -2083,7 +2084,7 @@ private fun VideoThumb(file: File, durationMs: Long, onRemove: (() -> Unit)?) {
                 .background(Color.Black.copy(alpha = 0.55f))
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(14.dp)) }
+        ) { CleosIcon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(14.dp)) }
     }
 }
 
@@ -2190,11 +2191,11 @@ private fun ThoughtBlock(text: String, ms: Long?, key: Any) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(14.dp))
+                CleosIcon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(if (ms == null) "在想…" else thoughtFor(ms), color = palette.contentSecondary, fontSize = 13.sp)
                 Spacer(Modifier.width(2.dp))
-                Icon(
+                CleosIcon(
                     if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = if (open) "收起" else "展开",
                     tint = palette.contentSecondary,
@@ -2283,7 +2284,7 @@ private fun AskCard(ask: ToolAsk, aiName: String, onAnswer: (ChatRepository.Answ
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
+                CleosIcon(
                     if (dangerous) Icons.Rounded.WarningAmber else Icons.Rounded.Extension,
                     contentDescription = null,
                     tint = if (dangerous) palette.error else palette.accentContent,
@@ -2348,7 +2349,7 @@ private fun ToolNote(text: String, icon: ImageVector, running: Boolean = false, 
                 modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
+                CleosIcon(
                     if (failed) Icons.Outlined.Warning else icon,
                     contentDescription = null,
                     tint = if (failed) palette.error else if (running) palette.contentSecondary else palette.accentContent,
@@ -2391,7 +2392,7 @@ private fun ToolGroupNote(key: Any, lines: List<MessageEntity>, kinds: List<Tool
             Row(verticalAlignment = Alignment.CenterVertically) {
                 stack.shown.forEachIndexed { i, (kind, bad) ->
                     if (i > 0) Box(Modifier.padding(horizontal = 3.dp).width(8.dp).height(1.dp).background(hairline))
-                    Icon(
+                    CleosIcon(
                         if (bad) Icons.Outlined.Warning else kind.icon(),
                         contentDescription = null,
                         tint = if (bad) palette.error else palette.contentSecondary,
@@ -2404,10 +2405,10 @@ private fun ToolGroupNote(key: Any, lines: List<MessageEntity>, kinds: List<Tool
                 }
                 if (stack.hiddenFailed) {
                     Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Outlined.Warning, contentDescription = "有没成的", tint = palette.error, modifier = Modifier.size(14.dp))
+                    CleosIcon(Icons.Outlined.Warning, contentDescription = "有没成的", tint = palette.error, modifier = Modifier.size(14.dp))
                 }
                 Spacer(Modifier.width(4.dp))
-                Icon(
+                CleosIcon(
                     if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = "用了 ${lines.size} 个工具，" + if (open) "收起" else "展开",
                     tint = palette.contentSecondary,
@@ -2460,7 +2461,7 @@ private fun ToolTimelineRow(note: String, kind: ToolKind, failed: Boolean, first
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-            Icon(
+            CleosIcon(
                 if (failed) Icons.Outlined.Warning else kind.icon(),
                 contentDescription = null,
                 tint = if (failed) palette.error else palette.contentSecondary,
@@ -2568,7 +2569,7 @@ private fun CallNote(message: MessageEntity, said: Boolean, onOpen: () -> Unit) 
             contentPadding = PaddingValues(start = 12.dp, end = 14.dp, top = 7.dp, bottom = 7.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Call, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(15.dp))
+                CleosIcon(Icons.Rounded.Call, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(text, color = palette.contentSecondary, fontSize = 13.sp)
                 if (talked != null && said) {
@@ -2676,7 +2677,7 @@ private fun RequestCard(message: MessageEntity, aiName: String, enabled: Boolean
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Lock, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
+                CleosIcon(Icons.Rounded.Lock, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("${who}想看你的小秘密", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -2817,7 +2818,7 @@ private fun ChatInputBar(
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(editHint, color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 2)
                 Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onCancelEdit), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Close, "取消编辑", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
+                    CleosIcon(Icons.Rounded.Close, "取消编辑", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -2848,7 +2849,7 @@ private fun ChatInputBar(
                         .clickable(enabled = !editing, onClick = onDropQuote),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Close, contentDescription = "不引用了", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
+                    CleosIcon(Icons.Rounded.Close, contentDescription = "不引用了", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -3024,7 +3025,7 @@ private fun SentFileCard(file: MessageFile) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
+        CleosIcon(
             Icons.Rounded.Description,
             contentDescription = null,
             tint = if (failed) palette.error else palette.contentSecondary,
@@ -3060,7 +3061,7 @@ private fun FileChip(file: MessageFile, onRemove: (() -> Unit)?) {
             .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
+        CleosIcon(
             Icons.Rounded.Description,
             contentDescription = null,
             tint = if (failed) palette.error else palette.contentSecondary,
@@ -3079,7 +3080,7 @@ private fun FileChip(file: MessageFile, onRemove: (() -> Unit)?) {
         }
         if (onRemove != null) {
             Box(Modifier.size(28.dp).clip(CircleShape).clickable(onClick = onRemove), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Close, contentDescription = "去掉这个文件", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
+                CleosIcon(Icons.Rounded.Close, contentDescription = "去掉这个文件", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -3096,7 +3097,7 @@ private fun FileChipReading() {
             .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.Description, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
+        CleosIcon(Icons.Rounded.Description, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text("正在读取文件…", color = palette.contentSecondary, fontSize = 13.sp)
     }
@@ -3131,7 +3132,7 @@ private fun AttachmentThumb(file: File, onRemove: (() -> Unit)?) {
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Close, contentDescription = "去掉这张", tint = Color.White, modifier = Modifier.size(14.dp))
+            CleosIcon(Icons.Rounded.Close, contentDescription = "去掉这张", tint = Color.White, modifier = Modifier.size(14.dp))
         }
     }
 }

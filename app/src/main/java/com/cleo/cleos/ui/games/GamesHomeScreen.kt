@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** 小游戏中心：井字棋、五子棋。围棋、多人联机还没做。 */
 @Composable
@@ -48,13 +49,13 @@ fun GamesHomeScreen(onBack: () -> Unit, onOpenTicTacToe: () -> Unit, onOpenGomok
             contentPadding = PaddingValues(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
+                CleosIcon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("井字棋", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     Text("邀请一个 TA 陪你下一局", color = palette.contentSecondary, fontSize = 12.sp)
                 }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+                CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
             }
         }
         GlassSurface(
@@ -63,13 +64,13 @@ fun GamesHomeScreen(onBack: () -> Unit, onOpenTicTacToe: () -> Unit, onOpenGomok
             contentPadding = PaddingValues(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.GridOn, contentDescription = null, tint = palette.contentSecondary)
+                CleosIcon(Icons.Rounded.GridOn, contentDescription = null, tint = palette.contentSecondary)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("五子棋", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     Text("15×15，邀请 TA 真模型对弈", color = palette.contentSecondary, fontSize = 12.sp)
                 }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+                CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
             }
         }
         Text(

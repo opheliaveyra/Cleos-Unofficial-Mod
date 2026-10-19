@@ -82,6 +82,7 @@ import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** The collection the chat draws stickers from, by the names messages carry (StickerText). */
 val LocalStickers = compositionLocalOf { StickerBook.EMPTY }
@@ -288,7 +289,7 @@ fun StickerDrawer(
                         .clickable(onClick = onAdd),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "加表情包", tint = palette.contentSecondary, modifier = Modifier.size(26.dp))
+                    CleosIcon(Icons.Rounded.Add, contentDescription = "加表情包", tint = palette.contentSecondary, modifier = Modifier.size(26.dp))
                 }
                 Text("加一张", color = palette.contentSecondary, fontSize = 11.sp, maxLines = 1)
             }

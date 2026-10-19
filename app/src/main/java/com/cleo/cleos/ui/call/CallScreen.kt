@@ -68,6 +68,7 @@ import com.cleo.cleos.ui.common.GlassPage
 import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.avatarLetter
 import kotlinx.coroutines.delay
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** The red of a phone's hang-up button: the one thing on the screen that should look like it ends something. */
 private val HangUpRed = Color(0xFFE5484D)
@@ -137,7 +138,7 @@ fun CallScreen() {
                                 .clickable(enabled = !ended, role = Role.Button) { c.calls.hangUp() },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.Rounded.CallEnd, contentDescription = "挂断", tint = Color.White, modifier = Modifier.size(34.dp))
+                            CleosIcon(Icons.Rounded.CallEnd, contentDescription = "挂断", tint = Color.White, modifier = Modifier.size(34.dp))
                         }
                         Text("挂断", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     }

@@ -28,6 +28,7 @@ import com.cleo.cleos.data.MessageReactions
 import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassSurface
+import com.cleo.cleos.ui.theme.CleosIcon
 
 internal data class MessageMenuAction(val label: String, val run: () -> Unit)
 
@@ -52,7 +53,7 @@ internal fun MessageActionMenu(expanded: Boolean, onDismiss: () -> Unit, actions
                     }
                     Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp))
                         .clickable { more = !more }, contentAlignment = Alignment.Center) {
-                        Icon(if (more) Icons.Rounded.ExpandLess else Icons.Rounded.Add,
+                        CleosIcon(if (more) Icons.Rounded.ExpandLess else Icons.Rounded.Add,
                             if (more) "收起表情" else "更多表情", tint = palette.content, modifier = Modifier.size(22.dp))
                     }
                 }
@@ -91,7 +92,7 @@ internal fun MessageActionMenu(expanded: Boolean, onDismiss: () -> Unit, actions
                                 .background(palette.content.copy(alpha = .055f))
                                 .clickable { onDismiss(); action.run() }.padding(horizontal = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Icon(icon, null, tint = ink, modifier = Modifier.size(17.dp))
+                                CleosIcon(icon, null, tint = ink, modifier = Modifier.size(17.dp))
                                 Text(action.label, color = ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }

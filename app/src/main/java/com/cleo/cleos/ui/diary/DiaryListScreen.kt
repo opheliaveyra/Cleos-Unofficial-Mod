@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.LocalDate
 import java.time.YearMonth
+import com.cleo.cleos.ui.theme.CleosIcon
 
 private data class DiaryCard(
     val id: Long,
@@ -302,7 +303,7 @@ private fun DiaryFilters(
                         color = palette.content, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                         maxLines = 1, softWrap = false,
                     )
-                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = "换一个范围", tint = palette.contentSecondary, modifier = Modifier.size(20.dp))
+                    CleosIcon(Icons.Rounded.ArrowDropDown, contentDescription = "换一个范围", tint = palette.contentSecondary, modifier = Modifier.size(20.dp))
                 }
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -355,7 +356,7 @@ private fun DiaryFilters(
 private fun CardTag(icon: ImageVector, text: String) {
     val palette = LocalGlassPalette.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 3.dp)) {
-        Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(13.dp))
+        CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(4.dp))
         Text(text, color = palette.accentContent, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }

@@ -69,6 +69,7 @@ import com.cleo.cleos.ui.settings.Chip
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -377,7 +378,7 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                                 .background(Color.Black.copy(alpha = 0.55f))
                                 .clickable { pictures = pictures - picture; c.appScope.launch { c.images.delete(listOf(picture.file)) } },
                             contentAlignment = Alignment.Center,
-                        ) { Icon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp)) }
+                        ) { CleosIcon(Icons.Rounded.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(12.dp)) }
                     }
                 }
             }
@@ -512,7 +513,7 @@ fun GroupChatScreen(groupId: Long, onBack: () -> Unit, onOpenImage: (String) -> 
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Icon(
+                                CleosIcon(
                                     if (playing == clip.file) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
                                     contentDescription = "播放语音",
                                     tint = palette.accentContent,
@@ -653,7 +654,7 @@ private fun PanelAction(icon: ImageVector, label: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
+        CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))
         Text(label, color = palette.content, fontSize = 14.sp)
     }
 }

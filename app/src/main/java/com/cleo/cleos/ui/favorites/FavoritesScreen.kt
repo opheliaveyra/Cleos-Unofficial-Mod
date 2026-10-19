@@ -34,6 +34,7 @@ import com.cleo.cleos.ui.common.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 @Composable
 fun FavoritesHomeCard(companionId: Long, onOpen: () -> Unit) {
@@ -43,13 +44,13 @@ fun FavoritesHomeCard(companionId: Long, onOpen: () -> Unit) {
     GlassSurface(Modifier.fillMaxWidth().clickable(onClickLabel = "打开收藏", onClick = onOpen),
         shape = GlassShape.Rounded(24.dp), contentPadding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.BookmarkBorder, null, tint = p.contentSecondary)
+            CleosIcon(Icons.Rounded.BookmarkBorder, null, tint = p.contentSecondary)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("收藏", color = p.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Text(if (entries.isEmpty()) "想留下的话和声音" else "留下了 ${entries.size} 段", color = p.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = p.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = p.contentSecondary)
         }
     }
 }
@@ -113,7 +114,7 @@ private fun FavoriteCard(entry: FavoriteEntity, onOpen: () -> Unit, onRemove: ()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(parts.firstOrNull()?.let { Dates.chatStamp(it.at) }.orEmpty(), Modifier.weight(1f), color = p.contentSecondary, fontSize = 12.sp)
                 Box {
-                    IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Rounded.MoreVert, "收藏选项", tint = p.contentSecondary) }
+                    IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { CleosIcon(Icons.Rounded.MoreVert, "收藏选项", tint = p.contentSecondary) }
                     DropdownMenu(menu, { menu = false }) {
                         DropdownMenuItem(text = { Text("取消收藏") }, onClick = { menu = false; onRemove() })
                     }
@@ -201,7 +202,7 @@ fun FavoriteScreen(id: Long, onBack: () -> Unit, onFound: () -> Unit, onImage: (
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     part.audio?.let { audio ->
                                         Row(Modifier.fillMaxWidth().clickable(onClickLabel = "播放收藏语音") { play(audio.file) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(if (playing == audio.file) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                                            CleosIcon(if (playing == audio.file) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
                                                 if (playing == audio.file) "停止" else "播放", tint = if (mine) p.mineContent else p.content)
                                             Text("${(audio.ms / 1000).coerceAtLeast(1)} 秒", color = if (mine) p.mineContent else p.content)
                                         }

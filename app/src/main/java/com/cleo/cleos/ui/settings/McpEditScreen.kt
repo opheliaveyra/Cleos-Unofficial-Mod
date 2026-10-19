@@ -69,6 +69,7 @@ import com.cleo.cleos.ui.common.appViewModel
 import kotlinx.coroutines.launch
 import java.net.URI
 import java.util.UUID
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * One MCP service, as the person sets it up. Saved on leaving, once it has an address. The
@@ -284,7 +285,7 @@ fun McpEditScreen(id: String, onBack: () -> Unit) {
                             modifier = Modifier.weight(1.3f),
                         )
                         IconButton(onClick = { vm.removeHeader(i) }) {
-                            Icon(Icons.Rounded.Close, contentDescription = "删掉这条", tint = palette.contentSecondary)
+                            CleosIcon(Icons.Rounded.Close, contentDescription = "删掉这条", tint = palette.contentSecondary)
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package com.cleo.cleos.ui.theme
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -15,10 +16,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cleo.cleos.R
 import com.cleo.cleos.data.VisualTheme
 import com.cleo.cleos.glass.GlassPalettes
 import com.cleo.cleos.glass.GlassShape
@@ -115,7 +119,12 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
                     horizontalAlignment=Alignment.CenterHorizontally,
                     verticalArrangement=Arrangement.spacedBy(2.dp),
                 ) {
-                    Icon(if(active) tab.selectedIcon else tab.icon, null, Modifier.size(28.dp), tint=if(active) Purple else Ink)
+                    CleosIcon(
+                        imageVector = if (active) tab.selectedIcon else tab.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(if (active) 31.dp else 28.dp),
+                        tint = if (active) Purple else Ink,
+                    )
                     Text(tab.label,color=Ink,fontSize=11.sp,fontWeight=if(active) FontWeight.SemiBold else FontWeight.Normal)
                 }
             }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * Makes glass react to a finger: it lights up where it is touched and swells a little,
@@ -146,6 +147,6 @@ fun GlassIconButton(
         contentColor = tint,
         contentPadding = PaddingValues(0.dp),
     ) {
-        Icon(icon, contentDescription, Modifier.size(size * 0.5f))
+        CleosIcon(icon, contentDescription, Modifier.size(size * 0.5f))
     }
 }

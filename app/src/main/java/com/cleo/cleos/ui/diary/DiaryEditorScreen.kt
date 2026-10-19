@@ -86,6 +86,7 @@ import com.cleo.cleos.ui.common.appViewModel
 import java.io.File
 import java.time.Instant
 import java.time.ZoneOffset
+import com.cleo.cleos.ui.theme.CleosIcon
 
 private val ToolbarHeight = 52.dp
 
@@ -163,7 +164,7 @@ fun DiaryEditorScreen(id: Long, startSecret: Boolean = false, onBack: () -> Unit
         ) {
             if (vm.loaded && vm.lockedForUser) {
                 Column(Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Rounded.Lock, null, tint = palette.accentContent, modifier = Modifier.size(36.dp))
+                    CleosIcon(Icons.Rounded.Lock, null, tint = palette.accentContent, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(16.dp))
                     Text("${ai}的小秘密", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
@@ -334,7 +335,7 @@ private fun ImageBlock(file: File, ratio: Float, onOpen: () -> Unit, onRemove: (
                     .clickable(onClick = onRemove),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = "移除图片", tint = Color.White, modifier = Modifier.size(18.dp))
+                CleosIcon(Icons.Rounded.Close, contentDescription = "移除图片", tint = Color.White, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -363,7 +364,7 @@ private fun EditorToolbar(
                 contentPadding = PaddingValues(horizontal = 18.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))
+                    CleosIcon(Icons.Rounded.AddPhotoAlternate, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (importing) "正在放进来…" else "插图", color = palette.content, fontSize = 15.sp)
                 }
@@ -382,7 +383,7 @@ private fun EditorToolbar(
             ) {
                 val tint = if (secret) Color.White else palette.content
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
+                    CleosIcon(
                         if (secret) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
                         contentDescription = null,
                         tint = tint,

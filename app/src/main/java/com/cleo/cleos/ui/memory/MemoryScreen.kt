@@ -57,6 +57,7 @@ import com.cleo.cleos.ui.common.appContainer
 import com.cleo.cleos.ui.common.fadeUnderTopBar
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * What the current TA keeps in mind, kind by kind, as the TA reads it: the one line of each,
@@ -190,7 +191,7 @@ private fun MemoryCard(m: MemoryEntity, onClick: () -> Unit) {
                     )
                     if (m.pinned) {
                         Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Rounded.PushPin, contentDescription = "钉住了", tint = palette.accentContent, modifier = Modifier.size(16.dp))
+                        CleosIcon(Icons.Rounded.PushPin, contentDescription = "钉住了", tint = palette.accentContent, modifier = Modifier.size(16.dp))
                     }
                 }
                 Spacer(Modifier.width(8.dp))

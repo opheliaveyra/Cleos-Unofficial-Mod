@@ -85,6 +85,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
+import com.cleo.cleos.ui.theme.CleosIcon
 
 private enum class Who { Me, Ai }
 
@@ -309,13 +310,13 @@ private fun GamesHomeCard(onOpen: () -> Unit) {
         contentPadding = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("小游戏", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Text("和 TA 下一局井字棋", color = palette.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 }
@@ -332,13 +333,13 @@ private fun MemoryCard(ai: String, count: Int, onOpen: () -> Unit) {
         contentPadding = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.contentSecondary)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("记忆", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Text(if (count == 0) "${ai}还没记下什么" else "${ai}记着 $count 件事", color = palette.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 }
@@ -363,7 +364,7 @@ private fun LetterCard(ai: String, letters: List<LetterEntity>, now: Long, onOpe
         contentPadding = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
+            CleosIcon(
                 if (unread > 0) Icons.Rounded.MarkEmailUnread else Icons.Rounded.MailOutline,
                 contentDescription = null,
                 tint = if (unread > 0) palette.accentContent else palette.contentSecondary,
@@ -373,7 +374,7 @@ private fun LetterCard(ai: String, letters: List<LetterEntity>, now: Long, onOpe
                 Text("信", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Text(line, color = if (unread > 0) palette.accentContent else palette.contentSecondary, fontSize = 12.sp)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 }
@@ -433,7 +434,7 @@ private fun TaRow(tas: List<CompanionEntity>, currentId: Long, onSelect: (Long) 
                         .background(palette.content.copy(alpha = 0.08f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "添加一个 TA", tint = palette.contentSecondary)
+                    CleosIcon(Icons.Rounded.Add, contentDescription = "添加一个 TA", tint = palette.contentSecondary)
                 }
                 Spacer(Modifier.height(4.dp))
                 Text("添加", color = palette.contentSecondary, fontSize = 12.sp)

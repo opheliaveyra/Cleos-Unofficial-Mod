@@ -24,6 +24,7 @@ import com.cleo.cleos.glass.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.cleo.cleos.ui.theme.CleosIcon
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -36,10 +37,10 @@ internal fun FeedShareCard(share: FeedShare, modifier: Modifier = Modifier,
         style = palette.card, shape = GlassShape.Rounded(18.dp), contentPadding = PaddingValues(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Icon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(17.dp))
+                CleosIcon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(17.dp))
                 Text(if (share.topic) "话题" else "朋友圈", color = palette.accentContent, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 if (onRemove != null) IconButton(onRemove, Modifier.size(28.dp)) {
-                    Icon(Icons.Rounded.Close, "取消转发", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
+                    CleosIcon(Icons.Rounded.Close, "取消转发", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

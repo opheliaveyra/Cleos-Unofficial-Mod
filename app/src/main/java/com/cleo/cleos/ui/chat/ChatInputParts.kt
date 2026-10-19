@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cleo.cleos.glass.LocalGlassPalette
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * 输入栏下面的功能面板：**按屏幕宽度换行的网格**，功能多了就在面板里滚动。
@@ -85,7 +86,7 @@ internal fun AttachTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
+        CleosIcon(
             icon,
             contentDescription = null,
             tint = if (enabled) palette.accentContent else palette.contentSecondary,
@@ -128,7 +129,7 @@ internal fun BarIconButton(
             Modifier.size(34.dp).clip(CircleShape).background(background),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = contentDescription, tint = tint ?: palette.accentContent, modifier = Modifier.size(20.dp))
+            CleosIcon(icon, contentDescription = contentDescription, tint = tint ?: palette.accentContent, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -155,7 +156,7 @@ internal fun HoldTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(
+            CleosIcon(
                 Icons.Rounded.Mic,
                 contentDescription = null,
                 tint = if (recording) Color.White else palette.accentContent,

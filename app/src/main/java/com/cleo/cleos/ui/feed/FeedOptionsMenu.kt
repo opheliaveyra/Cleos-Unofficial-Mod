@@ -29,6 +29,7 @@ import com.cleo.cleos.glass.GlassSurface
 import com.cleo.cleos.glass.LocalGlassPalette
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** Lives next to the ellipsis so the popup follows that button, even when the title changes. */
 @Composable
@@ -98,7 +99,7 @@ internal fun FeedOptionRow(icon: ImageVector, label: String, enabled: Boolean, o
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, null, tint = palette.contentSecondary.copy(alpha = if (enabled) 1f else 0.4f), modifier = Modifier.size(20.dp))
+        CleosIcon(icon, null, tint = palette.contentSecondary.copy(alpha = if (enabled) 1f else 0.4f), modifier = Modifier.size(20.dp))
         Text(label, color = palette.content.copy(alpha = if (enabled) 1f else 0.4f), fontSize = 14.sp)
     }
 }

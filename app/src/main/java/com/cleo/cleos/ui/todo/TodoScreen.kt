@@ -89,6 +89,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.cleo.cleos.ui.theme.CleosIcon
 
 data class TodoState(val pending: List<TodoEntity> = emptyList(), val done: List<TodoEntity> = emptyList(), val loaded: Boolean = false)
 
@@ -306,7 +307,7 @@ private fun TodoRow(
                     val overdue = !todo.done && date.isBefore(Dates.today())
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 3.dp)) {
                         val color = if (overdue) palette.error else palette.accentContent
-                        Icon(Icons.Rounded.Event, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+                        CleosIcon(Icons.Rounded.Event, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(Dates.due(date), color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
@@ -328,7 +329,7 @@ private fun CheckCircle(done: Boolean, onToggle: () -> Unit) {
             .clickable(interactionSource = null, indication = null, onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
-        if (done) Icon(Icons.Rounded.Check, contentDescription = "已完成", tint = Color.White, modifier = Modifier.size(17.dp))
+        if (done) CleosIcon(Icons.Rounded.Check, contentDescription = "已完成", tint = Color.White, modifier = Modifier.size(17.dp))
     }
 }
 
@@ -344,7 +345,7 @@ private fun DoneHeader(count: Int, expanded: Boolean, onToggle: () -> Unit, modi
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("做完的 $count 件", color = palette.content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Icon(
+                CleosIcon(
                     if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = if (expanded) "收起" else "展开",
                     tint = palette.contentSecondary,

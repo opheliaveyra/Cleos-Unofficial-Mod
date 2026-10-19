@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.cleo.cleos.data.MessageImage
 import com.cleo.cleos.ui.common.appContainer
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** One photo breathes; albums use compact squares, as in a shared moments timeline. */
 @Composable
@@ -38,7 +39,7 @@ internal fun FeedPhotos(pictures: List<MessageImage>, onOpen: (String) -> Unit,
                             .clickable { onRemove(image) }, contentAlignment = Alignment.Center) {
                             Box(Modifier.size(24.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f)),
                                 contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.Close, "移除照片 ${rowIndex * columns + columnIndex + 1}", tint = Color.White, modifier = Modifier.size(16.dp))
+                                CleosIcon(Icons.Rounded.Close, "移除照片 ${rowIndex * columns + columnIndex + 1}", tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }

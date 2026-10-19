@@ -59,6 +59,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.text.style.TextOverflow
+import com.cleo.cleos.ui.theme.CleosIcon
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -187,7 +188,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                             .clickable(enabled = !busy) { coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Rounded.Image, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))
+                            CleosIcon(Icons.Rounded.Image, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))
                             Text("换封面", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp)
                         }
                     }
@@ -225,7 +226,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
             if (visible.isEmpty()) item {
                 Box(Modifier.fillMaxWidth().padding(20.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(30.dp))
+                        CleosIcon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(30.dp))
                         Text(if (topics) "有什么新发现？" else "今天想说点什么？", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                         Text(if (topics) "分享资讯与观点，留下一起讨论的话题。" else "随手记一句，让彼此的日常在这里碰面。", color = palette.contentSecondary, fontSize = 14.sp)
                         TextButton({ draft = ""; composing = true }) { Text("发第一条动态", color = palette.accentContent) }
@@ -255,7 +256,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                                 Spacer(Modifier.weight(1f))
                                 Box {
                                     IconButton({ menu = true }, modifier = Modifier.size(28.dp)) {
-                                        Icon(Icons.Rounded.MoreHoriz, "更多", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
+                                        CleosIcon(Icons.Rounded.MoreHoriz, "更多", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))
                                     }
                                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false },
                                         modifier = Modifier.width(180.dp),
@@ -300,7 +301,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
-                                    Icon(Icons.Rounded.Send, null, tint = palette.contentSecondary, modifier = Modifier.size(14.dp))
+                                    CleosIcon(Icons.Rounded.Send, null, tint = palette.contentSecondary, modifier = Modifier.size(14.dp))
                                     Text("转发到聊天", color = palette.content.copy(alpha = .75f), fontSize = 12.sp, maxLines = 1)
                                 }
                             }
@@ -312,7 +313,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                             }
                             // Reserve one line so toggling the user's like never moves the replies.
                             Row(Modifier.heightIn(min = 20.dp).padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Icon(Icons.Rounded.Favorite, null, tint = palette.accentContent, modifier = Modifier.size(12.dp).alpha(if (likes.isEmpty()) 0f else 1f))
+                                CleosIcon(Icons.Rounded.Favorite, null, tint = palette.accentContent, modifier = Modifier.size(12.dp).alpha(if (likes.isEmpty()) 0f else 1f))
                                 Text(if (likes.isEmpty()) " " else likes.joinToString("、") + " 觉得很赞", color = palette.accentContent,
                                     fontSize = 12.sp, lineHeight = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -456,7 +457,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                         val who = if (comment.authorId == 0L) settings.userName.ifBlank { "我" } else companions.firstOrNull { it.id == comment.authorId }?.name?.ifBlank { "TA" } ?: "TA"
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("回复 $who：${comment.content.take(80)}", color = palette.contentSecondary, fontSize = 13.sp, maxLines = 2, modifier = Modifier.weight(1f))
-                            IconButton({ replyTo = null }) { Icon(Icons.Rounded.Close, "改为回复动态", tint = palette.contentSecondary) }
+                            IconButton({ replyTo = null }) { CleosIcon(Icons.Rounded.Close, "改为回复动态", tint = palette.contentSecondary) }
                         }
                     }
                 }
@@ -469,7 +470,7 @@ fun FeedScreen(onBack: () -> Unit, onOpenImage: (String) -> Unit) {
                     })
                     TextButton({ photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         enabled = !busy && photos.size < FeedPostRules.MAX_PHOTOS) {
-                        Icon(Icons.Rounded.AddPhotoAlternate, null, modifier = Modifier.size(20.dp))
+                        CleosIcon(Icons.Rounded.AddPhotoAlternate, null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("添加照片 · ${photos.size}/9", color = palette.accentContent)
                     }
@@ -537,7 +538,7 @@ private fun FeedChip(label: String, selected: Boolean, enabled: Boolean = true, 
 private fun FeedAction(icon: ImageVector, description: String, tint: Color, count: Int? = null, enabled: Boolean = true, onClick: () -> Unit) {
     Row(Modifier.clip(RoundedCornerShape(50)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(icon, description, tint = tint, modifier = Modifier.size(19.dp))
+        CleosIcon(icon, description, tint = tint, modifier = Modifier.size(19.dp))
         if (count != null) Text(count.toString(), color = tint, fontSize = 13.sp)
     }
 }

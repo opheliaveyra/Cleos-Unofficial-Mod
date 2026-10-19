@@ -61,6 +61,7 @@ import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.glass.liquidGlass
 import kotlinx.coroutines.delay
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /** How much room the bar takes at the top of the chat, for the list to leave. */
 internal val ListeningBarSpace = 58.dp
@@ -157,7 +158,7 @@ private fun Record(art: Bitmap?, step: Int) {
         if (image != null) {
             Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         } else {
-            Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = palette.content, modifier = Modifier.size(20.dp))
+            CleosIcon(Icons.Rounded.MusicNote, contentDescription = null, tint = palette.content, modifier = Modifier.size(20.dp))
         }
         // The hole in the middle.
         Box(
@@ -180,7 +181,7 @@ private fun Control(icon: ImageVector, label: String, onClick: () -> Unit) {
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = palette.content, modifier = Modifier.size(26.dp))
+        CleosIcon(icon, contentDescription = null, tint = palette.content, modifier = Modifier.size(26.dp))
     }
 }
 

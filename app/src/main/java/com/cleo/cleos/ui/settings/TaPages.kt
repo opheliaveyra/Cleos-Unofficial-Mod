@@ -59,6 +59,7 @@ import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.avatarLetter
 import com.cleo.cleos.ui.home.AvatarCropDialog
+import com.cleo.cleos.ui.theme.CleosIcon
 
 /**
  * The TA's picture and name, the start of their persona (written on a page of its own,
@@ -142,7 +143,7 @@ internal fun ProfilePage(vm: SettingsViewModel, onOpenPersona: () -> Unit, onLea
                     fontSize = 12.sp,
                 )
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)
         }
     }
 
