@@ -17,3 +17,8 @@ GitHub Actions 第 2 次：https://github.com/opheliaveyra/Cleos-Unofficial-Mod/
 - 已扩大 SDK 搜索至 `--channel=3` 再试，后续结果以 PR Checks 为准。
 
 静态检查通过不等于 Android 编译或点击测试通过。当前 PR 保持草稿。
+
+GitHub Actions 第 3 次：https://github.com/opheliaveyra/Cleos-Unofficial-Mod/actions/runs/39197019053
+
+- 加入 `--channel=3` 后仍在安装 Android 37 SDK 阶段失败；编译、单测、APK 页面截图均未执行。
+- 当前阻塞未解决，PR 不具备发布验收条件。

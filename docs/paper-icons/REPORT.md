@@ -104,7 +104,7 @@
 
 本地尝试 `./gradlew :app:assembleDebug :app:testDebugUnitTest`：**阻塞，未进入编译**。Gradle 9.7.1 下载失败，`Network is unreachable`，原始日志见 [build-local.log](build-local.log)。本环境没有 Android SDK/adb/模拟器。不能将本地静态验证写成编译/运行通过。
 
-新增 `.github/workflows/paper-icons.yml`：构建纸绘 APK、执行单元测试、编译关闭图标开关的配置，并在 API 35 模拟器中安装真正 APK，通过 UIAutomator 点击四个主导航与设置，保存真实页面 PNG/XML 为 `paper-icons-android-evidence`。截图脚本只允许一次性模拟器运行，找不到真实页面会失败，不生成假截图。工作流已实际运行两次。第一次因 SDK 安装动作请求已移除的 `tools` 包而失败，已修正为只装 `platform-tools`；第二次 SDK 工具安装通过，但仓库原有的 `compileSdk = 37` 所需 `platforms;android-37` 无法从 SDK 仓库找到，仍未进入编译。未擅自降级 compileSdk/AGP/Kotlin/Compose 或修改业务以绕过基线依赖问题。后续工作流使用 `--channel=3` 包含预览仓库再试；结果未成功前不能算验证通过。日志摘要见 [ci-results.md](ci-results.md)。
+新增 `.github/workflows/paper-icons.yml`：构建纸绘 APK、执行单元测试、编译关闭图标开关的配置，并在 API 35 模拟器中安装真正 APK，通过 UIAutomator 点击四个主导航与设置，保存真实页面 PNG/XML 为 `paper-icons-android-evidence`。截图脚本只允许一次性模拟器运行，找不到真实页面会失败，不生成假截图。工作流已实际运行三次。第一次因 SDK 安装动作请求已移除的 `tools` 包而失败，已修正为只装 `platform-tools`；第二次 SDK 工具安装通过，但仓库原有的 `compileSdk = 37` 所需 `platforms;android-37` 无法从 SDK 仓库找到，仍未进入编译。未擅自降级 compileSdk/AGP/Kotlin/Compose 或修改业务以绕过基线依赖问题。第三次工作流使用 `--channel=3` 包含预览仓库再试，仍在 Android 37 SDK 安装阶段失败；构建、运行测试和真实截图依然未完成。日志摘要见 [ci-results.md](ci-results.md)。
 
 **尚未完成交付验收**：Android 编译与单元测试、实际点击行为、真实页面截图、实际 16/19/24dp 可读性、深浅主题及纯黑/纯白/高饱和混合壁纸的运行态对比度、不同字体缩放与 TalkBack。未提供伪装成实机的布局图；真实页面截图必须来自已安装 APK。目前不得当成可发布 APK 合并验收。
 
