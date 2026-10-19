@@ -1,0 +1,15 @@
+app/src/main/java/com/cleo/cleos/data/BackupService.kt
+app/src/main/java/com/cleo/cleos/data/SettingsRepository.kt
+app/src/main/java/com/cleo/cleos/data/VisualTheme.kt
+app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt
+app/src/main/java/com/cleo/cleos/glass/LiquidGlass.kt
+app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt
+app/src/main/java/com/cleo/cleos/ui/settings/SettingsViewModel.kt
+app/src/main/java/com/cleo/cleos/ui/theme/CleosTheme.kt
+app/src/main/java/com/cleo/cleos/ui/theme/LavenderScrapbook.kt
+app/src/main/java/com/cleo/cleos/ui/theme/ScrapbookPreview.kt
+app/src/test/java/com/cleo/cleos/data/VisualThemeTest.kt
+docs/lavender-scrapbook/BATCH01.md
+docs/lavender-scrapbook/build-batch01.log
+docs/lavender-scrapbook/changed-files.txt
+docs/lavender-scrapbook/static-check.txt
