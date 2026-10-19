@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,8 @@ import com.cleo.cleos.data.ModelRegistryData
 import com.cleo.cleos.data.ParamOverrides
 import com.cleo.cleos.data.Provider
 import com.cleo.cleos.data.db.Feature
+import com.cleo.cleos.glass.GlassSurface
+import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.LocalGlassPalette
 
 /**
@@ -66,17 +69,31 @@ import com.cleo.cleos.glass.LocalGlassPalette
 internal fun featuresUsing(data: ModelRegistryData, gone: Set<String>): List<Feature> =
     Feature.entries.filter { f -> data.routes[f.name]?.configId?.let { it.isNotEmpty() && it in gone } == true }
 
-/** 一行字，说明这一页是干什么的。 */
+/** 一行字，说明这一页是干什么的。套在**text-safe 的玻璃卡片**里，别直接压在壁纸上（见 docs/UI_READABILITY.md）。 */
 @Composable
 private fun PageNote(text: String) {
-    Text(text, color = LocalGlassPalette.current.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+    val palette = LocalGlassPalette.current
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = GlassShape.Rounded(14.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(text, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+    }
 }
 
 /** 上一次动作的结果。**出错就用红的说出来**，别静默。 */
 @Composable
 private fun MessageLine(text: String?) {
     if (text.isNullOrBlank()) return
-    Text(text, color = LocalGlassPalette.current.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+    val palette = LocalGlassPalette.current
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = GlassShape.Rounded(14.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(text, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+    }
 }
 
 @Composable

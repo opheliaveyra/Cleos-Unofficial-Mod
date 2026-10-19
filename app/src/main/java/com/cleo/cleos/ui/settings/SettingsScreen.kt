@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -259,7 +260,9 @@ internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
     Box(
         Modifier
-            .background(if (selected) palette.accent else palette.content.copy(alpha = 0.07f), CircleShape)
+            // 底衬不能太淡：压在插画壁纸上时，7% 的底等于没有（见 docs/UI_READABILITY.md）。
+            .background(if (selected) palette.accent else palette.content.copy(alpha = 0.14f), CircleShape)
+            .border(1.dp, palette.content.copy(alpha = 0.16f), CircleShape)
             .clickable(interactionSource = null, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
