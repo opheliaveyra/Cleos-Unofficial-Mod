@@ -58,6 +58,12 @@ import kotlin.math.max
  */
 @Composable
 fun CleosTheme(settings: AppSettings, images: ImageStore, content: @Composable () -> Unit) {
+    val requestedTheme = com.cleo.cleos.data.VisualTheme.normalize(settings.visualTheme)
+    val paperPalette = remember(requestedTheme) {
+        if (requestedTheme == com.cleo.cleos.data.VisualTheme.LAVENDER) runCatching { scrapbookPalette() }.getOrNull() else null
+    }
+    val scrapbook = paperPalette != null
+    val theme = if (scrapbook) com.cleo.cleos.data.VisualTheme.LAVENDER else com.cleo.cleos.data.VisualTheme.NATIVE
     val systemDark = isSystemInDarkTheme()
     val custom = settings.wallpaper
     val dark = when (settings.glassMode) {
@@ -67,7 +73,7 @@ fun CleosTheme(settings: AppSettings, images: ImageStore, content: @Composable (
     }
     // The built-in wallpaper is measured once per light/dark, the same way a photo is.
     val defaultTone = remember(dark) { defaultWallpaperTone(dark) }
-    val palette = remember(
+    val nativePalette = remember(
         dark, custom, settings.wallpaperHue, settings.wallpaperChroma,
         settings.wallpaperTrough, settings.wallpaperPeak, settings.glassTuning, defaultTone, settings.myBubble,
     ) {
@@ -92,6 +98,7 @@ fun CleosTheme(settings: AppSettings, images: ImageStore, content: @Composable (
             )
         }
     }
+    val palette = paperPalette ?: nativePalette
     val wallpaperBackdrop = rememberBackdrop(flat = true)
 
     val view = LocalView.current
@@ -107,11 +114,12 @@ fun CleosTheme(settings: AppSettings, images: ImageStore, content: @Composable (
 
     MaterialTheme(colorScheme = colorSchemeFor(palette)) {
         CompositionLocalProvider(
+            LocalVisualTheme provides theme,
             LocalGlassPalette provides palette,
             LocalWallpaperBackdrop provides wallpaperBackdrop,
         ) {
             Box(Modifier.fillMaxSize()) {
-                Wallpaper(custom, dark, images, wallpaperBackdrop)
+                if (scrapbook) ScrapbookBackground() else Wallpaper(custom, dark, images, wallpaperBackdrop)
                 content()
             }
         }
