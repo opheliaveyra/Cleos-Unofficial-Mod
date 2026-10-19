@@ -8,7 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.Icon
+import com.cleo.cleos.ui.icons.PaperIcon as Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember

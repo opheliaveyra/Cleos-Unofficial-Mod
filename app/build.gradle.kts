@@ -24,6 +24,8 @@ android {
 
     defaultConfig {
         applicationId = "com.cleo.cleos"
+        // Mod-only visual switch. -PpaperIcons=false restores all original glyphs.
+        buildConfigField("boolean", "PAPER_ICONS_ENABLED", providers.gradleProperty("paperIcons").orElse("true").get().toBoolean().toString())
         minSdk = 29
         targetSdk = 36
         // 这条线是我们自己的：0.x 表示还在改，等哪天能当正式版了再跳 1.0.0。
@@ -67,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

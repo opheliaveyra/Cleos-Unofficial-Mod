@@ -1,0 +1,17 @@
+{
+  "baseline": "4ae9bcd855c7767332b02049ebba68fec468617d",
+  "tracked_files": 701,
+  "scanned_text_files": 496,
+  "kotlin_files": 402,
+  "resource_files": 127,
+  "material_reference_sites": 236,
+  "material_variants": 102,
+  "material_names": 92,
+  "mapped_reference_sites": 110,
+  "retained_reference_sites": 126,
+  "new_drawings": 41,
+  "used_paper_drawings": 41,
+  "semantic_groups": 77,
+  "renderer_and_resource_mentions": 489,
+  "launcher_resources": 116
+}

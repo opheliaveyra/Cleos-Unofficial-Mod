@@ -37,7 +37,7 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import com.cleo.cleos.ui.icons.PaperIcon as Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton

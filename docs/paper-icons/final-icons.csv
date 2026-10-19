@@ -1,0 +1,78 @@
+﻿semantic,meaning,category,material_variants,references,decision,resource
+Add,Add,通用操作,Icons.Rounded.Add,8,保留,原 Material vector
+AlternateEmail,AlternateEmail,通用操作,Icons.Rounded.AlternateEmail,1,保留,原 Material vector
+ArrowBack,ArrowBack,通用操作,Icons.AutoMirrored.Rounded.ArrowBack,18,保留,原 Material vector
+ArrowDownward,ArrowDownward,通用操作,Icons.Rounded.ArrowDownward,1,保留,原 Material vector
+ArrowDropDown,ArrowDropDown,通用操作,Icons.Rounded.ArrowDropDown,1,保留,原 Material vector
+ArrowUpward,ArrowUpward,通用操作,Icons.Rounded.ArrowUpward,1,保留,原 Material vector
+Call,Call,系统状态/媒体控制,Icons.Rounded.Call,2,保留,原 Material vector
+CallEnd,CallEnd,系统状态/媒体控制,Icons.Rounded.CallEnd,1,保留,原 Material vector
+Check,Check,系统状态/媒体控制,Icons.Rounded.Check,4,保留,原 Material vector
+Close,Close,通用操作,Icons.Rounded.Close,15,保留,原 Material vector
+DeleteOutline,DeleteOutline,通用操作,Icons.Rounded.DeleteOutline,7,保留,原 Material vector
+EmojiEmotions,EmojiEmotions,通用操作,Icons.Rounded.EmojiEmotions,1,保留,原 Material vector
+ExpandLess,ExpandLess,通用操作,Icons.Rounded.ExpandLess,5,保留,原 Material vector
+ExpandMore,ExpandMore,通用操作,Icons.Rounded.ExpandMore,5,保留,原 Material vector
+FileDownload,FileDownload,通用操作,Icons.Rounded.FileDownload,1,保留,原 Material vector
+Info,Info,系统状态/媒体控制,Icons.Rounded.Info,5,保留,原 Material vector
+Key,Key,通用操作,Icons.Rounded.Key,1,保留,原 Material vector
+KeyboardArrowRight,KeyboardArrowRight,通用操作,Icons.AutoMirrored.Rounded.KeyboardArrowRight,12,保留,原 Material vector
+Lock,Lock,系统状态/媒体控制,Icons.Outlined.Lock; Icons.Rounded.Lock,6,保留,原 Material vector
+LockOpen,LockOpen,系统状态/媒体控制,Icons.Rounded.LockOpen,1,保留,原 Material vector
+MicOff,MicOff,系统状态/媒体控制,Icons.Rounded.MicOff,1,保留,原 Material vector
+MoreHoriz,MoreHoriz,通用操作,Icons.Rounded.MoreHoriz,2,保留,原 Material vector
+MoreVert,MoreVert,通用操作,Icons.Rounded.MoreVert,1,保留,原 Material vector
+Pause,Pause,系统状态/媒体控制,Icons.Rounded.Pause,1,保留,原 Material vector
+PlayArrow,PlayArrow,系统状态/媒体控制,Icons.Rounded.PlayArrow,4,保留,原 Material vector
+PlayCircle,PlayCircle,系统状态/媒体控制,Icons.Rounded.PlayCircle,2,保留,原 Material vector
+PushPin,PushPin,通用操作,Icons.Rounded.PushPin,1,保留,原 Material vector
+Refresh,Refresh,通用操作,Icons.Rounded.Refresh,1,保留,原 Material vector
+Reply,Reply,通用操作,Icons.AutoMirrored.Rounded.Reply,1,保留,原 Material vector
+Search,Search,通用操作,Icons.Rounded.Search,2,保留,原 Material vector
+SkipNext,SkipNext,通用操作,Icons.Rounded.SkipNext,1,保留,原 Material vector
+Stop,Stop,系统状态/媒体控制,Icons.Rounded.Stop,5,保留,原 Material vector
+TextFields,TextFields,通用操作,Icons.Rounded.TextFields,1,保留,原 Material vector
+VideoLibrary,VideoLibrary,通用操作,Icons.Rounded.VideoLibrary,1,保留,原 Material vector
+Warning,Warning,系统状态/媒体控制,Icons.Outlined.Warning,4,保留,原 Material vector
+WarningAmber,WarningAmber,系统状态/媒体控制,Icons.Rounded.WarningAmber,2,保留,原 Material vector
+add_image,添加图片,通用操作,Icons.Rounded.AddPhotoAlternate,4,替换，语义色回退,PaperVectors.kt#add_image; docs/paper-icons/svg/add_image.svg
+add_role,添加角色,核心功能,Icons.Rounded.PersonAdd,1,替换，语义色回退,PaperVectors.kt#add_role; docs/paper-icons/svg/add_role.svg
+alarm,闹钟/计时器,二级功能,Icons.Outlined.Alarm; Icons.Outlined.Timer,2,替换，语义色回退,PaperVectors.kt#alarm; docs/paper-icons/svg/alarm.svg
+attachment,附件,通用操作,Icons.Rounded.AttachFile,1,替换，语义色回退,PaperVectors.kt#attachment; docs/paper-icons/svg/attachment.svg
+book,世界书,二级功能,Icons.Outlined.MenuBook; Icons.Rounded.Book,2,替换，语义色回退,PaperVectors.kt#book; docs/paper-icons/svg/book.svg
+bookmark,收藏书签,核心功能,Icons.Outlined.Bookmark; Icons.Rounded.BookmarkBorder,3,替换，语义色回退,PaperVectors.kt#bookmark; docs/paper-icons/svg/bookmark.svg
+box,数据备份,二级功能,Icons.Rounded.Inventory2,1,替换，语义色回退,PaperVectors.kt#box; docs/paper-icons/svg/box.svg
+calendar,日历,二级功能,Icons.Outlined.CalendarMonth; Icons.Rounded.CalendarMonth; Icons.Rounded.Event,5,替换，语义色回退,PaperVectors.kt#calendar; docs/paper-icons/svg/calendar.svg
+camera,相机,通用操作,Icons.Rounded.PhotoCamera,2,替换，语义色回退,PaperVectors.kt#camera; docs/paper-icons/svg/camera.svg
+chat,聊天,主导航/同义入口,Icons.Outlined.ChatBubbleOutline; Icons.Rounded.AddComment; Icons.Rounded.ChatBubble; Icons.Rounded.ChatBubbleOutline; Icons.Rounded.Forum,11,替换，语义色回退,PaperVectors.kt#chat; docs/paper-icons/svg/chat.svg
+cloud,天气,二级功能,Icons.Outlined.Cloud,1,替换，语义色回退,PaperVectors.kt#cloud; docs/paper-icons/svg/cloud.svg
+copy,复制,通用操作,Icons.Rounded.ContentCopy,1,替换，语义色回退,PaperVectors.kt#copy; docs/paper-icons/svg/copy.svg
+diary,日记,主导航/同义入口,Icons.Outlined.AutoStories; Icons.Rounded.AutoStories; Icons.Rounded.EditNote,8,替换，语义色回退,PaperVectors.kt#diary; docs/paper-icons/svg/diary.svg
+edit,编辑,通用操作,Icons.Rounded.Edit,2,替换，语义色回退,PaperVectors.kt#edit; docs/paper-icons/svg/edit.svg
+favorite,喜欢,通用操作,Icons.Rounded.Favorite,2,替换，语义色回退,PaperVectors.kt#favorite; docs/paper-icons/svg/favorite.svg
+favorite_outline,尚未喜欢,通用操作,Icons.Rounded.FavoriteBorder,1,替换，语义色回退,PaperVectors.kt#favorite_outline; docs/paper-icons/svg/favorite_outline.svg
+feed,动态,二级功能,Icons.Rounded.DynamicFeed,3,替换，语义色回退,PaperVectors.kt#feed; docs/paper-icons/svg/feed.svg
+file,文件,二级功能,Icons.Rounded.Description,4,替换，语义色回退,PaperVectors.kt#file; docs/paper-icons/svg/file.svg
+folder,文件夹,二级功能,Icons.Rounded.Folder,2,替换，语义色回退,PaperVectors.kt#folder; docs/paper-icons/svg/folder.svg
+game,游戏,核心功能,Icons.Rounded.GridOn; Icons.Rounded.SportsEsports,3,替换，语义色回退,PaperVectors.kt#game; docs/paper-icons/svg/game.svg
+group,群聊,核心功能,Icons.Rounded.Groups,1,替换，语义色回退,PaperVectors.kt#group; docs/paper-icons/svg/group.svg
+home,主页,主导航/同义入口,Icons.Outlined.Home; Icons.Rounded.Home,2,替换，语义色回退,PaperVectors.kt#home; docs/paper-icons/svg/home.svg
+image,图库,通用操作,Icons.Rounded.Image,2,替换，语义色回退,PaperVectors.kt#image; docs/paper-icons/svg/image.svg
+letter,信件,核心功能,Icons.Outlined.Mail; Icons.Rounded.MailOutline,2,替换，语义色回退,PaperVectors.kt#letter; docs/paper-icons/svg/letter.svg
+location,位置,二级功能,Icons.Outlined.LocationOn,1,替换，语义色回退,PaperVectors.kt#location; docs/paper-icons/svg/location.svg
+memory,记忆,核心功能,Icons.Rounded.Psychology,2,替换，语义色回退,PaperVectors.kt#memory; docs/paper-icons/svg/memory.svg
+mic,语音输入,通用操作,Icons.Rounded.Mic,3,替换，语义色回退,PaperVectors.kt#mic; docs/paper-icons/svg/mic.svg
+model,模型,二级功能,Icons.Rounded.Memory,4,替换，语义色回退,PaperVectors.kt#model; docs/paper-icons/svg/model.svg
+music,音乐,二级功能,Icons.Outlined.MusicNote; Icons.Rounded.MusicNote,2,替换，语义色回退,PaperVectors.kt#music; docs/paper-icons/svg/music.svg
+palette,外观,二级功能,Icons.Rounded.Palette,1,替换，语义色回退,PaperVectors.kt#palette; docs/paper-icons/svg/palette.svg
+read_chat,已读聊天,通用操作,Icons.Rounded.MarkChatRead,1,替换，语义色回退,PaperVectors.kt#read_chat; docs/paper-icons/svg/read_chat.svg
+role,角色,核心功能,Icons.Outlined.Face; Icons.Rounded.Person,2,替换，语义色回退,PaperVectors.kt#role; docs/paper-icons/svg/role.svg
+send,发送,通用操作,Icons.AutoMirrored.Rounded.Send; Icons.Rounded.Send,3,替换，语义色回退,PaperVectors.kt#send; docs/paper-icons/svg/send.svg
+service,外部服务,二级功能,Icons.Outlined.Extension; Icons.Rounded.Extension,4,替换，语义色回退,PaperVectors.kt#service; docs/paper-icons/svg/service.svg
+settings,设置,核心功能,Icons.Rounded.Settings,1,替换，语义色回退,PaperVectors.kt#settings; docs/paper-icons/svg/settings.svg
+spark,灵感,二级功能,Icons.Outlined.AutoAwesome; Icons.Rounded.AutoAwesome; Icons.Rounded.Lightbulb,4,替换，语义色回退,PaperVectors.kt#spark; docs/paper-icons/svg/spark.svg
+todo,待办,主导航/同义入口,Icons.Outlined.TaskAlt; Icons.Rounded.Checklist; Icons.Rounded.TaskAlt,6,替换，语义色回退,PaperVectors.kt#todo; docs/paper-icons/svg/todo.svg
+unread_letter,未读信件,核心功能,Icons.Rounded.MarkEmailUnread,1,替换，语义色回退,PaperVectors.kt#unread_letter; docs/paper-icons/svg/unread_letter.svg
+voice,声音,通用操作,Icons.Rounded.GraphicEq; Icons.Rounded.VolumeUp,3,替换，语义色回退,PaperVectors.kt#voice; docs/paper-icons/svg/voice.svg
+widget,组件,二级功能,Icons.Rounded.Widgets,1,替换，语义色回退,PaperVectors.kt#widget; docs/paper-icons/svg/widget.svg
+world,联网/探索,二级功能,Icons.Rounded.Explore; Icons.Rounded.TravelExplore,5,替换，语义色回退,PaperVectors.kt#world; docs/paper-icons/svg/world.svg
