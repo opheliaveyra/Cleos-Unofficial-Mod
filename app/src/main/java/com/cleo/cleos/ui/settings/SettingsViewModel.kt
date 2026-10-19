@@ -993,6 +993,20 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
+    fun setVisualTheme(id: String) {
+        viewModelScope.launch {
+            try {
+                c.settings.selectVisualTheme(id)
+                visualThemeError = null
+            } catch (_: java.io.IOException) {
+                visualThemeError = "主题未保存，已回退原版默认。请重试；磁盘中的上次选择尚未更改。"
+            }
+        }
+    }
+
+    var visualThemeError by mutableStateOf<String?>(null)
+        private set
+
     fun setGlassMode(mode: GlassMode) {
         viewModelScope.launch { c.settings.update { it.copy(glassMode = mode) } }
     }
