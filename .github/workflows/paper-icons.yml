@@ -1,0 +1,58 @@
+name: Paper icons Android verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/src/main/java/com/cleo/cleos/ui/icons/**'
+      - 'tools/paper-icons/**'
+      - '.github/workflows/paper-icons.yml'
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install compile SDK
+        run: sdkmanager --channel=3 'platforms;android-37'
+      - name: Check visual-only boundaries and build mod
+        run: |
+          git fetch origin 4ae9bcd855c7767332b02049ebba68fec468617d
+          python3 tools/paper-icons/verify.py
+          ./gradlew :app:assembleDebug :app:testDebugUnitTest
+          mkdir -p /tmp/paper-apk
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/paper-apk/app-debug.apk
+      - name: Verify original-icon fallback compiles
+        run: ./gradlew :app:compileDebugKotlin -PpaperIcons=false
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Capture actual app navigation in emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install -r /tmp/paper-apk/app-debug.apk
+            python3 tools/paper-icons/capture_device.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paper-icons-android-evidence
+          path: |
+            artifacts/paper-icons/
+            app/build/reports/tests/

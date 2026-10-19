@@ -1,0 +1,490 @@
+﻿kind,symbol,file,line,reference,decision
+resource,R.drawable.ic_notify,app/src/main/java/com/cleo/cleos/Notifier.kt,65,.setSmallIcon(R.drawable.ic_notify),保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_notify,app/src/main/java/com/cleo/cleos/Notifier.kt,94,.setSmallIcon(R.drawable.ic_notify),保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_notify,app/src/main/java/com/cleo/cleos/Notifier.kt,125,.setSmallIcon(R.drawable.ic_notify),保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_notify,app/src/main/java/com/cleo/cleos/Notifier.kt,141,.setSmallIcon(R.drawable.ic_notify),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ai/CapabilityProbe.kt,4,import android.graphics.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ai/CapabilityProbe.kt,50,val canvas = Canvas(bitmap),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ai/CapabilityProbe.kt,59,"canvas.drawLine(x1, y1, random.nextInt(size).toFloat(), random.nextInt(size).toFloat(), noise)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ai/TestVideo.kt,4,import android.graphics.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ai/TestVideo.kt,114,val canvas = Canvas(bitmap),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ai/TestVideo.kt,121,canvas.drawLine(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ai/TestVideo.kt,141,"private fun fillGray(image: android.media.Image, pixels: IntArray) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/main/java/com/cleo/cleos/ai/Tools.kt,372,"""emoji"" to prop(""string"", ""一个表情，比如 🌙""),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/DiaryBlocks.kt,20,"data class Image(val file: String, val width: Int, val height: Int) : DiaryBlock",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/DiaryBlocks.kt,37,fun images(blocks: List<DiaryBlock>): List<DiaryBlock.Image> = blocks.filterIsInstance<DiaryBlock.Image>(),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/DiaryBlocks.kt,37,fun images(blocks: List<DiaryBlock>): List<DiaryBlock.Image> = blocks.filterIsInstance<DiaryBlock.Image>(),保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😘,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😂,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥺,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😭,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👍,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤗,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,18,"val OFFERED = listOf(""❤️"", ""😘"", ""😂"", ""🥺"", ""😭"", ""👍"", ""🤗"")",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😻,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😹,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐱,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐰,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐶,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👀,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙈,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙉,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙊,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,20,"val ALL = (OFFERED + listOf(""😼"", ""😻"", ""😹"", ""🐱"", ""🐰"", ""🐶"", ""👀"", ""🙈"", ""🙉"", ""🙊"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😊,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥰,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😍,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😎,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤔,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😮,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😱,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤯,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😴,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤤,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥲,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😅,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤣,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙃,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,21,"""😊"", ""🥰"", ""😍"", ""😎"", ""🤔"", ""😮"", ""😱"", ""🤯"", ""😴"", ""🤤"", ""🥲"", ""😅"", ""🤣"", ""🙃"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😏,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😤,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😡,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤡,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👻,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💀,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👎,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👏,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙌,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🙏,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👌,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✌,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🤝,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💪,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,22,"""😏"", ""😤"", ""😡"", ""🤡"", ""👻"", ""💀"", ""👎"", ""👏"", ""🙌"", ""🙏"", ""👌"", ""✌️"", ""🤝"", ""💪"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💋,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💔,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💕,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💖,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💯,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🔥,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎉,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎂,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌹,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌸,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🍀,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,☀,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,23,"""💋"", ""💔"", ""💕"", ""💖"", ""💯"", ""🔥"", ""✨"", ""🎉"", ""🎂"", ""🌹"", ""🌸"", ""🍀"", ""🌙"", ""☀️"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌈,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,☕,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🍵,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🍓,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🍰,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫶,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫂,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫡,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫠,app/src/main/java/com/cleo/cleos/data/MessageReactions.kt,24,"""🌈"", ""⭐"", ""☕"", ""🍵"", ""🍓"", ""🍰"", ""🫶"", ""🫂"", ""🫡"", ""🫠"")).distinct()",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/ModelProfiles.kt,54,"Image(""看图""),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/ModelProfiles.kt,62,Feature.Vision -> setOf(Capability.Image),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/ModelProfiles.kt,69,Capability.Image -> directImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/ModelProfiles.kt,75,Capability.Image -> copy(directImage = value),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/ModelRegistryMigration.kt,82,if (legacy?.directImage == true) add(Capability.Image),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/data/PdfText.kt,787,"val hasImage = xobjects.values.any { it.dict.name(""Subtype"") == ""Image"" }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/glass/GlassComponents.kt,14,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/glass/GlassComponents.kt,23,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/glass/GlassComponents.kt,129,"icon: ImageVector,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/glass/GlassComponents.kt,149,"Icon(icon, contentDescription, Modifier.size(size * 0.5f))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt,19,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt,36,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt,57,"data class GlassTab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector = icon)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt,57,"data class GlassTab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector = icon)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/glass/GlassTabBar.kt,304,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRoundRect,app/src/main/java/com/cleo/cleos/glass/LiquidGlass.kt,153,drawRoundRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/glass/LiquidGlass.kt,288,"drawRect(style.tint.copy(alpha = max(style.tint.alpha, minTint)))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRoundRect,app/src/main/java/com/cleo/cleos/glass/LiquidGlass.kt,290,drawRoundRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,14,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,36,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,140,"Icon(Icons.Rounded.CallEnd, contentDescription = ""挂断"", tint = Color.White, modifier = Modifier.size(34.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,218,Canvas(Modifier.fillMaxSize()) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,226,"drawCircle(color.copy(alpha = 0.45f * (1 - t)), radius = base + reach * t, style = Stroke(2.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,229,"drawCircle(color.copy(alpha = 0.16f + 0.2f * loud), radius = base + reach * loud * 0.9f)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/call/CallScreen.kt,230,"drawCircle(color.copy(alpha = 0.10f + 0.12f * loud), radius = base + reach * loud * 0.5f + 4.dp.toPx())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,13,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,19,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,20,import androidx.compose.foundation.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,26,import androidx.compose.ui.res.painterResource,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,109,Canvas(Modifier.matchParentSize()) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRoundRect,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,118,"drawRoundRect(gradient, topLeft = Offset(inset, inset),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRoundRect,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,122,"if (needsScrim) drawRoundRect(if (whiteInk) Color.Black else Color.White,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,189,Canvas(Modifier.matchParentSize()) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,192,"drawCircle(line, 3.dp.toPx(), Offset(4.dp.toPx(), 1.dp.toPx()), style = Stroke(1.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,193,"drawCircle(line, 1.dp.toPx(), Offset(13.dp.toPx(), -2.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,201,"drawCircle(line.copy(alpha = 0.45f), 1.4.dp.toPx(), Offset(x, y))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,202,"drawCircle(if (id == ""blue"") Color(0xFFAFCDEB) else Color(0xFFE8B6C4),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawPath,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,210,"drawPath(star, line, style = Stroke(1.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,225,"else if (faceFile != null) AsyncImage(model = faceFile, contentDescription = null,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.bubble_sleep,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,227,"else Image(painterResource(if (id == ""blue"") R.drawable.bubble_sleep else R.drawable.bubble_bunny),",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.bubble_bunny,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,227,"else Image(painterResource(if (id == ""blue"") R.drawable.bubble_sleep else R.drawable.bubble_bunny),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,227,"else Image(painterResource(if (id == ""blue"") R.drawable.bubble_sleep else R.drawable.bubble_bunny),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,227,"else Image(painterResource(if (id == ""blue"") R.drawable.bubble_sleep else R.drawable.bubble_bunny),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,234,"else AsyncImage(model = starFile, contentDescription = null, contentScale = ContentScale.Fit,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/BubbleThemes.kt,244,"else AsyncImage(model = item.image?.let { images.file(it) }, contentDescription = null,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,24,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,31,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,72,"icon: ImageVector,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,88,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,110,"icon: ImageVector,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,131,"Icon(icon, contentDescription = contentDescription, tint = tint ?: palette.accentContent, modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatInputParts.kt,158,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,100,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,133,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,158,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,999,"trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = ""正在用"") }) else null,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1024,"trailingIcon = if (here) ({ Icon(Icons.Rounded.Check, contentDescription = ""正在聊"") }) else null,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1033,"leadingIcon = { Icon(Icons.Rounded.PersonAdd, contentDescription = null) },",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1855,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1874,"Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1903,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1919,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1958,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,1968,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2053,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2059,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2086,") { Icon(Icons.Rounded.Close, contentDescription = ""移除"", tint = Color.White, modifier = Modifier.size(14.dp)) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2193,"Icon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(14.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2197,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2286,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2332,"private fun ToolNote(text: String, icon: ImageVector, running: Boolean = false, mine: Boolean = false, failed: Boolean = false, onClick: (() -> Unit)? = null) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2351,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2394,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2407,"Icon(Icons.Outlined.Warning, contentDescription = ""有没成的"", tint = palette.error, modifier = Modifier.size(14.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2410,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2456,"if (!first) drawLine(hairline, Offset(x, 0f), Offset(x, mid - clear), 1.dp.toPx())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2457,"if (!last) drawLine(hairline, Offset(x, mid + clear), Offset(x, size.height), 1.dp.toPx())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2463,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2571,"Icon(Icons.Rounded.Call, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(15.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2679,"Icon(Icons.Rounded.Lock, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2820,"Icon(Icons.Rounded.Close, ""取消编辑"", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,2851,"Icon(Icons.Rounded.Close, contentDescription = ""不引用了"", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3027,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3063,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3082,"Icon(Icons.Rounded.Close, contentDescription = ""去掉这个文件"", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3099,"Icon(Icons.Rounded.Description, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3119,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/ChatScreen.kt,3134,"Icon(Icons.Rounded.Close, contentDescription = ""去掉这张"", tint = Color.White, modifier = Modifier.size(14.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/FeedShareCard.kt,39,"Icon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(17.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/FeedShareCard.kt,42,"Icon(Icons.Rounded.Close, ""取消转发"", tint = palette.contentSecondary, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,43,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,57,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,369,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,380,") { Icon(Icons.Rounded.Close, contentDescription = ""移除"", tint = Color.White, modifier = Modifier.size(12.dp)) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,515,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,645,"private fun PanelAction(icon: ImageVector, label: String, onClick: () -> Unit) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/GroupChatScreen.kt,656,"Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,9,import androidx.compose.foundation.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,30,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,45,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,158,"Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,160,"Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = palette.content, modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,173,"private fun Control(icon: ImageVector, label: String, onClick: () -> Unit) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/Listening.kt,183,"Icon(icon, contentDescription = null, tint = palette.content, modifier = Modifier.size(26.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/MessageActionMenu.kt,11,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/MessageActionMenu.kt,55,"Icon(if (more) Icons.Rounded.ExpandLess else Icons.Rounded.Add,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/MessageActionMenu.kt,94,"Icon(icon, null, tint = ink, modifier = Modifier.size(17.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/PhotoCapture.kt,33,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/PhotoCapture.kt,148,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/SearchScreen.kt,34,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/SearchScreen.kt,207,"Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(22.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/SearchScreen.kt,213,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,9,import androidx.compose.foundation.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,37,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Painter,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,60,import androidx.compose.ui.graphics.painter.Painter,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,69,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,119,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,155,Image(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Painter,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,170,"private class MovingPainter(private val drawable: AnimatedImageDrawable) : Painter(), RememberObserver {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,291,"Icon(Icons.Rounded.Add, contentDescription = ""加表情包"", tint = palette.contentSecondary, modifier = Modifier.size(26.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,325,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/chat/Stickers.kt,383,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ToolIcons.kt,18,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/chat/ToolIcons.kt,21,internal fun ToolKind.icon(): ImageVector = when (this) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/common/Avatar.kt,19,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/common/Avatar.kt,40,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/common/FadingEdges.kt,40,drawRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/common/FadingEdges.kt,53,drawRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/common/GlassSearchField.kt,10,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/common/GlassSearchField.kt,42,"Icon(Icons.Rounded.Search, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/common/GlassSearchField.kt,57,"Icon(Icons.Rounded.Close, contentDescription = ""清空"", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,42,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,72,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,166,"Icon(Icons.Rounded.Lock, null, tint = palette.accentContent, modifier = Modifier.size(36.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,290,is EditorBlock.Image -> ImageBlock(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,315,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,337,"Icon(Icons.Rounded.Close, contentDescription = ""移除图片"", tint = Color.White, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,366,"Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorScreen.kt,385,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,38,"class Image(override val key: Long, val image: DiaryBlock.Image) : EditorBlock",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,38,"class Image(override val key: Long, val image: DiaryBlock.Image) : EditorBlock",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,106,is DiaryBlock.Image -> {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,113,"blocks += EditorBlock.Image(nextKey++, b)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,143,is EditorBlock.Image -> add(it.image.file),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,153,is EditorBlock.Image -> out += b.image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,233,"stored.forEach { inserted += EditorBlock.Image(nextKey++, DiaryBlock.Image(it.file, it.width, it.height)) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,233,"stored.forEach { inserted += EditorBlock.Image(nextKey++, DiaryBlock.Image(it.file, it.width, it.height)) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,244,val removed = blocks.removeAt(i) as? EditorBlock.Image ?: return,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,258,val files = blocks.filterIsInstance<EditorBlock.Image>().map { it.image.file } + removedImages,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/diary/DiaryEditorViewModel.kt,267,val stillUsed = blocks.filterIsInstance<EditorBlock.Image>().map { it.image.file }.toSet(),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,33,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,46,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,54,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,305,"Icon(Icons.Rounded.ArrowDropDown, contentDescription = ""换一个范围"", tint = palette.contentSecondary, modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,355,"private fun CardTag(icon: ImageVector, text: String) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,358,"Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(13.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/DiaryListScreen.kt,428,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/ImageViewerScreen.kt,20,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/diary/ImageViewerScreen.kt,49,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,29,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,46,"Icon(Icons.Rounded.BookmarkBorder, null, tint = p.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,52,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = p.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,116,"IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Rounded.MoreVert, ""收藏选项"", tint = p.contentSecondary) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,204,"Icon(if (playing == audio.file) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/favorites/FavoritesScreen.kt,210,"AsyncImage(c.images.file(pic.file), ""收藏的图片"", contentScale = ContentScale.Fit,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,12,import androidx.compose.material.icons.rounded.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,15,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,24,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,86,"FeedOptionRow(Icons.Rounded.Image, ""查看与更换封面"", expanded && !busy) { choose(onCover) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,93,"internal fun FeedOptionRow(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedOptionsMenu.kt,101,"Icon(icon, null, tint = palette.contentSecondary.copy(alpha = if (enabled) 1f else 0.4f), modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedPhotos.kt,10,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/feed/FeedPhotos.kt,18,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/feed/FeedPhotos.kt,35,"AsyncImage(c.images.file(image.file), ""照片 ${rowIndex * columns + columnIndex + 1}"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedPhotos.kt,41,"Icon(Icons.Rounded.Close, ""移除照片 ${rowIndex * columns + columnIndex + 1}"", tint = Color.White, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,15,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,22,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,177,"AsyncImage(c.images.file(cover), ""主页封面"", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,190,"Icon(Icons.Rounded.Image, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,190,"Icon(Icons.Rounded.Image, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(30.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,228,"Icon(Icons.Rounded.DynamicFeed, null, tint = palette.accentContent, modifier = Modifier.size(30.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,258,"Icon(Icons.Rounded.MoreHoriz, ""更多"", tint = palette.contentSecondary, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,303,"Icon(Icons.Rounded.Send, null, tint = palette.contentSecondary, modifier = Modifier.size(14.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,315,"Icon(Icons.Rounded.Favorite, null, tint = palette.accentContent, modifier = Modifier.size(12.dp).alpha(if (likes.isEmpty()) 0f else 1f))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,459,"IconButton({ replyTo = null }) { Icon(Icons.Rounded.Close, ""改为回复动态"", tint = palette.contentSecondary) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,472,"Icon(Icons.Rounded.AddPhotoAlternate, null, modifier = Modifier.size(20.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,537,"private fun FeedAction(icon: ImageVector, description: String, tint: Color, count: Int? = null, enabled: Boolean = true, onClick: () -> Unit) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/feed/FeedScreen.kt,540,"Icon(icon, description, tint = tint, modifier = Modifier.size(19.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/games/GamesHomeScreen.kt,17,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/games/GamesHomeScreen.kt,51,"Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/games/GamesHomeScreen.kt,57,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/games/GamesHomeScreen.kt,66,"Icon(Icons.Rounded.GridOn, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/games/GamesHomeScreen.kt,72,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,3,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎉,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,235,"g.winner == 1 -> ""你赢了 🎉""",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,269,Canvas(Modifier.fillMaxSize()) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,276,"drawLine(line, Offset(p, margin), Offset(p, size.height - margin), 1f)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,277,"drawLine(line, Offset(margin, p), Offset(size.width - margin, p), 1f)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,284,drawCircle(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,290,"drawCircle(Color(0xFFB9B9C6), radius = step * 0.42f, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/games/GomokuScreen.kt,297,drawCircle(,保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎉,app/src/main/java/com/cleo/cleos/ui/games/TicTacToeScreen.kt,244,"g.winner == 1 -> ""你赢了 🎉""",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✕,app/src/main/java/com/cleo/cleos/ui/games/TicTacToeScreen.kt,274,"if (mark == 1) ""✕"" else ""○"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/home/AvatarCrop.kt,5,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/home/AvatarCrop.kt,120,Canvas(Modifier.fillMaxSize()) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawImage,app/src/main/java/com/cleo/cleos/ui/home/AvatarCrop.kt,124,drawImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/home/AvatarCrop.kt,132,"clipPath(circle, clipOp = ClipOp.Difference) { drawRect(Color.Black.copy(alpha = 0.62f)) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/home/AvatarCrop.kt,133,"drawCircle(Color.White.copy(alpha = 0.9f), radius = r, style = Stroke(2.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,43,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✧,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,191,"""✧"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,312,"Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,318,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,335,"Icon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,341,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,366,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,376,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/home/HomeScreen.kt,436,"Icon(Icons.Rounded.Add, contentDescription = ""添加一个 TA"", tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,3,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,30,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,46,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,261,"Icon(Icons.Rounded.Forum, contentDescription = null, tint = palette.content, modifier = Modifier.size(22.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,282,"private fun TabPreview(icon: ImageVector, label: String, color: Color) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,284,"Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,339,Canvas(Modifier.fillMaxWidth().height(90.dp)) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,343,"drawRect(colors[i % colors.size], topLeft = Offset(i * bar, 0f), size = Size(bar * 0.5f, size.height))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,346,Canvas(Modifier.fillMaxWidth().height(160.dp)) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,350,"drawLine(palette.content.copy(alpha = 0.35f), Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawLine,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,355,"drawLine(palette.content.copy(alpha = 0.35f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,358,"drawCircle(Color(0xFFFF2D55), 28.dp.toPx(), Offset(size.width * 0.2f, size.height * 0.5f))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,359,"drawCircle(Color(0xFF34C759), 22.dp.toPx(), Offset(size.width * 0.5f, size.height * 0.35f))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/lab/GlassLabScreen.kt,360,"drawCircle(Color(0xFF5856D6), 34.dp.toPx(), Offset(size.width * 0.78f, size.height * 0.6f), style = Stroke(6.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/memory/MemoryEditScreen.kt,30,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/memory/MemoryEditScreen.kt,229,"Icon(Icons.Rounded.Close, contentDescription = ""去掉这条"", tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/memory/MemoryScreen.kt,30,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/memory/MemoryScreen.kt,193,"Icon(Icons.Rounded.PushPin, contentDescription = ""钉住了"", tint = palette.accentContent, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_menu_view,app/src/main/java/com/cleo/cleos/ui/probe/MediaProjectionService.kt,36,.setSmallIcon(android.R.drawable.ic_menu_view),保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✅,app/src/main/java/com/cleo/cleos/ui/probe/VirtualScreenProbe.kt,260,"steps.forEach { s -> appendLine(""${if (s.ok) ""✅"" else ""❌""} ${s.title}：${s.detail}"") }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❌,app/src/main/java/com/cleo/cleos/ui/probe/VirtualScreenProbe.kt,260,"steps.forEach { s -> appendLine(""${if (s.ok) ""✅"" else ""❌""} ${s.title}：${s.detail}"") }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✅,app/src/main/java/com/cleo/cleos/ui/probe/VirtualScreenProbe.kt,287,"""${if (s.ok) ""✅"" else ""❌""} ${s.title}"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❌,app/src/main/java/com/cleo/cleos/ui/probe/VirtualScreenProbe.kt,287,"""${if (s.ok) ""✅"" else ""❌""} ${s.title}"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,14,import androidx.compose.foundation.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,42,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,60,import androidx.compose.ui.res.painterResource,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,394,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,409,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_01_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,496,"""01"" to R.mipmap.ic_appicon_01_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_02_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,497,"""02"" to R.mipmap.ic_appicon_02_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_03_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,498,"""03"" to R.mipmap.ic_appicon_03_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_04_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,499,"""04"" to R.mipmap.ic_appicon_04_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_05_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,500,"""05"" to R.mipmap.ic_appicon_05_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_06_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,501,"""06"" to R.mipmap.ic_appicon_06_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_07_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,502,"""07"" to R.mipmap.ic_appicon_07_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_08_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,503,"""08"" to R.mipmap.ic_appicon_08_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_09_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,504,"""09"" to R.mipmap.ic_appicon_09_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_10_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,505,"""10"" to R.mipmap.ic_appicon_10_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_11_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,506,"""11"" to R.mipmap.ic_appicon_11_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_12_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,507,"""12"" to R.mipmap.ic_appicon_12_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_13_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,508,"""13"" to R.mipmap.ic_appicon_13_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_14_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,509,"""14"" to R.mipmap.ic_appicon_14_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_15_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,510,"""15"" to R.mipmap.ic_appicon_15_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.mipmap.ic_appicon_16_art,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,511,"""16"" to R.mipmap.ic_appicon_16_art,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,552,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,564,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,635,Image(,保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_launcher_background,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,636,"painter = painterResource(R.drawable.ic_launcher_background),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,636,"painter = painterResource(R.drawable.ic_launcher_background),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,641,Image(,保留：系统/启动器/用户内容/绘制点，见报告分类
+resource,R.drawable.ic_launcher_foreground,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,642,"painter = painterResource(R.drawable.ic_launcher_foreground),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,642,"painter = painterResource(R.drawable.ic_launcher_foreground),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,650,Image(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,painterResource,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,651,"painter = painterResource(APP_ICON_ART.getValue(key)),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/AppPages.kt,658,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleColor.kt,3,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleColor.kt,161,Canvas(Modifier.fillMaxWidth().height(10.dp).padding(horizontal = 10.dp)) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRoundRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleColor.kt,162,"drawRoundRect(Brush.horizontalGradient(strip), cornerRadius = CornerRadius(size.height / 2))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,41,"val item = BubbleComponent(UUID.randomUUID().toString(), emoji = if (image) """" else ""✨"",",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐰,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌷,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫧,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎀,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🦋,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💗,app/src/main/java/com/cleo/cleos/ui/settings/BubbleComponentsEditor.kt,94,"listOf(""🥹"", ""🐰"", ""🌷"", ""🫧"", ""🎀"", ""✨"", ""🦋"", ""💗"").forEach { emoji -> Chip(emoji, item.emoji == emoji) { commit(item.copy(emoji = emoji, image = null, enabled = true, size = item.size.coerceAtLeast(16))) } }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐰,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐱,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫧,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌷,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🍓,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🦋,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,💗,app/src/main/java/com/cleo/cleos/ui/settings/BubbleDecorationEditor.kt,101,"listOf(""🥹"", ""🐰"", ""🐱"", ""🫧"", ""🌷"", ""🍓"", ""🦋"", ""✨"", ""🌙"", ""💗"").forEach { emoji ->",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,5,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,6,import androidx.compose.foundation.Image,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,87,"Canvas(Modifier.fillMaxSize().onSizeChanged { previewSize = it }.pointerInput(original, removalOpen) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,104,"drawRect(if ((row + col) % 2 == 0) Color(0xFF757575) else Color(0xFF515151),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawImage,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,106,"drawImage(displayed!!.asImageBitmap(), dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,131,Canvas(Modifier.fillMaxSize().pointerInput(bitmap) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawImage,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,141,"drawImage(image, dstOffset = IntOffset((size.width / 2f + pan.x - bitmap.width * s / 2).roundToInt(),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,146,"drawRect(shade, Offset.Zero, androidx.compose.ui.geometry.Size(size.width.toFloat(), f.top))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,147,"drawRect(shade, Offset(0f, f.bottom), androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height - f.bottom))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,148,"drawRect(shade, Offset(0f, f.top), androidx.compose.ui.geometry.Size(f.left, f.height))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,149,"drawRect(shade, Offset(f.right, f.top), androidx.compose.ui.geometry.Size(size.width - f.right, f.height))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,150,"drawRect(Color.White, f.topLeft, f.size, style = Stroke(2.dp.toPx()))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,167,Canvas(Modifier.size(10.dp)) { drawCircle(Color.White) },保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,167,Canvas(Modifier.size(10.dp)) { drawCircle(Color.White) },保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,178,Canvas(Modifier.fillMaxWidth().height(88.dp).background(Color(0xFF393A40))) {,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawImage,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,184,"drawImage(bitmap.asImageBitmap(), dstOffset = IntOffset((dx - r.left * factor).roundToInt(), (dy - r.top * factor).roundToInt()),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/settings/BubbleImageCrop.kt,214,"android.graphics.Canvas(cropped).drawBitmap(bitmap, null,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/settings/FeedbackDialog.kt,41,import coil3.compose.AsyncImage,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,AsyncImage,app/src/main/java/com/cleo/cleos/ui/settings/FeedbackDialog.kt,203,AsyncImage(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/McpEditScreen.kt,32,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/McpEditScreen.kt,287,"Icon(Icons.Rounded.Close, contentDescription = ""删掉这条"", tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/ModelRegistryPages.kt,29,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/ModelRegistryPages.kt,380,"Busy(""测看图"", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/ModelRegistryPages.kt,654,"Icon(Icons.Rounded.WarningAmber, contentDescription = null, tint = palette.error, modifier = Modifier.size(13.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,40,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,53,import androidx.compose.ui.graphics.vector.ImageVector,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,ImageVector,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,347,"private fun Entry(icon: ImageVector, title: String, summary: String, summaryColor: Color? = null, onClick: () -> Unit) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,362,"Icon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,369,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/SettingsPages.kt,408,"Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(16.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/SettingsViewModel.kt,870,com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(profile),保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/main/java/com/cleo/cleos/ui/settings/SettingsViewModel.kt,1368,"com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✓,app/src/main/java/com/cleo/cleos/ui/settings/SharedPages.kt,113,"Text((if (settings.photoLibrary == library) ""✓ "" else """") + library.title,",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/TaPages.kt,32,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/settings/TaPages.kt,145,"Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = palette.contentSecondary)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✓,app/src/main/java/com/cleo/cleos/ui/settings/TaPages.kt,334,"if (chosen) Text(""✓"", color = palette.accentContent, fontSize = 16.sp)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/theme/CleosTheme.kt,164,"drawRect(brush, topLeft = Offset(-left / scale, -top / scale), size = Size(size.width / scale, size.height / scale))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoEditDialog.kt,16,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoEditDialog.kt,72,"Icon(Icons.Rounded.Event, contentDescription = null, modifier = Modifier.size(18.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoScreen.kt,38,import androidx.compose.material3.Icon,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoScreen.kt,309,"Icon(Icons.Rounded.Event, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoScreen.kt,331,"if (done) Icon(Icons.Rounded.Check, contentDescription = ""已完成"", tint = Color.White, modifier = Modifier.size(17.dp))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Icon,app/src/main/java/com/cleo/cleos/ui/todo/TodoScreen.kt,347,Icon(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,3,import androidx.compose.foundation.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,9,import androidx.compose.ui.graphics.Canvas,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,27,Canvas(modifier) { if (dark) drawNight() else drawDawn() },保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Canvas,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,39,"CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(bitmap), Size(w.toFloat(), h.toFloat())) {",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,48,drawCircle(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,64,"drawCircle(fill, radius, center)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawCircle,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,65,"drawCircle(rim, radius, center, style = Stroke(width = 1.5f * density))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,69,drawRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawRect,app/src/main/java/com/cleo/cleos/ui/wallpaper/DefaultWallpaper.kt,90,drawRect(,保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😊,app/src/test/java/com/cleo/cleos/ai/CallTest.kt,67,"assertEquals(""好呀"", CallSpeech.clean(""（笑）好呀😊 [[sticker:开心]]""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/ai/CapabilityProbeTest.kt,64,"assertEquals(setOf(Capability.Image), Feature.Vision.needs)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/ai/CapabilityProbeTest.kt,73,"assertEquals(setOf(Capability.Image), missingCapabilities(Feature.Vision, plain))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/ai/CapabilityProbeTest.kt,81,".with(Capability.Image, true)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/test/java/com/cleo/cleos/ai/ImagesTest.kt,114,"assertEquals(""换了新头像：🌙"", call(""""""{""emoji"":""🌙""}"""""").note)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/test/java/com/cleo/cleos/ai/ImagesTest.kt,114,"assertEquals(""换了新头像：🌙"", call(""""""{""emoji"":""🌙""}"""""").note)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌙,app/src/test/java/com/cleo/cleos/ai/ImagesTest.kt,115,"assertEquals(""🌙"", port.emoji)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,16,"val added = box.run(ToolCall(""a"", ""react_message"", """"""{""message_id"":42,""emoji"":""😼"",""finish"":true}""""""), AppSettings(), 7)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,20,"box.run(ToolCall(""b"", ""react_message"", """"""{""message_id"":42,""emoji"":""😼"",""remove"":true}""""""), AppSettings(), 7)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,21,"assertEquals(listOf(listOf(7L, 42L, ""😼"", false), listOf(7L, 42L, ""😼"", true)), calls)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,21,"assertEquals(listOf(listOf(7L, 42L, ""😼"", false), listOf(7L, 42L, ""😼"", true)), calls)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,26,"""""""{""message_id"":42,""emoji"":""😼""}"""""" to AppSettings(tools = emptySet()),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/ai/ReactionToolTest.kt,27,"""""""{""emoji"":""😼""}"""""" to AppSettings(),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/ai/SecretsTest.kt,47,"blocks = DiaryBlocks.encode(listOf(DiaryBlock.Text(""其实我有点想哭""), DiaryBlock.Image(""a.jpg"", 10, 10))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,58,"msg(2, ""assistant"", ""在呀，今天去看海了，风好大"", reactions = listOf(MessageReaction(""❤️"", at = 25), MessageReaction(""😂"", at = 26))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😂,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,58,"msg(2, ""assistant"", ""在呀，今天去看海了，风好大"", reactions = listOf(MessageReaction(""❤️"", at = 25), MessageReaction(""😂"", at = 26))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,63,"assertTrue(out[3].content.endsWith(""（对方给你说的「在呀，今天去看海了，风好大」贴了 ❤️ 😂）\n好看吗""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😂,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,63,"assertTrue(out[3].content.endsWith(""（对方给你说的「在呀，今天去看海了，风好大」贴了 ❤️ 😂）\n好看吗""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,70,"msg(2, ""assistant"", ""在呀"", reactions = listOf(MessageReaction(""❤️"", at = 99))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😂,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,78,"msg(1, ""assistant"", ""[[sticker:兔子晕倒]]"", reactions = listOf(MessageReaction(""😂"", at = 15))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😂,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,82,"assertTrue(out.last().content.contains(""（对方给你发的表情包「兔子晕倒」贴了 😂）""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👍,app/src/test/java/com/cleo/cleos/ai/StickerPromptTest.kt,89,"msg(1, ""assistant"", long, reactions = listOf(MessageReaction(""👍"", at = 15))),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/test/java/com/cleo/cleos/data/BubbleComponentsTest.kt,9,"val old = Json.decodeFromString<BubbleDecoration>(""{\""faceEmoji\"":\""🥹\"",\""starSize\"":7}"").normalized()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/test/java/com/cleo/cleos/data/BubbleComponentsTest.kt,10,"assertEquals(""🥹"", old.faceEmoji)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🎀,app/src/test/java/com/cleo/cleos/data/BubbleComponentsTest.kt,12,"val next = old.copy(components = listOf(BubbleComponent(""one"", emoji = ""🎀"", corner = ""tr"", size = 32),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/test/java/com/cleo/cleos/data/BubbleComponentsTest.kt,18,"BubbleComponent(""one"", emoji = ""✨""), BubbleComponent(""face"", emoji = ""🥹""))).normalized()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/test/java/com/cleo/cleos/data/BubbleComponentsTest.kt,18,"BubbleComponent(""one"", emoji = ""✨""), BubbleComponent(""face"", emoji = ""🥹""))).normalized()",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😼,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,9,"for (d in listOf(BubbleDecoration(faceEmoji = ""😼"", starEmoji = ""✨"", faceOffsetX = -12),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,✨,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,9,"for (d in listOf(BubbleDecoration(faceEmoji = ""😼"", starEmoji = ""✨"", faceOffsetX = -12),",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👩,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,39,"val d = BubbleDecoration(faceEmoji = ""👩🏽‍🚀"", starEmoji = ""🇨🇳"", starSize = 24)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🏽,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,39,"val d = BubbleDecoration(faceEmoji = ""👩🏽‍🚀"", starEmoji = ""🇨🇳"", starSize = 24)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🚀,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,39,"val d = BubbleDecoration(faceEmoji = ""👩🏽‍🚀"", starEmoji = ""🇨🇳"", starSize = 24)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🇨,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,39,"val d = BubbleDecoration(faceEmoji = ""👩🏽‍🚀"", starEmoji = ""🇨🇳"", starSize = 24)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🇳,app/src/test/java/com/cleo/cleos/data/BubbleDecorationTest.kt,39,"val d = BubbleDecoration(faceEmoji = ""👩🏽‍🚀"", starEmoji = ""🇨🇳"", starSize = 24)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/test/java/com/cleo/cleos/data/BubblePresetTest.kt,18,"bubbleDecoration = BubbleDecoration(faceEmoji = ""🥹""), bubblePaddingX = 18)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🥹,app/src/test/java/com/cleo/cleos/data/BubblePresetTest.kt,27,"assertEquals(""🥹"", restored.bubbleDecoration.faceEmoji)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,👩,app/src/test/java/com/cleo/cleos/data/BubblePresetTest.kt,30,"val preset = BubblePreset(name = ""Emoji"", messageSpacing = 24, decoration = BubbleDecoration(faceEmoji = ""👩🏽‍🚀""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🏽,app/src/test/java/com/cleo/cleos/data/BubblePresetTest.kt,30,"val preset = BubblePreset(name = ""Emoji"", messageSpacing = 24, decoration = BubbleDecoration(faceEmoji = ""👩🏽‍🚀""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🚀,app/src/test/java/com/cleo/cleos/data/BubblePresetTest.kt,30,"val preset = BubblePreset(name = ""Emoji"", messageSpacing = 24, decoration = BubbleDecoration(faceEmoji = ""👩🏽‍🚀""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/data/DiaryBlocksTest.kt,13,"DiaryBlock.Image(""a.jpg"", 1600, 1200),",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/data/DiaryBlocksTest.kt,26,"val blocks = listOf(DiaryBlock.Text(""一""), DiaryBlock.Image(""a.jpg"", 1, 1), DiaryBlock.Text(""二""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐈,app/src/test/java/com/cleo/cleos/data/DocxTextTest.kt,34,<w:p><w:r><w:t>喜好：</w:t></w:r><w:r><w:t>猫 &amp; 茶🐈</w:t></w:r></w:p>,保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐈,app/src/test/java/com/cleo/cleos/data/DocxTextTest.kt,37,"assertEquals(""喜好：猫 & 茶🐈\n\n约定：周末散步"", DocxText.read(bytes))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐈,app/src/test/java/com/cleo/cleos/data/DocxTextTest.kt,40,"assertEquals(listOf(""猫 & 茶🐈"", ""周末散步""), out.memories.map { it.summary })",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐈,app/src/test/java/com/cleo/cleos/data/DocxTextTest.kt,100,"val xml = ""<?xml version=\""1.0\"" encoding=\""UTF-16\""?>"" + document(paragraph(""中文与🐈""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐈,app/src/test/java/com/cleo/cleos/data/DocxTextTest.kt,101,"assertEquals(""中文与🐈"", DocxText.read(archive(""word/document.xml"" to xml.toByteArray(Charsets.UTF_16))))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🌷,app/src/test/java/com/cleo/cleos/data/FeedCommentsTest.kt,18,"val comments = listOf(FeedComment(""one"", 7, ""你好 🌷"", 123))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/data/ModelRegistryMigrationTest.kt,85,"assertEquals(setOf(Capability.Image, Capability.Video), config.capabilities)",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/data/ModelRoutesTest.kt,19,"private val vision = ModelConfig(id = ""c-vision"", providerId = ""p1"", model = ""mimo-vl"", capabilities = setOf(Capability.Image))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,Image,app/src/test/java/com/cleo/cleos/data/ModelRoutesTest.kt,119,"assertEquals(setOf(Capability.Image), ModelRoutes.missingCapabilities(d, Feature.Vision, ""c-chat""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫶,app/src/test/java/com/cleo/cleos/data/PatsTest.kt,50,"assertEquals(""🫶"", Pats.cleanVerb(""🫶好""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🫶,app/src/test/java/com/cleo/cleos/data/PatsTest.kt,50,"assertEquals(""🫶"", Pats.cleanVerb(""🫶好""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+renderer/definition,drawImage,app/src/test/java/com/cleo/cleos/data/PdfRealWorldTest.kt,59,"PDPageContentStream(doc, page).use { cs -> cs.drawImage(image, 0f, 0f, page.mediaBox.width, page.mediaBox.height) }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/data/StickerTextTest.kt,121,"val on = MessageReactions.toggle(emptyList(), ""❤️"", at = 10)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/data/StickerTextTest.kt,122,"assertEquals(listOf(MessageReaction(""❤️"", 10)), on)",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,❤,app/src/test/java/com/cleo/cleos/data/StickerTextTest.kt,124,"assertEquals(emptyList<MessageReaction>(), MessageReactions.toggle(on, ""❤️"", at = 11))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😀,app/src/test/java/com/cleo/cleos/ui/home/HomeMathTest.kt,55,"assertEquals(""😀"", initial(""😀abc""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,😀,app/src/test/java/com/cleo/cleos/ui/home/HomeMathTest.kt,55,"assertEquals(""😀"", initial(""😀abc""))",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐾,desktop/src/main/kotlin/com/cleo/desktop/Main.kt,224,"var emoji by remember { mutableStateOf(""🐾"") }",保留：系统/启动器/用户内容/绘制点，见报告分类
+glyph,🐾,desktop/src/main/kotlin/com/cleo/desktop/Main.kt,238,"val role = Role(id = id, name = name.trim().ifEmpty { ""新角色"" }, emoji = emoji.ifEmpty { ""🐾"" }, persona = persona.trim())",保留：系统/启动器/用户内容/绘制点，见报告分类
