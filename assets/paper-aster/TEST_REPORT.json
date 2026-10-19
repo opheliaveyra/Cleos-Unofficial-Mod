@@ -1,0 +1,78 @@
+{
+  "home": {
+    "original_sha256": "87b8f778a99d6f1ad7e37fdf05f521dfe13367da7d5c1a96ac62cb873843a28a",
+    "output_sha256": "8c35d7960714863b03afe15ddcaba363f3815185af562c9a8112c216763d9083",
+    "original_bbox": [
+      60,
+      67,
+      453,
+      448
+    ],
+    "output_bbox": [
+      48,
+      54,
+      464,
+      457
+    ],
+    "removed_disconnected_pixels": 580,
+    "transparent_fraction": 0.5284652709960938,
+    "alpha_levels": 255
+  },
+  "chat": {
+    "original_sha256": "d84a19374c70591484bd18cb4a246ca24e58cba86dda74b505949dcf1913a4a1",
+    "output_sha256": "38df5fe4fcb8155297a1707e456343f957c8ef1f094fb3bc77a81f5dae105968",
+    "original_bbox": [
+      59,
+      81,
+      460,
+      431
+    ],
+    "output_bbox": [
+      48,
+      74,
+      464,
+      437
+    ],
+    "removed_disconnected_pixels": 826,
+    "transparent_fraction": 0.6169586181640625,
+    "alpha_levels": 256
+  },
+  "diary": {
+    "original_sha256": "1334fa8dccdf8938db7c657218b47bbf292fbdd058fc23654e862fd925276811",
+    "output_sha256": "6d5d9da907d9ebdd7fd230c0f7e583bfd36e54e8a42a8f1e377e8fe4d8926963",
+    "original_bbox": [
+      123,
+      99,
+      455,
+      416
+    ],
+    "output_bbox": [
+      48,
+      57,
+      464,
+      454
+    ],
+    "removed_disconnected_pixels": 1287,
+    "transparent_fraction": 0.435211181640625,
+    "alpha_levels": 254
+  },
+  "todo": {
+    "original_sha256": "7c25af61b7279d68a0ae28ad2af506d353551b0c4d955a1ae4880584cc8e343e",
+    "output_sha256": "d1f37498d38a6cf623d64a7deccaa91553d3075b44ad1028a5a97d294b943a22",
+    "original_bbox": [
+      61,
+      62,
+      451,
+      444
+    ],
+    "output_bbox": [
+      48,
+      52,
+      464,
+      459
+    ],
+    "removed_disconnected_pixels": 1107,
+    "transparent_fraction": 0.4566841125488281,
+    "alpha_levels": 255
+  }
+}

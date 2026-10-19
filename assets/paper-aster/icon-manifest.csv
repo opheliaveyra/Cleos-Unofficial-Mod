@@ -1,0 +1,5 @@
+﻿name,function,png_path,source_path,usage_location,status
+home,主页,assets/paper-aster/png/home.png,assets/paper-aster/source/home.svg,app/src/main/java/com/cleo/cleos/ui/MainScreen.kt:GlassTab,batch01-refined; integration-and-device-review-pending
+chat,聊天,assets/paper-aster/png/chat.png,assets/paper-aster/source/chat.svg,app/src/main/java/com/cleo/cleos/ui/MainScreen.kt:GlassTab,batch01-refined; integration-and-device-review-pending
+diary,日记,assets/paper-aster/png/diary.png,assets/paper-aster/source/diary.svg,app/src/main/java/com/cleo/cleos/ui/MainScreen.kt:GlassTab,batch01-refined; integration-and-device-review-pending
+todo,待办,assets/paper-aster/png/todo.png,assets/paper-aster/source/todo.svg,app/src/main/java/com/cleo/cleos/ui/MainScreen.kt:GlassTab,batch01-refined; integration-and-device-review-pending
