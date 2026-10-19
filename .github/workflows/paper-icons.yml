@@ -24,7 +24,7 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - name: Install compile SDK
-        run: sdkmanager 'platforms;android-37'
+        run: sdkmanager --channel=3 'platforms;android-37'
       - name: Check visual-only boundaries and build mod
         run: |
           git fetch origin 4ae9bcd855c7767332b02049ebba68fec468617d
