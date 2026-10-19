@@ -4,6 +4,7 @@ import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.composed
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -54,7 +55,13 @@ fun Modifier.liquidGlass(
     style: GlassStyle,
     shape: GlassShape = GlassShape.Capsule,
     motion: GlassMotion? = null,
-): Modifier = this then LiquidGlassElement(backdrop, style, shape, motion)
+): Modifier = this.then(Modifier.composed {
+    if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
+        com.cleo.cleos.ui.theme.scrapbookSurface(shape, style)
+    } else {
+        Modifier then LiquidGlassElement(backdrop, style, shape, motion)
+    }
+})
 
 /**
  * Lays the content out [extra] larger on every side than the space it is given, centred
