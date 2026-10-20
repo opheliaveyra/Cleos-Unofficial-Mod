@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "theme": "lavender_scrapbook",
+  "project": "Cleos-Unofficial-Mod",
+  "branch": "assets/lavender-scrapbook",
+  "created_on": "2026-10-21",
+  "repository_status_note": "PNG originals prepared locally, NOT YET uploaded to GitHub branch; repository has manifest and README only.",
+  "resources": [
+    {
+      "id": "fixed_wallpaper",
+      "path": "assets/lavender-scrapbook/backgrounds/lavender_scrapbook_fixed_wallpaper.png",
+      "kind": "background",
+      "usage": "紫雾手账主题专属固定壁纸",
+      "android_usage": "仅 lavender_scrapbook 激活时的主题背景",
+      "dimensions": [
+        852,
+        1846
+      ],
+      "transparent": false,
+      "repository_status": "pending_upload",
+      "integration_status": "verify_existing"
+    },
+    {
+      "id": "frame_soft_note",
+      "path": "assets/lavender-scrapbook/frames/frame_soft_note_lavender.png",
+      "kind": "frame",
+      "usage": "柔边便签卡片",
+      "android_usage": "待选定的独立装饰框",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "transparent": true,
+      "repository_status": "pending_upload",
+      "integration_status": "unassigned"
+    },
+    {
+      "id": "frame_torn_note",
+      "path": "assets/lavender-scrapbook/frames/frame_torn_note_lavender.png",
+      "kind": "frame",
+      "usage": "撕边纸片卡片",
+      "android_usage": "待选定的独立装饰框",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "transparent": true,
+      "repository_status": "pending_upload",
+      "integration_status": "unassigned"
+    },
+    {
+      "id": "frame_speech_note",
+      "path": "assets/lavender-scrapbook/frames/frame_speech_note_lavender.png",
+      "kind": "frame",
+      "usage": "对话框形便签",
+      "android_usage": "待选定的气泡/卡片候选，不能直接拉伸",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "transparent": true,
+      "repository_status": "pending_upload",
+      "integration_status": "unassigned"
+    },
+    {
+      "id": "frame_postage",
+      "path": "assets/lavender-scrapbook/frames/frame_postage_lavender.png",
+      "kind": "frame",
+      "usage": "邮票花边纸框",
+      "android_usage": "待选定的独立装饰框",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "transparent": true,
+      "repository_status": "pending_upload",
+      "integration_status": "unassigned"
+    }
+  ]
+}
