@@ -2737,8 +2737,13 @@ private fun Pill(text: String, accent: Boolean, enabled: Boolean, onClick: () ->
 @Composable
 private fun TypingDots() {
     val palette = LocalGlassPalette.current
+    // 紫雾手账：等待回复的点换成淡紫小圆，气泡本身已经是纸面（scrapbookSurface），
+    // 所以这里只调点点本身，不用另做一个「手账版气泡」。
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val ink = if (lavender) Color(0xFF9C86BF) else palette.content
+    val size = if (lavender) 6.dp else 7.dp
     val transition = rememberInfiniteTransition(label = "typing")
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(if (lavender) 6.dp else 5.dp), modifier = Modifier.padding(vertical = 8.dp)) {
         repeat(3) { i ->
             val a by transition.animateFloat(
                 initialValue = 0.25f,
@@ -2746,7 +2751,7 @@ private fun TypingDots() {
                 animationSpec = infiniteRepeatable(tween(520, delayMillis = i * 160), RepeatMode.Reverse),
                 label = "dot$i",
             )
-            Box(Modifier.size(7.dp).alpha(a).background(palette.content, CircleShape))
+            Box(Modifier.size(size).alpha(a).background(ink, CircleShape))
         }
     }
 }
