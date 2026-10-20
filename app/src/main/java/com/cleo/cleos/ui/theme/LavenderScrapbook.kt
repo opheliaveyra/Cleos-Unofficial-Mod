@@ -131,9 +131,9 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
                         if (active) {
                             Box(
                                 Modifier
-                                    .offset(y = (-3).dp)
-                                    .width(44.dp)
-                                    .height(27.dp)
+                                    .offset(y = 1.dp)
+                                    .width(52.dp)
+                                    .height(36.dp)
                                     .drawBehind { drawTornTape(size) },
                             )
                         }

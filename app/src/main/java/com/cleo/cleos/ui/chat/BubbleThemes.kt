@@ -73,6 +73,8 @@ fun ChatBubbleSurface(
     onDecorationDragEnd: (() -> Unit)? = null,
     onBodyWidth: ((Float) -> Unit)? = null,
     messageSpacing: Int = LocalMessageSpacing.current,
+    /** 紫雾手账下用哪张撕纸素材；不给就按收发选默认那张。 */
+    scrapRes: Int? = null,
     content: @Composable (Color) -> Unit,
 ) {
     val palette = LocalGlassPalette.current
@@ -91,6 +93,15 @@ fun ChatBubbleSurface(
     val faceShown = decor.faceEnabled && (decor.faceEmoji.isNotEmpty() || faceFile != null || id == "blue" || id == "peach")
     val raised = (decor.faceSize * 0.85f + decor.faceDistance).coerceAtLeast((decor.faceSize - verticalPadding).toFloat())
     val starRaised = (decor.starSize / 2f + decor.starDistance).coerceAtLeast((decor.starSize - verticalPadding).toFloat())
+    // 紫雾手账：气泡换成第二批的撕纸素材（九宫格拉伸），原来那套玻璃/自定义背景不动。
+    if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER &&
+        id == "glass" && background == null && !faceShown && !customStar && extra.isEmpty()
+    ) {
+        ScrapBubble(res = scrapRes ?: ScrapBubbleRes.forMessage(mine), padding = padding, modifier = modifier) {
+            content(glassInk)
+        }
+        return
+    }
     if (id == "glass" && background == null && !faceShown && !customStar && extra.isEmpty()) {
         GlassSurface(modifier = modifier, style = style, shape = GlassShape.Rounded(16.dp),
             contentPadding = padding) { content(glassInk) }

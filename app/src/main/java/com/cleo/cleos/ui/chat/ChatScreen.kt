@@ -1850,6 +1850,7 @@ private fun VoiceBubble(
             .widthIn(max = bubbleMaxWidth())
             .combinedClickable(interactionSource = null, indication = null, onClick = onClick, onLongClick = onLongClick),
         mine = mine,
+        scrapRes = ScrapBubbleRes.voice,
     ) { ink ->
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2224,14 +2225,8 @@ private fun ThoughtBlock(text: String, ms: Long?, key: Any) {
 @Composable
 private fun QuoteBox(label: String, onOpen: () -> Unit) {
     val palette = LocalGlassPalette.current
-    GlassSurface(
-        modifier = Modifier
-            .widthIn(max = bubbleMaxWidth())
-            .clickable(interactionSource = null, indication = null, onClick = onOpen),
-        style = palette.notice,
-        shape = GlassShape.Rounded(10.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
-    ) {
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val quoteText = @Composable {
         Text(
             label.replace('\n', ' '),
             color = palette.contentSecondary,
@@ -2241,6 +2236,24 @@ private fun QuoteBox(label: String, onOpen: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
     }
+    if (lavender) {
+        ScrapBubble(
+            res = ScrapBubbleRes.reply,
+            padding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier
+                .widthIn(max = bubbleMaxWidth())
+                .clickable(interactionSource = null, indication = null, onClick = onOpen),
+        ) { quoteText() }
+        return
+    }
+    GlassSurface(
+        modifier = Modifier
+            .widthIn(max = bubbleMaxWidth())
+            .clickable(interactionSource = null, indication = null, onClick = onOpen),
+        style = palette.notice,
+        shape = GlassShape.Rounded(10.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
+    ) { quoteText() }
 }
 
 /** A thought on a line of its own: before the tools the TA used, or while it is still thinking. */
@@ -3018,11 +3031,10 @@ private fun ChatInputBar(
 private fun SentFileCard(file: MessageFile) {
     val palette = LocalGlassPalette.current
     val failed = file.error != null
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val inner: @Composable (Modifier) -> Unit = { m ->
     Row(
-        Modifier
-            .widthIn(max = bubbleMaxWidth())
-            .background(palette.content.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+        m,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CleosIcon(
@@ -3042,6 +3054,21 @@ private fun SentFileCard(file: MessageFile) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+    }
+    if (lavender) {
+        ScrapBubble(
+            res = ScrapBubbleRes.file,
+            padding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.widthIn(max = bubbleMaxWidth()),
+        ) { inner(Modifier.fillMaxWidth()) }
+    } else {
+        inner(
+            Modifier
+                .widthIn(max = bubbleMaxWidth())
+                .background(palette.content.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        )
     }
 }
 
