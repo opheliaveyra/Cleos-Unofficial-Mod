@@ -102,7 +102,7 @@ enum class SettingsPage(val title: String) {
     /** 工具诊断、反馈问题、闪退/后台出错记录。从原来的「关于」拆出来。 */
     Diagnostics("诊断与反馈"),
     /** 验证用的东西：虚拟屏探针、一起看、HTML 自检。 */
-    Lab("实验室"),
+    Lab("Cleos 实验室"),
     About("关于"),
     ;
 
@@ -276,7 +276,7 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         RowDivider()
         Entry(Icons.Rounded.Refresh, "更新与版本", "Cleos 二改版 " + version + " · 检查更新") { onOpen(SettingsPage.Update) }
         Entry(Icons.Rounded.Info, "诊断与反馈", "工具诊断、反馈、闪退与后台出错") { onOpen(SettingsPage.Diagnostics) }
-        Entry(Icons.Rounded.Widgets, "实验室", "虚拟屏探针、一起看、HTML 自检") { onOpen(SettingsPage.Lab) }
+        Entry(Icons.Rounded.Widgets, "Cleos 实验室", "虚拟屏探针、一起看、HTML 自检") { onOpen(SettingsPage.Lab) }
         RowDivider()
         if (crashed) {
             Entry(Icons.Rounded.Info, "关于", "Cleos $version · 上次闪退了，记录在这里", palette.error) { onOpen(SettingsPage.About) }

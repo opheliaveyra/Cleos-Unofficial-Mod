@@ -1035,53 +1035,89 @@ internal fun DiagnosticsPage() {
     }
 }
 
-/** 实验室：都是验证用的，不影响聊天数据。权限提示和授权流程原样。 */
+/**
+ * Cleos 实验室：正在开发或验证中的功能。
+ *
+ * 每个功能一张卡片（名称 + 一句话说明 + 实验性标识 + 进入箭头），点进去还是原来那套实现：
+ * 探针、一起看、HTML 自检都没有重写，只是把入口从「关于」搬到了这里。
+ *
+ * 往这里加新东西时：先有能跑的功能，再放进来；不要摆空按钮。
+ */
 @Composable
 internal fun LabPage() {
     val palette = LocalGlassPalette.current
     val context = LocalContext.current
     var htmlTestOpen by remember { mutableStateOf(false) }
 
-    Section("实验功能") {
-        Text(
-            "这里的东西是验证用的，可能会报错、可能随时改；它们不参与聊天，也不会动你的数据。" +
-                "每个入口都会先说清楚它要什么权限、失败时看到什么。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+    Text(
+        "这里收录正在开发或验证中的实验功能。部分功能可能存在兼容性问题，需要额外授权，不影响正常聊天功能。",
+        color = palette.contentSecondary,
+        fontSize = 12.sp,
+        lineHeight = 18.sp,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+
+    ListCard {
+        LabEntry(
+            title = "虚拟屏探针",
+            summary = "分步验证：创建虚拟屏、把目标应用启动到那块屏、读一帧画面、滑动、释放。每一步都显示真实结果。",
+            onClick = {
+                context.startActivity(
+                    android.content.Intent(context, com.cleo.cleos.ui.probe.VirtualScreenProbeActivity::class.java),
+                )
+            },
+        )
+        RowDivider()
+        LabEntry(
+            title = "一起看（验证版）",
+            summary = "你刷视频时让 TA 看同一块屏幕：每 5 秒最多一帧，需要系统投屏授权，可以随时停。",
+            onClick = {
+                context.startActivity(
+                    android.content.Intent(context, com.cleo.cleos.ui.probe.WatchTogetherActivity::class.java),
+                )
+            },
+        )
+        RowDivider()
+        LabEntry(
+            title = "HTML 渲染自检",
+            summary = "六种典型 HTML：短、长、宽表格、按钮、输入框、动态内容。用来看卡片和全屏查看器有没有问题，不动真实聊天数据。",
+            onClick = { htmlTestOpen = true },
         )
     }
 
-    Section("虚拟屏探针（验证用）") {
-        Text(
-            "分步验证：创建虚拟屏 → 把抖音启动到那块屏 → 读一帧画面 → 往该屏滑动 → 释放。" +
-                "每一步显示真实结果（包括 SecurityException 这类具体错误），不参与聊天。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开探针", selected = false) {
-            context.startActivity(
-                android.content.Intent(context, com.cleo.cleos.ui.probe.VirtualScreenProbeActivity::class.java),
-            )
-        }
-    }
-
-    Section("一起看（验证用）") {
-        Text(
-            "你刷视频时让 TA 看同一块屏幕并开口：每 5 秒最多一帧，画面没换就跳过；" +
-                "需要系统投屏授权，不需要 root / Shizuku。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开一起看", selected = false) {
-            context.startActivity(
-                android.content.Intent(context, com.cleo.cleos.ui.probe.WatchTogetherActivity::class.java),
-            )
-        }
-    }
-
-    Section("HTML 渲染自检（验证用）") {
-        Text(
-            "六种典型 HTML：短、长、宽表格、按钮、输入框、动态内容。用来确认「卡片进全屏查看器」这套在这台机上是否正常。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开自检", selected = false) { htmlTestOpen = true }
-    }
     if (htmlTestOpen) HtmlSelfTestDialog(onClose = { htmlTestOpen = false })
+}
+
+/** 实验室里的一张入口卡：名字、说明、实验性标识、右侧箭头。 */
+@Composable
+private fun LabEntry(title: String, summary: String, onClick: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = null, indication = null, onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                // 实验性标识：一小块淡紫底，和正式功能分得开
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(palette.accentContent.copy(alpha = 0.12f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text("实验性", color = palette.accentContent, fontSize = 10.sp)
+                }
+            }
+            Text(summary, color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+        }
+        CleosIcon(
+            androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = palette.contentSecondary,
+        )
+    }
 }
