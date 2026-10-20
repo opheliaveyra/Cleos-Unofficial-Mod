@@ -81,7 +81,7 @@ internal fun AttachTile(
             .width(72.dp)
             .height(64.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(palette.content.copy(alpha = if (enabled) 0.08f else 0.04f))
+            .then(if (com.cleo.cleos.ui.theme.usesScrapbookArtwork(icon)) Modifier else Modifier.background(palette.content.copy(alpha = if (enabled) 0.08f else 0.04f)))
             .clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -126,7 +126,7 @@ internal fun BarIconButton(
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(34.dp).clip(CircleShape).background(background),
+            Modifier.size(34.dp).clip(CircleShape).then(if (com.cleo.cleos.ui.theme.usesScrapbookArtwork(icon)) Modifier else Modifier.background(background)),
             contentAlignment = Alignment.Center,
         ) {
             CleosIcon(icon, contentDescription = contentDescription, tint = tint ?: palette.accentContent, modifier = Modifier.size(20.dp))
@@ -149,7 +149,7 @@ internal fun HoldTile(
             .width(72.dp)
             .height(64.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.08f)),
+            .then(if (!recording && com.cleo.cleos.ui.theme.usesScrapbookArtwork(Icons.Rounded.Mic)) Modifier else Modifier.background(if (recording) palette.error.copy(alpha = 0.85f) else palette.content.copy(alpha = 0.08f))),
     ) {
         Column(
             Modifier.fillMaxSize(),
