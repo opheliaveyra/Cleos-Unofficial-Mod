@@ -6,10 +6,13 @@
 
 | 项 | 状态 |
 |---|---|
-| 形状登记 | ✅ 28 个已写入 `assets/lavender-scrapbook/manifest.json`（`status: archived`） |
-| PNG 上传 | ❌ **28 张全部待补传**。仓库里只有清单，没有图片文件 |
-| 代码接入 | ❌ 一个都没接，全部 `status: archived` |
+| 形状登记 | ✅ 28 个，manifest v3（`status: candidate`，`repository_status: present`） |
+| PNG 上传 | ✅ **28 张全部已进 `assets/lavender-scrapbook` 分支**（`86245d6`） |
+| 代码接入 | ❌ 一个都没接，全部 `candidate` |
 | 现有 UI | 未改动（背景、胶带选中态、已接入图标、原版主题全部保持） |
+
+素材来源：`cleos_lavender_ui_shape_assets_20261021.zip`（5.6 MB）。
+包里还带了 `source/` 两张原始 sheet（带标注 / 不标注）和 `previews/ui_shape_collection_preview.png` 总览，都一起入库了。
 
 ## 二、28 个形状 → 用途建议
 
