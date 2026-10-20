@@ -133,7 +133,8 @@ fun CallScreen() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             if (lavender) {
                                 ScrapCallButton(
-                                    res = if (st.muted) R.drawable.scrap_bubble_voice else R.drawable.scrap_voice,
+                                    // 静音时用 Aster 新画的「麦克风+斜杠」，不再借用气泡语音图。
+                                    res = if (st.muted) R.drawable.scrap_mic_off else R.drawable.scrap_voice,
                                     label = if (st.muted) "已静音" else "静音",
                                     contentDescription = if (st.muted) "取消静音" else "静音",
                                     paper = if (st.muted) ScrapHangUp else ScrapPaper,
