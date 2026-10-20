@@ -317,7 +317,7 @@ private fun FeatureModelRows(vm: SettingsViewModel) {
 
 /** 选择弹窗里的一行：点一下选中，选中的那条打勾。 */
 @Composable
-private fun ListRow(title: String, detail: String, chosen: Boolean, onClick: () -> Unit) {
+internal fun ListRow(title: String, detail: String, chosen: Boolean, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
     Row(
         Modifier
@@ -338,7 +338,7 @@ private fun ListRow(title: String, detail: String, chosen: Boolean, onClick: () 
 
 /** The services there are presets for, the one in use marked; anything else is 自定义. */
 @Composable
-private fun ServiceChips(fields: EndpointFields) {
+internal fun ServiceChips(fields: EndpointFields) {
     val palette = LocalGlassPalette.current
     // An address that is not one of the presets is somebody's own: a relay, a self-hosted
     // service, an address a friend handed over.
@@ -360,7 +360,7 @@ private fun ServiceChips(fields: EndpointFields) {
 
 /** Address, key and model, and the test that lists the address's models to pick from. */
 @Composable
-private fun ConnectionFields(fields: EndpointFields) {
+internal fun ConnectionFields(fields: EndpointFields) {
     val palette = LocalGlassPalette.current
     val hasKey by fields.hasKey.collectAsStateWithLifecycle()
     var pickingModel by remember { mutableStateOf(false) }

@@ -410,9 +410,22 @@ class ChatRepository(
     }
 
     private suspend fun spokenOrChat(ta: CompanionEntity, heard: Boolean): Use {
+        // ① 旧的「这个 TA 的语音模型」仍然是第一优先 —— 老用户的配置一个字都没动，行为不变。
         if (heard && ta.spokenModelOn && ta.spokenApiBaseUrl.isNotBlank() && ta.spokenApiModel.isNotBlank()) {
-            // 语音这条还在 TA 身上（老结构），没有参数覆盖。
             return Use(ta.spokenApiBaseUrl.trim(), ta.spokenApiModel.trim(), forHeard = true, temperature = null, maxTokens = null)
+        }
+        // ② 模型中心里给「语音/电话」单独挑的那条（只有真的挑了才用；跟着默认就走 ③）。
+        if (heard) {
+            val spoken = registry.route(Feature.Spoken)
+            if (spoken is RouteResult.Ready && !spoken.model.inherited) {
+                return Use(
+                    baseUrl = spoken.model.baseUrl,
+                    model = spoken.model.model,
+                    forHeard = true,
+                    temperature = spoken.model.temperature,
+                    maxTokens = spoken.model.maxTokens,
+                )
+            }
         }
         return when (val route = registry.route(Feature.Chat)) {
             is RouteResult.Ready -> Use(

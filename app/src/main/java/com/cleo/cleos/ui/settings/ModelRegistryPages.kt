@@ -72,7 +72,7 @@ internal fun featuresUsing(data: ModelRegistryData, gone: Set<String>): List<Fea
 
 /** 一行字，说明这一页是干什么的。套在**text-safe 的玻璃卡片**里，别直接压在壁纸上（见 docs/UI_READABILITY.md）。 */
 @Composable
-private fun PageNote(text: String) {
+internal fun PageNote(text: String) {
     val palette = LocalGlassPalette.current
     GlassSurface(
         modifier = Modifier.fillMaxWidth(),
@@ -85,7 +85,7 @@ private fun PageNote(text: String) {
 
 /** 上一次动作的结果。**出错就用红的说出来**，别静默。 */
 @Composable
-private fun MessageLine(text: String?) {
+internal fun MessageLine(text: String?) {
     if (text.isNullOrBlank()) return
     val palette = LocalGlassPalette.current
     GlassSurface(
@@ -98,7 +98,7 @@ private fun MessageLine(text: String?) {
 }
 
 @Composable
-private fun RowTitle(title: String, detail: String) {
+internal fun RowTitle(title: String, detail: String) {
     val palette = LocalGlassPalette.current
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(title, color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -107,7 +107,7 @@ private fun RowTitle(title: String, detail: String) {
 }
 
 @Composable
-private fun Busy(label: String, busy: Boolean, onClick: () -> Unit) {
+internal fun Busy(label: String, busy: Boolean, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = !busy) {
         if (busy) CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 2.dp) else Text(label, fontSize = 12.sp)
     }
@@ -142,7 +142,7 @@ private fun OptionRow(title: String, detail: String, chosen: Boolean, onClick: (
  * 之前用 7% 透明的 Chip，压在背景插画上像一行糊掉的字。
  */
 @Composable
-private fun AddButton(text: String, onClick: () -> Unit) {
+internal fun AddButton(text: String, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
     Box(
         Modifier
@@ -236,7 +236,7 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProviderDialog(
+internal fun ProviderDialog(
     provider: Provider?,
     onDismiss: () -> Unit,
     onSave: (name: String, baseUrl: String, kind: ApiKind, key: String) -> Unit,
@@ -299,7 +299,7 @@ private fun ProviderDialog(
  * 「测试失败」（那会让人以为模型不会看图，其实是 Key 或格式的问题）。
  */
 @Composable
-private fun ProbeResultLine(result: com.cleo.cleos.ai.ProbeResult) {
+internal fun ProbeResultLine(result: com.cleo.cleos.ai.ProbeResult) {
     val palette = LocalGlassPalette.current
     var open by remember { mutableStateOf(false) }
     val tone = when (result.outcome) {
@@ -413,7 +413,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConfigDialog(
+internal fun ConfigDialog(
     data: ModelRegistryData,
     config: ModelConfig?,
     isDefault: Boolean,
@@ -492,7 +492,7 @@ private fun ConfigDialog(
 /** 「添加模型」：从服务商拉列表，搜索、多选、全选，一次加多个；拉不到就手动粘贴。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BatchAddDialog(data: ModelRegistryData, vm: SettingsViewModel, onDismiss: () -> Unit) {
+internal fun BatchAddDialog(data: ModelRegistryData, vm: SettingsViewModel, onDismiss: () -> Unit) {
     val palette = LocalGlassPalette.current
     var manual by remember { mutableStateOf("") }
     val providerId = vm.batchProviderId

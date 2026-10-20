@@ -85,6 +85,10 @@ import com.cleo.cleos.ui.theme.CleosIcon
  */
 enum class SettingsPage(val title: String) {
     Profile("资料与性格"),
+    /** 模型中心：原来「模型」「服务商」「模型配置」三个入口合成这一个。 */
+    ModelCenter("模型中心"),
+    /** 旧的、TA 专属的语音模型配置（模型中心整合时从「模型」页挪出来，配置本身没动）。 */
+    SpokenModel("语音用的模型"),
     Model("模型"),
     /** 三层结构（0.1.44）：服务商和模型配置各一页；**功能绑定并进「模型」页**，不单独占一行。 */
     Providers("服务商"),
@@ -111,8 +115,8 @@ enum class SettingsPage(val title: String) {
 
     /** Whose these are, under the page's title: the TA's own, or every TA's. */
     fun subtitle(taName: String): String? = when (this) {
-        Profile, Model, Behavior -> taName
-        Abilities, Voice, Mcp, Providers, ModelConfigs -> "所有 TA 共用"
+        Profile, Model, Behavior, SpokenModel -> taName
+        ModelCenter, Abilities, Voice, Mcp, Providers, ModelConfigs -> "所有 TA 共用"
         else -> null
     }
 
@@ -170,42 +174,26 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
             else -> "$books 本书 ${lore.size} 条 · TA 想用时自己查"
         }) { onOpenLore(vm.companionId) }
         RowDivider()
-        // 走三层结构：全局默认那条是聊天用的，别的功能不绑就跟着它。
-        val defaultConfig = modelData.configs.firstOrNull { it.id == modelData.defaultConfigId }
-        val defaultProvider = defaultConfig?.let { c -> modelData.providers.firstOrNull { it.id == c.providerId } }
-        val heard = vm.spoken.activeModel.trim().takeIf { vm.spokenOn && vm.spoken.activeUrl.isNotBlank() }
-        val model = listOfNotNull(
-            defaultProvider?.name?.ifBlank { defaultProvider.baseUrl },
-            defaultConfig?.model?.trim(),
-            heard?.let { "这个 TA 的语音用 $it" },
-        ).filter { it.isNotEmpty() }.joinToString(" · ")
-        when {
-            modelData.configs.isEmpty() -> Entry(Icons.Rounded.Memory, "模型", "还没接上模型", palette.error) { onOpen(SettingsPage.Model) }
-            defaultConfig == null -> Entry(Icons.Rounded.Memory, "模型", "全局默认那条配置不在了", palette.error) { onOpen(SettingsPage.Model) }
-            else -> Entry(Icons.Rounded.Memory, "模型", model) { onOpen(SettingsPage.Model) }
-        }
-        RowDivider()
         Entry(Icons.Rounded.Forum, "说话方式", "主动找你 ${onOff(vm.proactive)} · 深度思考 ${onOff(vm.deepThinking)}") {
             onOpen(SettingsPage.Behavior)
         }
     }
 
     ListCard("所有 TA 共用") {
+        // 一个入口：现在用哪个模型、哪几家服务商、各功能用哪个，全在「模型中心」里。
         val providers = modelData.providers.size
         val configs = modelData.configs.size
+        val dflt = modelData.configs.firstOrNull { it.id == modelData.defaultConfigId }
         Entry(
             Icons.Rounded.Memory,
-            "服务商",
-            if (providers == 0) "还没加 · 接口地址和 Key 在这儿" else "$providers 家 · 地址、接口类型和 Key",
-        ) { onOpen(SettingsPage.Providers) }
-        RowDivider()
-        Entry(
-            Icons.Rounded.Extension,
-            "模型配置",
-            if (configs == 0) "还没有 · 型号、参数、验过的能力" else "$configs 条 · 型号、参数、验过的能力",
-        ) { onOpen(SettingsPage.ModelConfigs) }
-        // 「功能用哪个」不再单独占一行：**并进「模型」页**（见 TaPages.ModelPage），
-        // 免得同一件事在目录里有两个入口、点进去还各说各的。
+            "模型中心",
+            when {
+                configs == 0 -> "还没接上模型 · 先加一个服务商"
+                dflt == null -> "全局默认那条不在了 · 进去重新选"
+                else -> "现在用 " + dflt.model + " · " + providers + " 家 · " + configs + " 个模型"
+            },
+            if (configs == 0) palette.error else null,
+        ) { onOpen(SettingsPage.ModelCenter) }
         RowDivider()
         Entry(Icons.Rounded.Widgets, "能做的事", "开着 ${ABILITIES.count { it in settings.tools }} 项") { onOpen(SettingsPage.Abilities) }
         RowDivider()

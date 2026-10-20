@@ -125,9 +125,10 @@ fun SettingsScreen(
                 when (shown) {
                     null -> SettingsDirectory(vm, onOpenLore) { page = it }
                     SettingsPage.Profile -> ProfilePage(vm, onOpenPersona = { onOpenPersona(vm.companionId) }, onLeave = onBack)
-                    SettingsPage.Model -> ModelPage(vm, onOpen = { page = it })
-                    SettingsPage.Providers -> ProvidersPage(vm)
-                    SettingsPage.ModelConfigs -> ModelConfigsPage(vm)
+                    // 三个旧入口都进模型中心：老的跳转链接、外部 deep link 不会 404。
+                    SettingsPage.ModelCenter, SettingsPage.Model,
+                    SettingsPage.Providers, SettingsPage.ModelConfigs -> ModelCenterPage(vm) { page = SettingsPage.SpokenModel }
+                    SettingsPage.SpokenModel -> SpokenModelPage(vm)
                     SettingsPage.Behavior -> BehaviorPage(vm)
                     SettingsPage.Abilities -> AbilitiesPage(vm, onOpenVoice = { page = SettingsPage.Voice })
                     SettingsPage.Workspace -> WorkspacePage(vm)
