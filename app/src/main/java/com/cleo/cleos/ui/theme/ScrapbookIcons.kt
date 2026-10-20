@@ -6,6 +6,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -165,7 +166,7 @@ internal fun CleosIcon(
         Image(
             painter = painterResource(scrap),
             contentDescription = contentDescription,
-            modifier = modifier,
+            modifier = modifier.graphicsLayer { alpha = if (tint == Color.Unspecified) 1f else tint.alpha },
         )
     } else {
         Icon(imageVector = imageVector, contentDescription = contentDescription, modifier = modifier, tint = tint)
@@ -180,3 +181,8 @@ internal fun CleosIcon(
     size: Dp,
     tint: Color = LocalContentColor.current,
 ) = CleosIcon(imageVector, contentDescription, Modifier.size(size), tint)
+
+/** Shared decision for icon containers; native and missing glyphs keep their original chrome. */
+@Composable
+internal fun usesScrapbookArtwork(icon: ImageVector): Boolean =
+    LocalVisualTheme.current == VisualTheme.LAVENDER && ScrapbookIconMap.byVectorName.containsKey(icon.name)

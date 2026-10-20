@@ -137,6 +137,17 @@ fun GlassIconButton(
     tint: Color = LocalGlassPalette.current.content,
     size: Dp = 44.dp,
 ) {
+    if (com.cleo.cleos.ui.theme.usesScrapbookArtwork(icon)) {
+        CompositionLocalProvider(LocalContentColor provides if (enabled) tint else tint.copy(alpha = 0.38f)) {
+            Box(
+                modifier.size(size).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                CleosIcon(icon, contentDescription, Modifier.size(size * 0.5f))
+            }
+        }
+        return
+    }
     GlassButton(
         onClick = onClick,
         backdrop = backdrop,
