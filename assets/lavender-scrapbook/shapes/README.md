@@ -26,7 +26,9 @@
 
 ## 当前状态
 
-28 个形状已在 `manifest.json` 登记（`status: archived`），**PNG 还没上传到这个分支**。
-文件到位后：`status` 改 `candidate`，`repository_status` 改 `present`。
+28 张 PNG **已入库**（`status: candidate`，`repository_status: present`）。
+尺寸和透明通道见 `manifest.json` 每条的 `dimensions` / `transparent`。
+
+这些是**候选**，还没接进任何界面；接入前必须先按上面的拉伸规则处理。原图在 `source/`，总览在 `previews/`。
 
 完整的用途建议见开发分支 `docs/lavender-shapes/INTEGRATION-CANDIDATES.md`。

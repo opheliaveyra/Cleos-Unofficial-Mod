@@ -1,10 +1,10 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "theme": "lavender_scrapbook",
   "project": "Cleos-Unofficial-Mod",
   "branch": "assets/lavender-scrapbook",
   "created_on": "2026-10-21",
-  "repository_status_note": "5 PNG present (wallpaper + 4 frames). 28 shape PNGs are registered but NOT yet uploaded; see pending_upload.",
+  "repository_status_note": "33 files present: background + 4 frames + 28 shapes + preview + 2 source sheets. No pending uploads.",
   "resources": [
     {
       "id": "fixed_wallpaper",
@@ -84,21 +84,26 @@
       "usage": "内容面板、资料卡",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_rectangle_paper",
+      "file_name": "frame_rectangle_paper.png",
       "resource_path": "shapes/frame_rectangle_paper.png",
       "shape_type": "rectangle",
       "intended_usage": "卡片容器",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "卡片容器",
         "设置分组"
       ],
       "priority": "P1",
-      "notes": "直角矩形，适合做内容面板；四角无花饰，可直接九宫格拉伸 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "直角矩形，适合做内容面板；四角无花饰，可直接九宫格拉伸 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        242,
+        113
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_rectangle_grid",
@@ -108,21 +113,26 @@
       "usage": "网格纸片、表格头部",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_rectangle_grid",
+      "file_name": "frame_rectangle_grid.png",
       "resource_path": "shapes/frame_rectangle_grid.png",
       "shape_type": "rectangle_grid",
       "intended_usage": "网格纸卡片",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "卡片容器",
         "表单底"
       ],
       "priority": "P1",
-      "notes": "带网格底纹，适合表单/资料卡；网格本质是纹理，拉伸会变形，建议做 repeat 平铺而非拉伸 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "带网格底纹，适合表单/资料卡；网格本质是纹理，拉伸会变形，建议做 repeat 平铺而非拉伸 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        195,
+        109
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_round_note",
@@ -132,21 +142,26 @@
       "usage": "小卡片、弹窗",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_round_note",
+      "file_name": "frame_round_note.png",
       "resource_path": "shapes/frame_round_note.png",
       "shape_type": "round_rect",
       "intended_usage": "小卡片、弹窗",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "卡片容器",
         "弹窗"
       ],
       "priority": "P1",
-      "notes": "圆角便签，适合弹窗/小卡 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "圆角便签，适合弹窗/小卡 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        178,
+        90
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_round_ribbon",
@@ -156,20 +171,25 @@
       "usage": "圆角便签容器",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_round_ribbon",
+      "file_name": "frame_round_ribbon.png",
       "resource_path": "shapes/frame_round_ribbon.png",
       "shape_type": "round_rect",
       "intended_usage": "圆角便签容器",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "卡片容器"
       ],
       "priority": "P2",
-      "notes": "带丝带装饰，四角不能拉伸 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "带丝带装饰，四角不能拉伸 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        186,
+        90
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_capsule_lilac",
@@ -179,20 +199,25 @@
       "usage": "状态标签",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_capsule_lilac",
+      "file_name": "frame_capsule_lilac.png",
       "resource_path": "shapes/frame_capsule_lilac.png",
       "shape_type": "capsule",
       "intended_usage": "状态标签",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "标签/Chip"
       ],
       "priority": "P1",
-      "notes": "胶囊形，适合 Chip；两端装饰需保留，只能九宫格 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "胶囊形，适合 Chip；两端装饰需保留，只能九宫格 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        218,
+        73
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_capsule_cream",
@@ -202,21 +227,26 @@
       "usage": "胶囊按钮",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_capsule_cream",
+      "file_name": "frame_capsule_cream.png",
       "resource_path": "shapes/frame_capsule_cream.png",
       "shape_type": "capsule",
       "intended_usage": "胶囊按钮",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "标签/Chip",
         "按钮底形"
       ],
       "priority": "P1",
-      "notes": "暖白胶囊，适合次级按钮 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "暖白胶囊，适合次级按钮 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        204,
+        74
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_circle_flower",
@@ -226,21 +256,26 @@
       "usage": "头像框、圆形按钮",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_circle_flower",
+      "file_name": "frame_circle_flower.png",
       "resource_path": "shapes/frame_circle_flower.png",
       "shape_type": "circle",
       "intended_usage": "头像框、圆形按钮",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "头像框",
         "通话按钮底形"
       ],
       "priority": "P1",
-      "notes": "圆形带花，适合头像/圆形按钮；不可拉伸，按固定尺寸用 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "圆形带花，适合头像/圆形按钮；不可拉伸，按固定尺寸用 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        105,
+        106
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_circle_crescent",
@@ -250,20 +285,25 @@
       "usage": "头像装饰",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_circle_crescent",
+      "file_name": "frame_circle_crescent.png",
       "resource_path": "shapes/frame_circle_crescent.png",
       "shape_type": "circle",
       "intended_usage": "头像装饰",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "头像装饰"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        105,
+        100
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_oval_wreath",
@@ -273,20 +313,25 @@
       "usage": "柔软椭圆标签",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_oval_wreath",
+      "file_name": "frame_oval_wreath.png",
       "resource_path": "shapes/frame_oval_wreath.png",
       "shape_type": "oval",
       "intended_usage": "柔软椭圆标签",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "标签/Chip"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        155,
+        99
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "frame_oval_blue",
@@ -296,21 +341,26 @@
       "usage": "椭圆容器",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "frame_oval_blue",
+      "file_name": "frame_oval_blue.png",
       "resource_path": "shapes/frame_oval_blue.png",
       "shape_type": "oval",
       "intended_usage": "椭圆容器",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "标签/Chip",
         "卡片容器"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        174,
+        98
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_triangle_play",
@@ -320,20 +370,25 @@
       "usage": "播放、方向指示",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_triangle_play",
+      "file_name": "shape_triangle_play.png",
       "resource_path": "shapes/shape_triangle_play.png",
       "shape_type": "triangle",
       "intended_usage": "播放、方向指示",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "播放态指示"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        50,
+        58
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_diamond_lavender",
@@ -343,20 +398,25 @@
       "usage": "徽章、强调",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_diamond_lavender",
+      "file_name": "shape_diamond_lavender.png",
       "resource_path": "shapes/shape_diamond_lavender.png",
       "shape_type": "diamond",
       "intended_usage": "徽章、强调",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "徽章"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        82,
+        71
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "divider_stitch",
@@ -366,20 +426,25 @@
       "usage": "列表分隔",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "divider_stitch",
+      "file_name": "divider_stitch.png",
       "resource_path": "shapes/divider_stitch.png",
       "shape_type": "divider",
       "intended_usage": "列表分隔",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "分隔线"
       ],
       "priority": "P1",
-      "notes": "适合替换现在的 1px 虚线；横向可平铺 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "适合替换现在的 1px 虚线；横向可平铺 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        561,
+        24
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "divider_lace",
@@ -389,20 +454,25 @@
       "usage": "装饰分隔",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "divider_lace",
+      "file_name": "divider_lace.png",
       "resource_path": "shapes/divider_lace.png",
       "shape_type": "divider",
       "intended_usage": "装饰分隔",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "分隔线"
       ],
       "priority": "P1",
-      "notes": "花边分隔，适合分组标题下 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "花边分隔，适合分组标题下 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        128,
+        20
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "arrow_chevron_pair",
@@ -412,20 +482,25 @@
       "usage": "展开、下一步",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "arrow_chevron_pair",
+      "file_name": "arrow_chevron_pair.png",
       "resource_path": "shapes/arrow_chevron_pair.png",
       "shape_type": "arrow",
       "intended_usage": "展开、下一步",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "方向箭头"
       ],
       "priority": "P2",
-      "notes": "可替换设置页右下角 chevron PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "可替换设置页右下角 chevron PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        51,
+        48
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "arrow_curved",
@@ -435,20 +510,25 @@
       "usage": "方向提示",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "arrow_curved",
+      "file_name": "arrow_curved.png",
       "resource_path": "shapes/arrow_curved.png",
       "shape_type": "arrow",
       "intended_usage": "方向提示",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "方向箭头"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        112,
+        32
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_star_lavender",
@@ -458,20 +538,25 @@
       "usage": "收藏、推荐",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_star_lavender",
+      "file_name": "shape_star_lavender.png",
       "resource_path": "shapes/shape_star_lavender.png",
       "shape_type": "star",
       "intended_usage": "收藏、推荐",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "收藏/情感反馈"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        60,
+        50
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_heart_pink",
@@ -481,20 +566,25 @@
       "usage": "喜欢、反馈",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_heart_pink",
+      "file_name": "shape_heart_pink.png",
       "resource_path": "shapes/shape_heart_pink.png",
       "shape_type": "heart",
       "intended_usage": "喜欢、反馈",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "收藏/情感反馈"
       ],
       "priority": "P2",
-      "notes": "可做消息 reaction 的底 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "可做消息 reaction 的底 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        56,
+        60
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "bubble_round_lilac",
@@ -504,20 +594,25 @@
       "usage": "提示气泡",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "bubble_round_lilac",
+      "file_name": "bubble_round_lilac.png",
       "resource_path": "shapes/bubble_round_lilac.png",
       "shape_type": "bubble",
       "intended_usage": "提示气泡",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "聊天气泡候选"
       ],
       "priority": "P1",
-      "notes": "提示气泡形，可做系统提示/typing 气泡 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "提示气泡形，可做系统提示/typing 气泡 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        134,
+        72
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "bubble_speech_cream",
@@ -527,20 +622,25 @@
       "usage": "对话容器",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "bubble_speech_cream",
+      "file_name": "bubble_speech_cream.png",
       "resource_path": "shapes/bubble_speech_cream.png",
       "shape_type": "bubble",
       "intended_usage": "对话容器",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "聊天气泡候选"
       ],
       "priority": "P1",
-      "notes": "对白框；必须先九宫格化才能当任意长度气泡 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "对白框；必须先九宫格化才能当任意长度气泡 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        182,
+        76
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "wave_divider_cream",
@@ -550,21 +650,26 @@
       "usage": "内容分区",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "wave_divider_cream",
+      "file_name": "wave_divider_cream.png",
       "resource_path": "shapes/wave_divider_cream.png",
       "shape_type": "wave",
       "intended_usage": "内容分区",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "分隔线",
         "波浪过渡"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        197,
+        50
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "wave_divider_blue",
@@ -574,20 +679,25 @@
       "usage": "波浪过渡",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "wave_divider_blue",
+      "file_name": "wave_divider_blue.png",
       "resource_path": "shapes/wave_divider_blue.png",
       "shape_type": "wave",
       "intended_usage": "波浪过渡",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "分隔线"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        214,
+        45
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "ring_flower",
@@ -597,21 +707,26 @@
       "usage": "头像装饰",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "ring_flower",
+      "file_name": "ring_flower.png",
       "resource_path": "shapes/ring_flower.png",
       "shape_type": "ring",
       "intended_usage": "头像装饰",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "头像装饰",
         "加载环候选"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        81,
+        70
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "ring_progress_segments",
@@ -621,20 +736,25 @@
       "usage": "进度环候选",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "ring_progress_segments",
+      "file_name": "ring_progress_segments.png",
       "resource_path": "shapes/ring_progress_segments.png",
       "shape_type": "ring",
       "intended_usage": "进度环候选",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "加载/圆环状态"
       ],
       "priority": "P1",
-      "notes": "分段环，可做加载/等待；需要切帧或用旋转遮罩 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "分段环，可做加载/等待；需要切帧或用旋转遮罩 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        78,
+        70
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "pattern_grid",
@@ -644,20 +764,25 @@
       "usage": "背景纹理",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "pattern_grid",
+      "file_name": "pattern_grid.png",
       "resource_path": "shapes/pattern_grid.png",
       "shape_type": "pattern",
       "intended_usage": "背景纹理",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "点阵/网格背景"
       ],
       "priority": "P2",
-      "notes": "纹理类，只能平铺，不能拉伸 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "纹理类，只能平铺，不能拉伸 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        81,
+        48
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "pattern_dots",
@@ -667,20 +792,25 @@
       "usage": "背景纹理",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "pattern_dots",
+      "file_name": "pattern_dots.png",
       "resource_path": "shapes/pattern_dots.png",
       "shape_type": "pattern",
       "intended_usage": "背景纹理",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "点阵/网格背景"
       ],
       "priority": "P2",
-      "notes": "同上 PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "同上 PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        194,
+        42
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_plus_lavender",
@@ -690,20 +820,25 @@
       "usage": "新增",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_plus_lavender",
+      "file_name": "shape_plus_lavender.png",
       "resource_path": "shapes/shape_plus_lavender.png",
       "shape_type": "glyph",
       "intended_usage": "新增",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "基础操作形状"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        51,
+        51
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     },
     {
       "id": "shape_close_cross",
@@ -713,20 +848,25 @@
       "usage": "关闭",
       "android_usage": "candidate for lavender_scrapbook",
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned",
       "source": "generated 2026-10-21",
-      "file_name": "shape_close_cross",
+      "file_name": "shape_close_cross.png",
       "resource_path": "shapes/shape_close_cross.png",
       "shape_type": "glyph",
       "intended_usage": "关闭",
       "theme": "lavender_scrapbook",
-      "status": "archived",
+      "status": "candidate",
       "candidate_for": [
         "基础操作形状"
       ],
       "priority": "P2",
-      "notes": "PNG 尚未上传到本分支，文件到位后 status 改为 candidate。"
+      "notes": "PNG 已入库，状态为候选；接入前需按拉伸规则处理。",
+      "dimensions": [
+        45,
+        46
+      ],
+      "source_sheet": "a_clean_transparent_background_png_clipart_style_a.png"
     }
   ],
   "updated_on": "2026-10-21",
@@ -737,34 +877,5 @@
     "integrated": "已接入代码",
     "deprecated": "废弃不用"
   },
-  "pending_upload": [
-    "shapes/frame_rectangle_paper.png",
-    "shapes/frame_rectangle_grid.png",
-    "shapes/frame_round_note.png",
-    "shapes/frame_round_ribbon.png",
-    "shapes/frame_capsule_lilac.png",
-    "shapes/frame_capsule_cream.png",
-    "shapes/frame_circle_flower.png",
-    "shapes/frame_circle_crescent.png",
-    "shapes/frame_oval_wreath.png",
-    "shapes/frame_oval_blue.png",
-    "shapes/shape_triangle_play.png",
-    "shapes/shape_diamond_lavender.png",
-    "shapes/divider_stitch.png",
-    "shapes/divider_lace.png",
-    "shapes/arrow_chevron_pair.png",
-    "shapes/arrow_curved.png",
-    "shapes/shape_star_lavender.png",
-    "shapes/shape_heart_pink.png",
-    "shapes/bubble_round_lilac.png",
-    "shapes/bubble_speech_cream.png",
-    "shapes/wave_divider_cream.png",
-    "shapes/wave_divider_blue.png",
-    "shapes/ring_flower.png",
-    "shapes/ring_progress_segments.png",
-    "shapes/pattern_grid.png",
-    "shapes/pattern_dots.png",
-    "shapes/shape_plus_lavender.png",
-    "shapes/shape_close_cross.png"
-  ]
+  "pending_upload": []
 }
