@@ -4,7 +4,7 @@
   "project": "Cleos-Unofficial-Mod",
   "branch": "assets/lavender-scrapbook",
   "created_on": "2026-10-21",
-  "repository_status_note": "PNG originals prepared locally, NOT YET uploaded to GitHub branch; repository has manifest and README only.",
+  "repository_status_note": "All five PNGs are committed on this branch. Background is an opaque RGB wallpaper; the four frames are RGBA with transparent edges.",
   "resources": [
     {
       "id": "fixed_wallpaper",
@@ -17,8 +17,8 @@
         1846
       ],
       "transparent": false,
-      "repository_status": "pending_upload",
-      "integration_status": "verify_existing"
+      "repository_status": "present",
+      "integration_status": "integrated"
     },
     {
       "id": "frame_soft_note",
@@ -31,7 +31,7 @@
         1254
       ],
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned"
     },
     {
@@ -45,7 +45,7 @@
         1254
       ],
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned"
     },
     {
@@ -59,7 +59,7 @@
         1254
       ],
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned"
     },
     {
@@ -73,7 +73,7 @@
         1254
       ],
       "transparent": true,
-      "repository_status": "pending_upload",
+      "repository_status": "present",
       "integration_status": "unassigned"
     }
   ]
