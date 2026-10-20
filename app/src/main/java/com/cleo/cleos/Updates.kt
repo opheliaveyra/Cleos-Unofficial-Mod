@@ -314,6 +314,13 @@ internal class Updates(context: Context, http: OkHttpClient, private val current
         val archive = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
             ?: return "这个文件不是能安装的 apk，重试一次。"
         if (archive.packageName != app.packageName) return "这个包不是 Cleos（${archive.packageName}），没有安装。"
+        // 版本名比较过了，但版本名是人写的；真正决定能不能覆盖安装的是 versionCode。
+        // 比现在的还低就一定装不上（系统会拒），提前说清楚，别等安装器报错。
+        val mineCode = runCatching { pm.getPackageInfo(app.packageName, 0).longVersionCode }.getOrNull() ?: 0L
+        val theirCode = archive.longVersionCode
+        if (theirCode in 1 until mineCode) {
+            return "这个包是旧版（versionCode " + theirCode + "，现在装的是 " + mineCode + "），装不上去，跳过它。"
+        }
         val flags = PackageManager.GET_SIGNING_CERTIFICATES
         val mine = runCatching { pm.getPackageInfo(app.packageName, flags).signingInfo }.getOrNull()
         val theirs = archive.signingInfo

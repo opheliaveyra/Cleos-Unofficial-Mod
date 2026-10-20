@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +64,12 @@ internal fun UpdatePage(
                 "原作者的版本和以前的蓝奏云链接都不会再出现在这里——装上去会把这些改动盖掉。",
             color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
         )
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("历史版本", selected = false) {
+                c.updates.openPage("https://github.com/opheliaveyra/Cleos-Unofficial-Mod/releases")
+            }
+        }
     }
 
     Section("检查更新") {
