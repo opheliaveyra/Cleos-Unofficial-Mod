@@ -151,7 +151,7 @@ fun CallScreen() {
                                     size = 64.dp,
                                 )
                             }
-                            Text(if (st.muted) "已静音" else "静音", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                            if (!lavender) Text(if (st.muted) "已静音" else "静音", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         }
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -175,7 +175,7 @@ fun CallScreen() {
                                 CleosIcon(Icons.Rounded.CallEnd, contentDescription = "挂断", tint = Color.White, modifier = Modifier.size(34.dp))
                             }
                         }
-                        Text("挂断", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                        if (!lavender) Text("挂断", color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     }
                 }
             }
