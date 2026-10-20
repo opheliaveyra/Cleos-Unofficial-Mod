@@ -102,6 +102,8 @@ data class AppSettings(
     val patVerb: String = Pats.VERB,
     val patSuffix: String = "",
     val patBuzz: Boolean = true,
+    /** 二改版：启动时自动检查更新（只检查，不下载不安装）。 */
+    val autoUpdateCheck: Boolean = true,
     /** The colour of the person's own bubbles (ARGB), still glass; null follows the wallpaper. */
     val myBubble: Int? = null,
     val myBubbleTheme: String = "glass",
@@ -259,6 +261,7 @@ class SettingsRepository(private val context: Context) {
         val patVerb = stringPreferencesKey("pat_verb")
         val patSuffix = stringPreferencesKey("pat_suffix")
         val patBuzz = booleanPreferencesKey("pat_buzz")
+    val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
         val feedInterests = stringPreferencesKey("feed_interests")
         val feedRssUrl = stringPreferencesKey("feed_rss_url")
         val feedNewsSources = stringPreferencesKey("feed_news_sources")
@@ -352,6 +355,7 @@ class SettingsRepository(private val context: Context) {
             patVerb = this[Keys.patVerb]?.takeIf { it.isNotBlank() } ?: d.patVerb,
             patSuffix = this[Keys.patSuffix] ?: d.patSuffix,
             patBuzz = this[Keys.patBuzz] ?: d.patBuzz,
+            autoUpdateCheck = this[Keys.autoUpdateCheck] ?: d.autoUpdateCheck,
             myBubble = this[Keys.myBubble],
             myBubbleTheme = this[Keys.myBubbleTheme] ?: "glass",
             bubblePaddingX = (this[Keys.bubblePaddingX] ?: 10).coerceIn(6, 24),
@@ -415,6 +419,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.patVerb] = next.patVerb
             prefs[Keys.patSuffix] = next.patSuffix
             prefs[Keys.patBuzz] = next.patBuzz
+        prefs[Keys.autoUpdateCheck] = next.autoUpdateCheck
             prefs[Keys.feedInterests] = next.feedInterests.take(300)
             prefs[Keys.feedRssUrl] = next.feedRssUrl.take(2000)
             prefs[Keys.feedNewsSources] = next.feedNewsSources.take(200)

@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 二改版自带更新：下载完交给系统安装器，用户点确认才装。 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Voice messages: asked for the first time the person holds the microphone button. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 拍照：调系统相机。声明了就要在启动相机前请求（Android 11 起没授权会抛 SecurityException）。 -->

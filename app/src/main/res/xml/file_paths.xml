@@ -4,5 +4,7 @@
     拍完确认后由 ImageStore.import 转正、压缩、搬进应用自己的图片目录。
 -->
 <paths>
+    <!-- 检查更新下载下来的安装包：只放在自己的 cache 里，装完就删。 -->
+    <cache-path name="updates" path="updates/" />
     <cache-path name="camera" path="camera/" />
 </paths>

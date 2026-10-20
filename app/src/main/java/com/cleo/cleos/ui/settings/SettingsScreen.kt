@@ -139,7 +139,13 @@ fun SettingsScreen(
                     SettingsPage.Look -> LookPage(vm, onOpenLab, onOpenBubbleLab)
             SettingsPage.Usage -> UsagePage(vm)
                     SettingsPage.Data -> DataPage(vm)
-                    SettingsPage.About -> AboutPage()
+                    SettingsPage.Update -> UpdatePage(
+                autoCheck = vm.autoUpdateCheck,
+                onAutoCheck = { vm.setAutoUpdateCheck(it) },
+            )
+            SettingsPage.Diagnostics -> DiagnosticsPage()
+            SettingsPage.Lab -> LabPage()
+            SettingsPage.About -> AboutPage()
                 }
             }
         }

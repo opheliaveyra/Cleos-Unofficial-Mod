@@ -821,35 +821,100 @@ internal fun DataPage(vm: SettingsViewModel) {
 }
 
 
-/** The version and where new ones are, the last crash when there was one, privacy, and credits. */
+/** 关于：只留身份、出处、链接、隐私、许可。诊断和实验都搬走了。 */
 @Composable
 internal fun AboutPage() {
     val palette = LocalGlassPalette.current
     val context = LocalContext.current
-    val c = com.cleo.cleos.ui.common.appContainer()
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() }
     var showNotices by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
-    Section("Cleos ${version.orEmpty()} · 二改版") {
+    Section("Cleos " + version.orEmpty() + " · 二改版") {
+        Text(
+            "Cleos 非官方二次修改版，与原作者发布的版本不同。",
+            color = palette.content, fontSize = 13.sp, lineHeight = 19.sp,
+        )
         Text(
             "这是拿原作者的 Cleos（github.com/jqzhang921-sudo/cleos）改出来的版本。加的和改的：" +
                 "发文件给 TA 看（TXT / MD / PDF / DOCX）、按住输入框说话转文字、TA 自己的工作区、" +
-                "读网页和联网搜索，另外修了几个导入和 PDF 的老问题。",
-            color = palette.contentSecondary,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-        )
-        Text(
-            "更新不走原项目的渠道：原来那个「检查更新」和「去蓝奏云看新版」在这里关掉了 —— " +
-                "它们给的都是原版，装上去会把上面这些改动盖掉。新版本还是从你拿到这个 apk 的地方取，" +
-                "直接覆盖安装就行，聊天记录、日记都还在（**别先卸载**，卸载会把这台手机上的东西一起清掉）。" +
-                "真要重装，先在「数据与备份」里导出一份。",
+                "读网页和联网搜索、紫雾手账主题，另外修了几个导入和 PDF 的老问题。",
             color = palette.contentSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
     }
+
+    Section("出处与链接") {
+        Text("原作者：jqzhang921-sudo（github.com/jqzhang921-sudo/cleos）", color = palette.contentSecondary, fontSize = 12.sp)
+        Chip("打开原项目", selected = false) {
+            context.startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://github.com/jqzhang921-sudo/cleos"),
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+        Text("二改版仓库：opheliaveyra/Cleos-Unofficial-Mod", color = palette.contentSecondary, fontSize = 12.sp)
+        Chip("打开二改版仓库", selected = false) {
+            context.startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://github.com/opheliaveyra/Cleos-Unofficial-Mod"),
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+
+    Section("隐私") {
+        Text(
+            "聊天、日记和待办都只存在这台手机上。API Key 用系统密钥库加密。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+    }
+
+    Section("许可与版权") {
+        Text(
+            "Cleos 原创代码与已授权贡献采用 Apache-2.0；第三方内容保留各自的许可。语音条「在耳边」用的是 J. M. Arend、A. Neidhardt、C. Pörschmann 发布的 Neumann KU100 近场 HRIR 数据" +
+                "（Zenodo，doi:10.5281/zenodo.4297951，CC BY 4.0；Cleos 只留了三档距离、换了存法），" +
+                "做法移植自 binaural-voice（github.com/Saekisui/binaural-voice，MIT）。",
+            color = palette.contentSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
+        Chip("看许可全文", selected = false) { showNotices = true }
+    }
+
+    if (showNotices) {
+        val notices = remember {
+            NOTICES.joinToString("\n\n————\n\n") { path ->
+                runCatching { context.assets.open(path).use { it.readBytes().decodeToString() } }.getOrDefault("")
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showNotices = false },
+            title = { Text("许可与版权") },
+            text = {
+                Text(
+                    notices,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = { TextButton(onClick = { showNotices = false }) { Text("好") } },
+        )
+    }
+}
+
+/** 诊断与反馈：工具诊断、反馈问题、上次闪退、后台出错。逻辑原样搬过来，存格式没动。 */
+@Composable
+internal fun DiagnosticsPage() {
+    val palette = LocalGlassPalette.current
+    val context = LocalContext.current
+    val c = com.cleo.cleos.ui.common.appContainer()
+    val scope = rememberCoroutineScope()
 
     var diagnosticHint by remember { mutableStateOf<String?>(null) }
     var diagnosticBusy by remember { mutableStateOf(false) }
@@ -903,7 +968,6 @@ internal fun AboutPage() {
         diagnosticHint?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
     }
 
-    // 一键反馈：把该带的（版本、系统、页面、脱敏错误）整理好，人自己看、自己发。
     var feedbackOpen by remember { mutableStateOf(false) }
     Section("反馈问题") {
         Text(
@@ -915,55 +979,14 @@ internal fun AboutPage() {
         )
         Chip("反馈问题", selected = false) { feedbackOpen = true }
     }
-    if (feedbackOpen) FeedbackDialog(page = "设置 › 关于", onDismiss = { feedbackOpen = false })
+    if (feedbackOpen) FeedbackDialog(page = "设置 › 诊断与反馈", onDismiss = { feedbackOpen = false })
 
-    // 虚拟屏探针：验证「角色在独立虚拟屏里刷抖音」在这台手机上是否可行，只做验证。
-    Section("虚拟屏探针（验证用）") {
-        Text(
-            "分步验证：创建虚拟屏 → 把抖音启动到那块屏 → 读一帧画面 → 往该屏滑动 → 释放。" +
-                "每一步显示真实结果（包括 SecurityException 这类具体错误），不参与聊天。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开探针", selected = false) {
-            context.startActivity(
-                android.content.Intent(context, com.cleo.cleos.ui.probe.VirtualScreenProbeActivity::class.java),
-            )
-        }
-    }
-
-    // 一起看：把你正在看的屏幕定时截给 TA，让 TA 陪你看（需要投屏授权）。
-    Section("一起看（验证用）") {
-        Text(
-            "你刷视频时让 TA 看同一块屏幕并开口：每 5 秒最多一帧，画面没换就跳过；" +
-                "需要系统投屏授权，不需要 root / Shizuku。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开一起看", selected = false) {
-            context.startActivity(
-                android.content.Intent(context, com.cleo.cleos.ui.probe.WatchTogetherActivity::class.java),
-            )
-        }
-    }
-
-    // HTML 渲染自检：真机上看「聊天内预览 / 放大」两种模式（测试专用，不动聊天数据）。
-    var htmlTestOpen by remember { mutableStateOf(false) }
-    Section("HTML 渲染自检（验证用）") {
-        Text(
-            "六种典型 HTML：短、长、宽表格、按钮、输入框、动态内容。每块都能点开放大，" +
-                "用来确认「预览 80% 截断 / 放大可滚可交互」在这台机上是否正常。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Chip("打开自检", selected = false) { htmlTestOpen = true }
-    }
-    if (htmlTestOpen) HtmlSelfTestDialog(onClose = { htmlTestOpen = false })
-
-    // The last crash, to send to whoever makes the app (CrashLog): there only after one.
     var crash by remember { mutableStateOf(CrashLog.read(context)) }
     var crashHint by remember { mutableStateOf<String?>(null) }
     crash?.let { text ->
         Section("上次闪退") {
             Text(
-                "Cleos 上次闪退了（${text.lineSequence().first().substringAfter("，").substringBefore(" 闪退")}）。" +
+                "Cleos 上次闪退了（" + text.lineSequence().first().substringAfter("，").substringBefore(" 闪退") + "）。" +
                     "复制下来发给做 App 的人，就能知道是哪里出的错；里面是出错的位置，不是聊天内容，发之前也可以先看一眼。",
                 color = palette.content,
                 fontSize = 12.sp,
@@ -984,13 +1007,12 @@ internal fun AboutPage() {
         }
     }
 
-    // Something that failed out of sight and was let go of, with the app going on (CrashLog.note).
     var note by remember { mutableStateOf(CrashLog.readNote(context)) }
     var noteHint by remember { mutableStateOf<String?>(null) }
     note?.let { text ->
         Section("后台出错") {
             Text(
-                "Cleos 后台有件事没做成（${text.lineSequence().first().substringAfter("，").substringBefore(" 后台出错")}）：" +
+                "Cleos 后台有件事没做成（" + text.lineSequence().first().substringAfter("，").substringBefore(" 后台出错") + "）：" +
                     "App 没有退出，就是那件事被丢下了。复制下来发给做 App 的人，就能知道是哪里出的错；" +
                     "里面是出错的位置，不是聊天内容，发之前也可以先看一眼。",
                 color = palette.content,
@@ -1011,48 +1033,55 @@ internal fun AboutPage() {
             noteHint?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
         }
     }
+}
 
-    Section("隐私") {
+/** 实验室：都是验证用的，不影响聊天数据。权限提示和授权流程原样。 */
+@Composable
+internal fun LabPage() {
+    val palette = LocalGlassPalette.current
+    val context = LocalContext.current
+    var htmlTestOpen by remember { mutableStateOf(false) }
+
+    Section("实验功能") {
         Text(
-            "聊天、日记和待办都只存在这台手机上。API Key 用系统密钥库加密。",
-            color = palette.contentSecondary,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
+            "这里的东西是验证用的，可能会报错、可能随时改；它们不参与聊天，也不会动你的数据。" +
+                "每个入口都会先说清楚它要什么权限、失败时看到什么。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
         )
     }
 
-    Section("许可与版权") {
-        // Credit the data's licence asks for, where the people who get the app can see it.
+    Section("虚拟屏探针（验证用）") {
         Text(
-            "Cleos 原创代码与已授权贡献采用 Apache-2.0；第三方内容保留各自的许可。语音条「在耳边」用的是 J. M. Arend、A. Neidhardt、C. Pörschmann 发布的 Neumann KU100 近场 HRIR 数据" +
-                "（Zenodo，doi:10.5281/zenodo.4297951，CC BY 4.0；Cleos 只留了三档距离、换了存法），" +
-                "做法移植自 binaural-voice（github.com/Saekisui/binaural-voice，MIT）。",
-            color = palette.contentSecondary,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
+            "分步验证：创建虚拟屏 → 把抖音启动到那块屏 → 读一帧画面 → 往该屏滑动 → 释放。" +
+                "每一步显示真实结果（包括 SecurityException 这类具体错误），不参与聊天。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
         )
-        Chip("看许可全文", selected = false) { showNotices = true }
-    }
-
-    if (showNotices) {
-        // Read from the files that ship with the app, so what is shown is what the licences say, word for word.
-        val notices = remember {
-            NOTICES.joinToString("\n\n————\n\n") { path ->
-                runCatching { context.assets.open(path).use { it.readBytes().decodeToString() } }.getOrDefault("")
-            }
+        Chip("打开探针", selected = false) {
+            context.startActivity(
+                android.content.Intent(context, com.cleo.cleos.ui.probe.VirtualScreenProbeActivity::class.java),
+            )
         }
-        AlertDialog(
-            onDismissRequest = { showNotices = false },
-            title = { Text("许可与版权") },
-            text = {
-                Text(
-                    notices,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
-                )
-            },
-            confirmButton = { TextButton(onClick = { showNotices = false }) { Text("好") } },
-        )
     }
+
+    Section("一起看（验证用）") {
+        Text(
+            "你刷视频时让 TA 看同一块屏幕并开口：每 5 秒最多一帧，画面没换就跳过；" +
+                "需要系统投屏授权，不需要 root / Shizuku。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+        )
+        Chip("打开一起看", selected = false) {
+            context.startActivity(
+                android.content.Intent(context, com.cleo.cleos.ui.probe.WatchTogetherActivity::class.java),
+            )
+        }
+    }
+
+    Section("HTML 渲染自检（验证用）") {
+        Text(
+            "六种典型 HTML：短、长、宽表格、按钮、输入框、动态内容。用来确认「卡片进全屏查看器」这套在这台机上是否正常。",
+            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
+        )
+        Chip("打开自检", selected = false) { htmlTestOpen = true }
+    }
+    if (htmlTestOpen) HtmlSelfTestDialog(onClose = { htmlTestOpen = false })
 }

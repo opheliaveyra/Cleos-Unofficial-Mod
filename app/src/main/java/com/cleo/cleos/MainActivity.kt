@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cleo.cleos.data.AppSettings
 import com.cleo.cleos.ui.CleosNavHost
+import com.cleo.cleos.ui.common.UpdatePrompt
 import com.cleo.cleos.ui.theme.CleosTheme
 
 class MainActivity : ComponentActivity() {
@@ -30,8 +31,12 @@ class MainActivity : ComponentActivity() {
             settings?.let { s ->
                 CleosTheme(s, container.images) {
                     CleosNavHost()
-                    // UpdatePrompt 留着不用：它指向的是原项目的发布页，
-                    // 这个版本装了原版会把二改的东西盖掉。见 关于 那一页的说明。
+                    // 二改版自己的更新提示：源是 opheliaveyra/Cleos-Unofficial-Mod 的 Releases。
+                    // 启动时只在开关打开的情况下查一次——查完不阻塞界面，也不自动下载。
+                    LaunchedEffect(Unit) {
+                        if (s.autoUpdateCheck) container.updates.check()
+                    }
+                    UpdatePrompt(container)
                 }
                 AskForNotifications(container, s)
             }

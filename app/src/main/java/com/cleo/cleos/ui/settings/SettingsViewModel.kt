@@ -1011,6 +1011,12 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch { c.settings.update { it.copy(glassMode = mode) } }
     }
 
+    /** 二改版：启动时要不要自动查更新（只查，不下载不安装）。 */
+    val autoUpdateCheck: Boolean get() = settings.value.autoUpdateCheck
+    fun setAutoUpdateCheck(on: Boolean) {
+        viewModelScope.launch { c.settings.update { it.copy(autoUpdateCheck = on) } }
+    }
+
     /**
      * 桌面图标换一个（见 [AppIcons]）：先记下来，再真的去开关 alias。
      * 界面上的高亮跟着 [settings] 走，写进去就变了；系统那边的开关在 IO 里做，

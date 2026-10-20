@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.AlertDialog
@@ -96,6 +97,12 @@ enum class SettingsPage(val title: String) {
     Look("外观"),
     Usage("用量统计"),
     Data("数据与备份"),
+    /** 二改版自己的更新：查 GitHub Releases、下载、校验、交给系统安装。 */
+    Update("更新与版本"),
+    /** 工具诊断、反馈问题、闪退/后台出错记录。从原来的「关于」拆出来。 */
+    Diagnostics("诊断与反馈"),
+    /** 验证用的东西：虚拟屏探针、一起看、HTML 自检。 */
+    Lab("实验室"),
     About("关于"),
     ;
 
@@ -267,12 +274,16 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
         RowDivider()
         Entry(Icons.Rounded.Inventory2, "数据与备份", "导出、恢复、导入记忆") { onOpen(SettingsPage.Data) }
         RowDivider()
+        Entry(Icons.Rounded.Refresh, "更新与版本", "Cleos 二改版 " + version + " · 检查更新") { onOpen(SettingsPage.Update) }
+        Entry(Icons.Rounded.Info, "诊断与反馈", "工具诊断、反馈、闪退与后台出错") { onOpen(SettingsPage.Diagnostics) }
+        Entry(Icons.Rounded.Widgets, "实验室", "虚拟屏探针、一起看、HTML 自检") { onOpen(SettingsPage.Lab) }
+        RowDivider()
         if (crashed) {
             Entry(Icons.Rounded.Info, "关于", "Cleos $version · 上次闪退了，记录在这里", palette.error) { onOpen(SettingsPage.About) }
         } else if (noted) {
             Entry(Icons.Rounded.Info, "关于", "Cleos $version · 后台有件事没做成，记录在这里", palette.error) { onOpen(SettingsPage.About) }
         } else {
-            Entry(Icons.Rounded.Info, "关于", "Cleos $version · 新版本、许可与出处") { onOpen(SettingsPage.About) }
+            Entry(Icons.Rounded.Info, "关于", "Cleos $version · 出处、许可与版权") { onOpen(SettingsPage.About) }
         }
     }
 
