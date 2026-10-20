@@ -72,6 +72,7 @@ import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Call
@@ -2977,13 +2978,16 @@ private fun ChatInputBar(
             if (busy && !canSend && !editing) {
                 BarIconButton(Icons.Rounded.Stop, "停止", onClick = onStop, tint = palette.content, background = palette.content.copy(alpha = 0.1f), slotHeight = BarHeight)
             } else {
+                // 紫雾手账下发送键用拼贴纸飞机（素材自带纸色，所以不铺底色）；原版仍是箭头。
+                val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
                 BarIconButton(
-                    Icons.Rounded.ArrowUpward,
+                    if (lavender) Icons.Rounded.Send else Icons.Rounded.ArrowUpward,
                     if (editing) "修改并重新回答" else "发送",
                     onClick = onSend,
                     enabled = sendEnabled && canSend,
                     tint = Color.White,
-                    background = palette.accent.copy(alpha = if (sendEnabled && canSend) 1f else 0.35f),
+                    background = if (lavender) Color.Transparent
+                    else palette.accent.copy(alpha = if (sendEnabled && canSend) 1f else 0.35f),
                     slotHeight = BarHeight,
                 )
             }
