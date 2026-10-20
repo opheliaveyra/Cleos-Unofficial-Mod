@@ -543,16 +543,29 @@ internal fun LookPage(vm: SettingsViewModel, onOpenLab: () -> Unit, onOpenBubble
         vm.visualThemeError?.let { Text(it, color = palette.error, fontSize = 13.sp) }
     }
 
-    Section("壁纸") {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Chip(if (vm.wallpaperBusy) "正在换…" else "换壁纸", selected = false) {
-                if (!vm.wallpaperBusy) {
-                    wallpaperPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }
-            }
-            if (settings.wallpaper != null) Chip("用回默认", selected = false) { vm.resetWallpaper() }
+    // 紫雾手账是整套预设：背景、图标、配色、气泡、导航一起生效，主题内不单独换背景。
+    // 这里只是**不显示**入口，用户的 wallpaper 设置原样留着，切回去照旧生效。
+    val isLavender = com.cleo.cleos.data.VisualTheme.normalize(settings.visualTheme) == com.cleo.cleos.data.VisualTheme.LAVENDER
+    if (isLavender) {
+        Section("壁纸") {
+            Text(
+                "紫雾手账用的是主题自带的固定背景，这里不提供单独换背景。切回原版默认主题，你原来的壁纸会照旧回来（设置没被改动）。",
+                color = palette.contentSecondary,
+                fontSize = 12.sp,
+            )
         }
-        vm.wallpaperError?.let { Text(it, color = palette.error, fontSize = 13.sp) }
+    } else {
+        Section("壁纸") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Chip(if (vm.wallpaperBusy) "正在换…" else "换壁纸", selected = false) {
+                    if (!vm.wallpaperBusy) {
+                        wallpaperPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                }
+                if (settings.wallpaper != null) Chip("用回默认", selected = false) { vm.resetWallpaper() }
+            }
+            vm.wallpaperError?.let { Text(it, color = palette.error, fontSize = 13.sp) }
+        }
     }
 
     Section("玻璃") {

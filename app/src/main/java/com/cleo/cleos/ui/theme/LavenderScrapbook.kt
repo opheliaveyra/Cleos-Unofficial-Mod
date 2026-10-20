@@ -45,17 +45,23 @@ internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
     accentContent = Purple,
 )
 
+/**
+ * 紫雾手账的固定背景：Aster 画的那张紫雾拼贴纸。
+ *
+ * 是主题内置资源 —— 不走设置里的壁纸，也不允许单独换；用户切到别的主题时
+ * 才回到自己的壁纸（设置本身没被改动，切回来还是原样）。
+ *
+ * 适配：等比放大填满（Crop）。图是 852×1846，比例 0.4615，正好是常见手机的比例，
+ * 所以不会拉伸；比它更宽/更窄的屏幕只在中缝处裁掉一点，四角的装饰保留。
+ */
 @Composable
 internal fun ScrapbookBackground() {
-    Box(Modifier.fillMaxSize().background(Color(0xFFF3EDF7)).drawBehind {
-        // Sparse fibers, no blur, no wallpaper mutation and no decoration over text.
-        val step = 36.dp.toPx()
-        var y = 0f
-        while (y < size.height) {
-            drawLine(Color(0x0A73538E), Offset(0f,y), Offset(size.width,y+2.dp.toPx()), 0.5.dp.toPx())
-            y += step
-        }
-    })
+    Image(
+        painter = painterResource(R.drawable.scrap_bg_paper),
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 /** Shared fallback material until page-specific paper pieces arrive in later batches. */

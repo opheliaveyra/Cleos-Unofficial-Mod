@@ -251,7 +251,15 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
             GlassMode.Light -> "浅色"
             GlassMode.Dark -> "深色"
         }
-        Entry(Icons.Rounded.Palette, "外观", (if (settings.wallpaper == null) "默认壁纸" else "自己的壁纸") + " · 玻璃$glass") {
+        Entry(
+            Icons.Rounded.Palette,
+            "外观",
+            if (com.cleo.cleos.data.VisualTheme.normalize(settings.visualTheme) == com.cleo.cleos.data.VisualTheme.LAVENDER) {
+                "紫雾手账 · 固定背景"
+            } else {
+                (if (settings.wallpaper == null) "默认壁纸" else "自己的壁纸") + " · 玻璃$glass"
+            },
+        ) {
             onOpen(SettingsPage.Look)
         }
         RowDivider()
