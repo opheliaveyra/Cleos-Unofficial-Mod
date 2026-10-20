@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Widgets
@@ -298,32 +300,77 @@ internal fun SettingsDirectory(vm: SettingsViewModel, onOpenLore: (Long) -> Unit
 /** Which TA's settings to show; picking one also makes them the one being talked to. */
 @Composable
 private fun TaPicker(tas: List<CompanionEntity>, current: Long, onPick: (Long) -> Unit, onDismiss: () -> Unit) {
+    // 紫雾手账：换成纸绘信纸框；原版主题仍然是原来的系统 AlertDialog。
+    if (com.cleo.cleos.ui.theme.usesScrapbookDialog()) {
+        ScrapbookTaPicker(tas, current, onPick, onDismiss)
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("换一个 TA") },
         text = {
-            LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                items(tas, key = { it.id }) { t ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onPick(t.id) }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Avatar(t.avatar, t.avatarEmoji ?: avatarLetter(t.name, "TA"), 36.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            t.name.trim().ifEmpty { "TA" },
-                            fontSize = 16.sp,
-                            fontWeight = if (t.id == current) FontWeight.SemiBold else FontWeight.Normal,
-                        )
-                    }
-                }
-            }
+            TaPickerList(tas, current, onPick)
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关上") } },
     )
+}
+
+/** 角色列表本身：两个主题共用，不重写一遍。 */
+@Composable
+private fun TaPickerList(tas: List<CompanionEntity>, current: Long, onPick: (Long) -> Unit) {
+    LazyColumn(Modifier.heightIn(max = 420.dp)) {
+        items(tas, key = { it.id }) { t ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onPick(t.id) }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Avatar(t.avatar, t.avatarEmoji ?: avatarLetter(t.name, "TA"), 36.dp)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    t.name.trim().ifEmpty { "TA" },
+                    color = LocalGlassPalette.current.content,
+                    fontSize = 16.sp,
+                    fontWeight = if (t.id == current) FontWeight.SemiBold else FontWeight.Normal,
+                )
+                if (t.id == current) {
+                    Spacer(Modifier.weight(1f))
+                    CleosIcon(
+                        androidx.compose.material.icons.Icons.Rounded.Check,
+                        contentDescription = "当前",
+                        tint = LocalGlassPalette.current.accent,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 紫雾手账版「换一个 TA」：柔边信纸框 + 纸面配色。 */
+@Composable
+private fun ScrapbookTaPicker(tas: List<CompanionEntity>, current: Long, onPick: (Long) -> Unit, onDismiss: () -> Unit) {
+    val palette = LocalGlassPalette.current
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        com.cleo.cleos.ui.theme.ScrapbookDialogFrame(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight(),
+        ) {
+            Text("换一个 TA", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(14.dp))
+            TaPickerList(tas, current, onPick)
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text("关上", color = palette.accentContent) }
+            }
+        }
+    }
 }
 
 private fun onOff(on: Boolean) = if (on) "开" else "关"
