@@ -35,6 +35,8 @@ private val Paper = Color(0xFFFFFBF5)
 private val Ink = Color(0xFF40364F)
 private val Purple = Color(0xFF73538E)
 private val Tape = Color(0xFFE5D9F1)
+/** 选中的标签文字：比常态略深一档，不加阴影。 */
+private val TapeInk = Color(0xFF3A2E4B)
 
 internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
     content = Ink,
@@ -113,21 +115,79 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
                 Column(
                     Modifier.weight(1f).heightIn(min=56.dp)
                         .selectable(selected=active,role=Role.Tab,onClick={onSelect(index)})
-                        .drawBehind {
-                            if (active) drawRoundRect(Tape,topLeft=Offset(size.width*.16f,5.dp.toPx()),size=androidx.compose.ui.geometry.Size(size.width*.68f,34.dp.toPx()),cornerRadius=CornerRadius(2.dp.toPx()))
-                        }.padding(vertical=5.dp),
+                        .padding(vertical=5.dp),
                     horizontalAlignment=Alignment.CenterHorizontally,
                     verticalArrangement=Arrangement.spacedBy(2.dp),
                 ) {
-                    CleosIcon(
-                        imageVector = if (active) tab.selectedIcon else tab.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(if (active) 31.dp else 28.dp),
-                        tint = if (active) Purple else Ink,
+                    Box(contentAlignment = Alignment.Center) {
+                        CleosIcon(
+                            imageVector = if (active) tab.selectedIcon else tab.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(if (active) 31.dp else 28.dp),
+                            tint = if (active) Purple else Ink,
+                        )
+                        // 选中态：一块手撕和纸胶带**盖在图标上面**，图标透过胶带显现。
+                        // 不画任何阴影/发光/底座 —— 胶带本身就是唯一的那层。
+                        if (active) {
+                            Box(
+                                Modifier
+                                    .offset(y = (-3).dp)
+                                    .width(44.dp)
+                                    .height(27.dp)
+                                    .drawBehind { drawTornTape(size) },
+                            )
+                        }
+                    }
+                    Text(
+                        tab.label,
+                        color = if (active) TapeInk else Ink,
+                        fontSize = 11.sp,
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
                     )
-                    Text(tab.label,color=Ink,fontSize=11.sp,fontWeight=if(active) FontWeight.SemiBold else FontWeight.Normal)
                 }
             }
         }
     }
+}
+
+/**
+ * 手撕和纸胶带：横向矩形 + 两端细密小三角锯齿。
+ *
+ * 锯齿**向内凹**（不超出这块 Box），所以两端不会盖住旁边的入口。
+ * 透明度约 26%：图标透得出来，又能看出胶带在。
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTornTape(size: androidx.compose.ui.geometry.Size) {
+    val tooth = 2.6.dp.toPx()
+    val depth = 2.4.dp.toPx()
+    val l = 0f
+    val r = size.width
+    val t = 0f
+    val b = size.height
+    val path = Path()
+
+    // 左上起笔，左边缘自上而下走锯齿
+    path.moveTo(l + depth, t)
+    var y = t
+    var inward = true
+    while (y < b) {
+        y = kotlin.math.min(y + tooth, b)
+        path.lineTo(if (inward) l + depth else l, y)
+        inward = !inward
+    }
+    // 底边
+    path.lineTo(r - depth, b)
+    // 右边缘自下而上走锯齿
+    var yy = b
+    inward = true
+    while (yy > t) {
+        yy = kotlin.math.max(yy - tooth, t)
+        path.lineTo(if (inward) r - depth else r, yy)
+        inward = !inward
+    }
+    // 顶边回到起点
+    path.lineTo(l + depth, t)
+    path.close()
+
+    // 浅紫和纸：26% 不透明度，图标透得出来，但胶带边缘看得出来。
+    drawPath(path, Color(0xFFA78FD0).copy(alpha = 0.28f))
 }
