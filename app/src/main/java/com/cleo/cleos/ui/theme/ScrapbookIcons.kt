@@ -99,7 +99,6 @@ internal object ScrapbookIconMap {
         put("HeartBroken", intArrayOf(R.drawable.scrap_heart))
         put("Add", intArrayOf(R.drawable.scrap_add))
         put("MoreHoriz", intArrayOf(R.drawable.scrap_more))
-        put("Widgets", intArrayOf(R.drawable.scrap_more_actions))
         put("MoreVert", intArrayOf(R.drawable.scrap_more_actions))
         put("ArrowBack", intArrayOf(R.drawable.scrap_back))
         put("KeyboardArrowRight", intArrayOf(R.drawable.scrap_forward))
@@ -113,15 +112,36 @@ internal object ScrapbookIconMap {
         put("Info", intArrayOf(R.drawable.scrap_info))
         put("Warning", intArrayOf(R.drawable.scrap_warning))
         put("WarningAmber", intArrayOf(R.drawable.scrap_warning))
+
+        // —— 第二批（2026-10-20 她补发的 16 张）——
+        put("Send", intArrayOf(R.drawable.scrap_send))
+        put("Palette", intArrayOf(R.drawable.scrap_palette))
+        put("GridOn", intArrayOf(R.drawable.scrap_grid))
+        put("Apps", intArrayOf(R.drawable.scrap_grid))
+        put("Lock", intArrayOf(R.drawable.scrap_lock))
+        put("LockOpen", intArrayOf(R.drawable.scrap_lock_open))
+        put("DynamicFeed", intArrayOf(R.drawable.scrap_dynamic_feed))
+        put("PhotoLibrary", intArrayOf(R.drawable.scrap_dynamic_feed))
+        put("Call", intArrayOf(R.drawable.scrap_call))
+        put("Phone", intArrayOf(R.drawable.scrap_call))
+        put("CallEnd", intArrayOf(R.drawable.scrap_call_end))
+        put("ContentCopy", intArrayOf(R.drawable.scrap_copy))
+        put("TextFields", intArrayOf(R.drawable.scrap_text_fields))
+        put("EmojiEmotions", intArrayOf(R.drawable.scrap_emoji))
+        put("Mood", intArrayOf(R.drawable.scrap_emoji))
+        put("FileDownload", intArrayOf(R.drawable.scrap_download))
+        put("Download", intArrayOf(R.drawable.scrap_download))
+        put("Key", intArrayOf(R.drawable.scrap_key))
+        put("Lightbulb", intArrayOf(R.drawable.scrap_lightbulb))
+        put("Widgets", intArrayOf(R.drawable.scrap_widgets))
+        put("SkipNext", intArrayOf(R.drawable.scrap_skip_next))
         put("Reply", intArrayOf(R.drawable.scrap_bubble_reply))
     }
 
     /** 没有素材、必须回退原生的语义，记录在案便于出缺失清单。 */
     val knownMissing: Set<String> = setOf(
         "ArrowUpward", "ArrowDownward", "ArrowDropDown", "ExpandLess", "ExpandMore",
-        "Call", "CallEnd", "ContentCopy", "DynamicFeed", "EmojiEmotions", "FileDownload",
-        "GridOn", "Key", "Lightbulb", "Lock", "LockOpen", "Palette", "Send", "SkipNext",
-        "Stop", "TextFields", "Widgets",
+        "Stop",
     )
 }
 
