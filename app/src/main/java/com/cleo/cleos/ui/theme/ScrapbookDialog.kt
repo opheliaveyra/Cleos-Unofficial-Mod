@@ -79,34 +79,43 @@ private const val CORNER = 0.22f
  * 取整用 IntOffset/IntSize，避免相邻块之间出现 1px 缝。
  */
 private fun DrawScope.drawNine(src: ImageBitmap, dst: Size) {
-    val sw = src.width.toFloat()
-    val sh = src.height.toFloat()
-    val cx = (sw * CORNER).coerceAtMost(sw / 2.5f)
-    val cy = (sh * CORNER).coerceAtMost(sh / 2.5f)
+    val sw = src.width
+    val sh = src.height
+    // 整数边界：相邻块**共享同一条边界**，既不留缝也不重叠。
+    val cx = Math.round(sw * CORNER).coerceIn(1, sw / 2 - 1)
+    val cy = Math.round(sh * CORNER).coerceIn(1, sh / 2 - 1)
+    val sx = intArrayOf(0, cx, sw - cx, sw)
+    val sy = intArrayOf(0, cy, sh - cy, sh)
 
-    val srcX = floatArrayOf(0f, cx, sw - cx)
-    val srcW = floatArrayOf(cx, sw - cx * 2, cx)
-    val srcY = floatArrayOf(0f, cy, sh - cy)
-    val srcH = floatArrayOf(cy, sh - cy * 2, cy)
-
-    // 目标：四角按原像素比例（等于把 1254 见方的框图缩放到当前弹窗的短边）
     val k = minOf(dst.width / sw, dst.height / sh)
-    val dcx = (cx * k).coerceAtMost(dst.width / 2.5f)
-    val dcy = (cy * k).coerceAtMost(dst.height / 2.5f)
-    val dstX = floatArrayOf(0f, dcx, dst.width - dcx)
-    val dstW = floatArrayOf(dcx, (dst.width - dcx * 2).coerceAtLeast(1f), dcx)
-    val dstY = floatArrayOf(0f, dcy, dst.height - dcy)
-    val dstH = floatArrayOf(dcy, (dst.height - dcy * 2).coerceAtLeast(1f), dcy)
+    val dw = Math.round(dst.width)
+    val dh = Math.round(dst.height)
+    val dcx = Math.round(cx * k).coerceIn(1, dw / 2 - 1)
+    val dcy = Math.round(cy * k).coerceIn(1, dh / 2 - 1)
+    val dx = intArrayOf(0, dcx, dw - dcx, dw)
+    val dy = intArrayOf(0, dcy, dh - dcy, dh)
 
     for (row in 0..2) {
         for (col in 0..2) {
-            if (dstW[col] < 1f || dstH[row] < 1f) continue
+            // **向外多取 1px**：拉伸过的块边缘是插值出来的半透明像素，
+            // 正好落在分片线上就会显成一条浅色接缝。多盖 1px 把它藏到邻块底下。
+            val so = IntOffset((sx[col] - if (col > 0) 1 else 0).coerceAtLeast(0), (sy[row] - if (row > 0) 1 else 0).coerceAtLeast(0))
+            val ss = IntSize(
+                (sx[col + 1] - so.x + if (col < 2) 1 else 0).coerceIn(1, sw - so.x),
+                (sy[row + 1] - so.y + if (row < 2) 1 else 0).coerceIn(1, sh - so.y),
+            )
+            val dox = (dx[col] - if (col > 0) 1 else 0).coerceAtLeast(0)
+            val doy = (dy[row] - if (row > 0) 1 else 0).coerceAtLeast(0)
+            val ds = IntSize(
+                (dx[col + 1] - dox + if (col < 2) 1 else 0).coerceIn(1, dw - dox),
+                (dy[row + 1] - doy + if (row < 2) 1 else 0).coerceIn(1, dh - doy),
+            )
             drawImage(
                 image = src,
-                srcOffset = IntOffset(srcX[col].toInt(), srcY[row].toInt()),
-                srcSize = IntSize(srcW[col].toInt().coerceAtLeast(1), srcH[row].toInt().coerceAtLeast(1)),
-                dstOffset = IntOffset(dstX[col].toInt(), dstY[row].toInt()),
-                dstSize = IntSize(dstW[col].toInt().coerceAtLeast(1), dstH[row].toInt().coerceAtLeast(1)),
+                srcOffset = so,
+                srcSize = ss,
+                dstOffset = IntOffset(dox, doy),
+                dstSize = ds,
                 filterQuality = FilterQuality.High,
             )
         }
