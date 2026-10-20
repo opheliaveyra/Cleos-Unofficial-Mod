@@ -4,11 +4,15 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.util.Log
-import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Surface
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import android.view.WindowManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,13 +20,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,13 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -219,163 +220,146 @@ internal fun MessageExtras(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * TA 在对话里做的小玩意儿：它写的 HTML 直接在气泡里跑起来，能点、能玩。
- *
- * 和"代码块"是两回事 —— 那个只是把代码排好看，这个是真的跑。所以边界得自己划：
- *
- * · **不许联网**（blockNetworkLoads）—— 它做的东西不能往外发请求，也加载不了外面的图；
- * · **不许碰文件**（allowFileAccess / allowContentAccess 关掉）—— 读不到这台手机上的东西；
- * · **不许跳出去**（shouldOverrideUrlLoading 一律拦下）—— 点什么都留在这个框里；
- * · **不挂 JS 桥**（没有 addJavascriptInterface）—— 页面里的脚本够不着 App 的任何东西。
- *
- * 也就是说：它能在这一小块地方里折腾，但伸不到外面。开关在设置里，默认关着。
- */
-/** 两种模式的上限：都取可用屏幕的 80%。 */
-private const val MODE_RATIO = 0.8f
-
-/** 诊断标签：`adb logcat -s CleosWidget`。排查完可以整段删掉。 */
+/** 诊断标签：`adb logcat -s CleosWidget`。 */
 private const val TAG = "CleosWidget"
 
+/** 卡片标题上限：超过就截断，别把卡片撑成两行。 */
+private const val TITLE_MAX = 28
+
 /**
- * 聊天里的小玩意儿。**两种模式，不共用同一套截断/交互**：
+ * TA 在对话里做的小玩意儿。
  *
- * · 预览（[WidgetPreview]）：宽最多 80% 屏宽、高最多 80% 屏高，按内容自适应；
- *   超出就裁掉，**不滚动、不消费触摸**（聊天列表照常滚），按钮也点不动；
- * · 放大（[WidgetZoom]）：同一个 HTML 重新加载，宽高最多 80% 屏，内容超出时内部可滚，
- *   按钮/输入框正常可用。
+ * **聊天里只放一张卡片**（标题 + 类型 + 「打开查看」），不内嵌 WebView：
+ * 气泡宽度有限，HTML 在那个尺寸里必然被裁，看起来像「内容没了」。
+ *
+ * 点开之后是独立的全屏查看器（[WidgetViewer]）：完整宽高、可以滚、可以点、可以输入，
+ * 键盘弹起时内容自己让位。安全策略没变（不联网、不碰文件、不跳出去、没有 JS 桥），
+ * 状态还是靠同一段 HTML 的 localStorage（[stableKey]），关了再开尽量回到原样。
  */
 @Composable
 internal fun LiveWidget(html: String, ink: Color, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
-    var expanded by remember(html) { mutableStateOf(false) }
-    var clipped by remember(html) { mutableStateOf(false) }
+    var open by remember(html) { mutableStateOf(false) }
+    val title = remember(html) { widgetTitle(html) }
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        WidgetPreview(html, ink, onClipped = { clipped = it })
-        // 被裁的时候说清楚「后面还有」，别让人以为就这么多。
-        Text(
-            if (clipped) "内容较长，点开放大看全部" else "点开放大",
-            color = palette.contentSecondary,
-            fontSize = 11.sp,
-            modifier = Modifier.clickable { expanded = true },
-        )
+    GlassSurface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { open = true },
+        style = palette.card,
+        shape = GlassShape.Rounded(18.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("小玩意儿", color = palette.contentSecondary, fontSize = 11.sp)
+                Text(title, color = palette.content, fontSize = 15.sp, maxLines = 1)
+                Text("HTML · 可交互", color = palette.contentSecondary, fontSize = 11.sp)
+            }
+            TextButton(onClick = { open = true }) {
+                Text("打开查看", color = palette.accentContent, fontSize = 13.sp)
+            }
+        }
     }
-    if (expanded) {
-        WidgetZoom(html, ink, onClose = { expanded = false })
-    }
+
+    if (open) WidgetViewer(html = html, title = title, ink = ink, onClose = { open = false })
 }
 
-/** 模式一：聊天里的预览。宽 80% 屏、高按内容（最多 80% 屏），**不滚动、不消费触摸**。 */
+/**
+ * 独立的全屏查看器。
+ *
+ * 和之前那个 80% 弹窗的区别：占满整块屏，WebView 直接 fillMaxSize，
+ * **不再按内容量高度**，长页面交给 WebView 自己滚；键盘弹起时用 imePadding 让内容让位。
+ */
 @Composable
-private fun WidgetPreview(html: String, ink: Color, onClipped: (Boolean) -> Unit) {
-    val screenW = LocalConfiguration.current.screenWidthDp.dp
-    val screenH = LocalConfiguration.current.screenHeightDp.dp
-    WidgetBox(
-        html = html,
-        ink = ink,
-        modifier = Modifier.fillMaxWidth().widthIn(max = screenW * MODE_RATIO),
-        maxHeight = screenH * MODE_RATIO,
-        interactive = false,
-        onClipped = onClipped,
-    )
-}
-
-/** 模式二：放大。同一个 HTML 重新加载；宽高最多 80% 屏，超了内部自己滚，交互正常。 */
-@Composable
-private fun WidgetZoom(html: String, ink: Color, onClose: () -> Unit) {
+private fun WidgetViewer(html: String, title: String, ink: Color, onClose: () -> Unit) {
     val palette = LocalGlassPalette.current
-    val screenW = LocalConfiguration.current.screenWidthDp.dp
-    val screenH = LocalConfiguration.current.screenHeightDp.dp
     var resetCount by remember { mutableIntStateOf(0) }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BoxWithConstraints(Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.Center) {
-            // 弹窗本身按内容走：宽度最多 80% 屏，高度由里面的 WebView 决定（≤80% 屏）。
-            Column(
-                Modifier
-                    .widthIn(max = screenW * MODE_RATIO)
-                    .wrapContentHeight(),
-            ) {
-                GlassSurface(
-                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                    style = palette.card,
-                    shape = GlassShape.Rounded(24.dp),
-                    contentPadding = PaddingValues(12.dp),
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        // 返回手势 / 返回键先关查看器，不要退出聊天。
+        BackHandler(enabled = true) { onClose() }
+
+        // 键盘：让对话框窗口自己 resize，imePadding 才有东西可让。
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        DisposableEffect(dialogWindow) {
+            runCatching {
+                dialogWindow?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            }
+            onDispose { }
+        }
+
+        // 查看器要盖住聊天，背景必须不透明：按 palette.content 的明暗决定用纸色还是深夜色。
+        val onLight = palette.content.luminance() < 0.5f
+        val viewerBg = if (onLight) Color(0xFFFBF8F3) else Color(0xFF15131A)
+        Surface(modifier = Modifier.fillMaxSize(), color = viewerBg) {
+            Column(Modifier.fillMaxSize().imePadding()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.wrapContentHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("放大看", color = palette.contentSecondary, fontSize = 12.sp)
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { resetCount++ }) {
-                                Text("重置状态", color = palette.contentSecondary, fontSize = 12.sp)
-                            }
-                            TextButton(onClick = onClose) { Text("收起", color = palette.content) }
-                        }
-                        WidgetBox(
-                            html = html,
-                            ink = ink,
-                            modifier = Modifier.fillMaxWidth(),
-                            maxHeight = screenH * MODE_RATIO,
-                            interactive = true,
-                            resetSignal = resetCount,
-                        )
+                    Column(Modifier.weight(1f)) {
+                        Text("小玩意儿", color = palette.contentSecondary, fontSize = 11.sp)
+                        Text(title, color = palette.content, fontSize = 15.sp, maxLines = 1)
+                    }
+                    TextButton(onClick = { resetCount++ }) {
+                        Text("重置状态", color = palette.contentSecondary, fontSize = 12.sp)
+                    }
+                    TextButton(onClick = onClose) {
+                        Text("关闭", color = palette.content, fontSize = 13.sp)
                     }
                 }
+                FullScreenWidget(
+                    html = html,
+                    ink = ink,
+                    resetSignal = resetCount,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                )
             }
         }
     }
 }
 
-/**
- * 两种模式共用的「测量 + 容器」：高度从小往上长（**只增不减**），最多到 [maxHeight]。
- * 超过上限的部分由 WebView 视口裁掉 —— 预览不滚；放大模式 WebView 自己滚。
- */
+/** 全屏这块 WebView：不测量内容高度，直接吃掉剩下的所有空间，内部自己滚。 */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun WidgetBox(
+private fun FullScreenWidget(
     html: String,
     ink: Color,
+    resetSignal: Int,
     modifier: Modifier = Modifier,
-    maxHeight: Dp,
-    interactive: Boolean,
-    /** 放大弹窗的「重置状态」：每 +1 清一次本 key 的 localStorage 并重载页面。 */
-    resetSignal: Int = 0,
-    onClipped: (Boolean) -> Unit = {},
 ) {
     val palette = LocalGlassPalette.current
-    // 注意：WebView 里 getBoundingClientRect() 给的是 CSS px；页面 viewport 是 width=device-width，
-    // 所以 1 CSS px = 1dp（**不要再除 density**，除一次内容就会只剩 1/3，看起来就是被裁）。
     val context = LocalContext.current
-    val floor = 72f
-    var measuredPx by remember(html) { mutableIntStateOf(0) }
-    var failure by remember(html) { mutableStateOf<String?>(null) }
-    var heightDp by remember(html) { mutableFloatStateOf(floor) }
-    LaunchedEffect(measuredPx, maxHeight) {
-        if (measuredPx > 0) {
-            val want = measuredPx.toFloat().coerceAtMost(maxHeight.value).coerceAtLeast(floor)
-            // 只增不减：视口变大会让 min-height:100vh 的元素变高，来回缩会震荡。
-            if (want > heightDp + 1f) heightDp = want
-        }
-    }
-    val clipped = heightDp >= maxHeight.value - 1f
-    LaunchedEffect(clipped) { onClipped(clipped) }
-
     val stateKey = remember(html) { stableKey(html) }
-    val view = remember(html, interactive) {
+    var failure by remember(html) { mutableStateOf<String?>(null) }
+
+    val view = remember(html) {
         makeWebView(
-            context, html, ink, palette.contentSecondary, interactive,
+            context = context,
+            html = html,
+            ink = ink,
+            secondary = palette.contentSecondary,
             stateKey = stateKey,
-            onHeight = { px -> measuredPx = px },
             onFailure = { failure = it },
         )
     }
     DisposableEffect(view) {
         onDispose { runCatching { view.stopLoading(); view.destroy() } }
     }
+    // 「重置状态」：清掉这段 HTML 的 localStorage 再重载，别的 HTML 的存档不动。
     LaunchedEffect(view, resetSignal) {
         if (resetSignal > 0) {
             view.evaluateJavascript(
-                "try{localStorage.removeItem('cleos.widget." + stateKey + "')}catch(e){};location.reload();",
+                "try{window.__cleosNoSave=true}catch(e){};" +
+                "try{localStorage.removeItem('cleos.widget." + stateKey + "')}catch(e){};" +
+                "location.reload();",
                 null,
             )
         }
@@ -383,20 +367,19 @@ private fun WidgetBox(
 
     Column(modifier) {
         AndroidView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(heightDp.coerceAtLeast(floor).dp)
-                .clip(RoundedCornerShape(14.dp)),
+            modifier = Modifier.fillMaxSize(),
             factory = { view },
             update = {},
         )
-        failure?.let { Text("这个小玩意儿没能跑起来：$it", color = palette.contentSecondary, fontSize = 11.sp) }
+        failure?.let {
+            Text("这个小玩意儿没能跑起来：" + it, color = palette.contentSecondary, fontSize = 12.sp)
+        }
     }
 }
 
 /**
  * 建一个 WebView：安全策略全在这儿 —— 不联网、不碰文件、不许跳出去、没有 JS 桥。
- * `onHeight` 在加载完成和图片/字体加载后各喂一次高度（有上限，不会无限循环）。
+ * 状态靠 Web Storage：同一个 HTML 的输入/滚动存进它自己的 localStorage（origin 按 stateKey 隔离）。
  */
 @SuppressLint("SetJavaScriptEnabled")
 private fun makeWebView(
@@ -404,19 +387,14 @@ private fun makeWebView(
     html: String,
     ink: Color,
     secondary: Color,
-    /** false = 预览（不消费触摸）；true = 放大（可滚、可交互）。 */
-    interactive: Boolean,
-    /** 这段 HTML 的状态作用域（见 [stableKey]）：同一段 HTML 的 localStorage 共享。 */
     stateKey: String,
-    onHeight: (Int) -> Unit,
     onFailure: (String?) -> Unit,
-): WebView = (if (interactive) WebView(context) else PreviewWebView(context)).apply {
+): WebView = WebView(context).apply {
     setBackgroundColor(AndroidColor.TRANSPARENT)
-    // 放大模式下要能点进输入框、弹出键盘（预览模式仍由 PreviewWebView 挡住触摸）。
+    // 全屏查看器里要能点进输入框、弹出键盘。
     isFocusable = true
     isFocusableInTouchMode = true
     settings.javaScriptEnabled = true
-    // 状态恢复靠 Web Storage：同一个 HTML 的输入/滚动存到它自己的 localStorage（origin 按 stateKey 隔离）。
     settings.domStorageEnabled = true
     runCatching { CookieManager.getInstance().setAcceptCookie(false) }
     settings.allowFileAccess = false
@@ -425,9 +403,8 @@ private fun makeWebView(
     settings.setSupportZoom(false)
     settings.builtInZoomControls = false
     settings.displayZoomControls = false
-    // 放大才允许框内滚动；预览模式不消费触摸（见 PreviewWebView），滚动交给聊天列表。
-    isVerticalScrollBarEnabled = interactive
-    isHorizontalScrollBarEnabled = interactive
+    isVerticalScrollBarEnabled = true
+    isHorizontalScrollBarEnabled = false
     webViewClient = object : WebViewClient() {
         // 点什么都不许跳出去：这是给人玩的一小块地方，不是浏览器。
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
@@ -436,13 +413,7 @@ private fun makeWebView(
         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = true
 
         override fun onPageFinished(view: WebView, url: String?) {
-            measureOnce(view, html, onHeight)
-            // 图片、字体加载完高度会变：再量两次（固定次数，防死循环）。
-            view.postDelayed({ measureOnce(view, html, onHeight) }, 350)
-            view.postDelayed({ measureOnce(view, html, onHeight) }, 1200)
-            view.postDelayed({ measureOnce(view, html, onHeight) }, 2200)
-            // 有些页面 3 秒后才长内容（动画/延迟脚本）：再补一次，别让它一直露一半。
-            view.postDelayed({ measureOnce(view, html, onHeight) }, 4000)
+            Log.d(TAG, "loaded html=" + html.length)
         }
     }
     // 固定 origin（按 stateKey 区分）：页面拿到的 localStorage 是按这段 HTML 隔离的；
@@ -452,74 +423,43 @@ private fun makeWebView(
         .onFailure { onFailure(it.message) }
 }
 
-/**
- * 量内容高度。**不能用 `scrollHeight`**：WebView 视口已经很大时（放大框），
- * `scrollHeight` 恒等于视口高 —— 量出来永远是「满屏」，弹窗就缩不下来。
- *
- * 也不能直接把所有元素的 bottom 取最大：模型常写 `min-height:100vh` 的容器，
- * 它的 bottom 就是视口底 —— 一样会量成满屏。
- *
- * 所以：撑满视口（≥ 视口 90%）的**容器**跳过，其余元素（含卡片本身、叶子节点）
- * 的 bottom 取最大 —— 卡片高度真实就用卡片，卡片被撑满就只看里面的文字/按钮。
- */
-private fun measureOnce(view: WebView, html: String, onHeight: (Int) -> Unit) {
-    view.evaluateJavascript(
-        "(function(){var b=document.body;if(!b)return 0;" +
-            "var vh=window.innerHeight||1;var maxB=0;" +
-            "var els=b.querySelectorAll('*');" +
-            "for(var i=0;i<els.length;i++){var el=els[i];var r=el.getBoundingClientRect();" +
-            "if(!(r.width>0&&r.height>0))continue;" +
-            "if(el.children&&el.children.length>0&&r.height>=vh*0.9)continue;" +
-            "if(r.bottom>maxB)maxB=r.bottom;}" +
-            "if(maxB<=0)maxB=b.getBoundingClientRect().height;" +
-            "return Math.ceil(maxB+10);})()",
-    ) { value ->
-        val px = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
-        if (px > 0) {
-            Log.d(TAG, "measure srcHtml=" + html.length + " px=" + px)
-            onHeight(px.coerceIn(60, 6000))
-        }
+/** 从 HTML 里挑一个能当卡片标题的东西：title 标签，没有就退到一句通用的。 */
+private fun widgetTitle(html: String): String {
+    val raw = runCatching {
+        Regex("<title[^>]*>(.*?)</title>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+            .find(html)?.groupValues?.get(1)
+    }.getOrNull()?.replace(Regex("\\s+"), " ")?.trim()
+    return when {
+        raw.isNullOrEmpty() -> "HTML 小玩意儿"
+        raw.length > TITLE_MAX -> raw.take(TITLE_MAX) + "…"
+        else -> raw
     }
 }
 
-/**
- * 预览用的 WebView：**不消费任何触摸事件** —— 聊天列表照常滚，预览里的按钮也点不动。
- * 这是「模式一不执行交互」的实现方式：不截断 HTML，只挡触摸。
- */
-private class PreviewWebView(context: Context) : WebView(context) {
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean = false
-}
-
-/** 把 TA 写的一段东西套成一张页面：透明底、跟着气泡的颜色走、不许横向溢出。 */
-private fun page(body: String, ink: Color, secondary: Color, stateKey: String): String = """
-    <!doctype html>
-    <html><head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <style>
-      html, body { margin: 0; padding: 6px; background: transparent;
-        color: ${hex(ink)}; font-size: 14px; line-height: 1.5;
+/** 把 TA 写的一段东西套成一张页面：透明底、跟着聊天配色走、不许横向溢出。 */
+private fun page(body: String, ink: Color, secondary: Color, stateKey: String): String {
+    val inkHex = hex(ink)
+    val style = """
+      html, body { margin: 0; padding: 10px; background: transparent;
+        color: ${inkHex}; font-size: 14px; line-height: 1.5;
         font-family: -apple-system, "Noto Sans SC", sans-serif;
-        -webkit-user-select: none; user-select: none; height: auto; min-height: 0 !important; }
-      /* 只压 html/body 的最小高度（模型常写 min-height:100vh 把页面撑满）；
-         **不要**去压 body 的一级子元素 —— 那会把模型给卡片设的 min-height 也压掉，
-         卡片塌缩、内容反而被裁。 */
-      /* 宽内容：先响应式压缩，压不下去就允许横向滚，别静默裁掉。 */
-      body { overflow-x: auto; overflow-y: visible; }
-      table { max-width: none; }
-      /* 兜底：模型常写「固定高度 + overflow:hidden」的卡片，长内容就被裁掉、
-         看起来像「后面没了」。只让溢出可见，不改它自己的高度和布局。 */
+        height: auto; min-height: 0 !important; }
+      html { height: 100%; }
+      body { min-height: 100%; overflow-y: auto; overflow-x: hidden;
+        -webkit-overflow-scrolling: touch; }
       div, section, article, main, header, footer, aside, form { overflow: visible !important; }
-      button { font: inherit; color: inherit; background: ${hex(ink)}1a;
-        border: 1px solid ${hex(ink)}33; border-radius: 10px; padding: 8px 14px; margin: 3px; }
-      button:active { background: ${hex(ink)}33; }
-      input, select { font: inherit; color: inherit; background: transparent;
-        border: 1px solid ${hex(ink)}44; border-radius: 8px; padding: 6px 8px; }
+      button { font: inherit; color: inherit; background: ${inkHex}1a;
+        border: 1px solid ${inkHex}33; border-radius: 10px; padding: 8px 14px; margin: 3px; }
+      button:active { background: ${inkHex}33; }
+      input, select, textarea { font: inherit; color: inherit; background: transparent;
+        border: 1px solid ${inkHex}44; border-radius: 8px; padding: 6px 8px; }
       * { max-width: 100%; }
-    </style>
-    </head><body>$body
-    <script>${stateScript(stateKey)}</script>
-    </body></html>
-""".trimIndent()
+    """
+    return "<!doctype html><html><head>" +
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1\">" +
+        "<style>" + style + "</style></head><body>" + body +
+        "<script>" + stateScript(stateKey) + "</script></body></html>"
+}
 
 /** 颜色写成 #rrggbb：页面得被告知，它自己看不见 App 的调色板。 */
 private fun hex(color: Color): String = String.format("#%06X", 0xFFFFFF and color.toArgb())
@@ -544,6 +484,7 @@ private fun stateScript(stateKey: String): String = """
   var restored = false;
   function els(){ return document.querySelectorAll('input,textarea,select'); }
   function save(){
+    if (window.__cleosNoSave) return;
     try {
       var list = els(), vals = [];
       for (var i = 0; i < list.length; i++) {
