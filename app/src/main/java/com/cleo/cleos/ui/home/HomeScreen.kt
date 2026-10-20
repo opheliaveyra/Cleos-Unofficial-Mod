@@ -431,7 +431,7 @@ private fun TaRow(tas: List<CompanionEntity>, currentId: Long, onSelect: (Long) 
                     Modifier
                         .size(54.dp)
                         .padding(4.dp)
-                        .background(palette.content.copy(alpha = 0.08f), CircleShape),
+                        .then(if (com.cleo.cleos.ui.theme.usesScrapbookArtwork(Icons.Rounded.Add)) Modifier else Modifier.background(palette.content.copy(alpha = 0.08f), CircleShape)),
                     contentAlignment = Alignment.Center,
                 ) {
                     CleosIcon(Icons.Rounded.Add, contentDescription = "添加一个 TA", tint = palette.contentSecondary)
