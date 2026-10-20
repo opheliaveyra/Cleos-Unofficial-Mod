@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -357,9 +358,11 @@ private fun ScrapbookTaPicker(tas: List<CompanionEntity>, current: Long, onPick:
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Aster 的标准：屏幕左右各留 20~24dp，高度跟着内容走。
+        Box(Modifier.fillMaxSize().padding(horizontal = 22.dp), contentAlignment = Alignment.Center) {
         com.cleo.cleos.ui.theme.ScrapbookDialogFrame(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                .fillMaxWidth()
                 .wrapContentHeight(),
         ) {
             Text("换一个 TA", color = palette.content, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -369,6 +372,7 @@ private fun ScrapbookTaPicker(tas: List<CompanionEntity>, current: Long, onPick:
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("关上", color = palette.accentContent) }
             }
+        }
         }
     }
 }

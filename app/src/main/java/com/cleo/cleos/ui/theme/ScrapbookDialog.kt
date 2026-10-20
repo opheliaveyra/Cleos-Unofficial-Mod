@@ -50,7 +50,9 @@ internal fun ScrapbookDialogFrame(
             Canvas(Modifier.matchParentSize()) {
                 // 素材纸框四周留了一圈半透明边（约 4%），直接铺会被内容顶到纸面外。
                 // 这里把框往外扩 10% 再画：纸面覆盖到 Box 边缘，四角的胶带/花仍然在可见范围内。
-                val grow = 0.10f
+                // 素材纸框四周约有 3% 的半透明留白；扩 4.5% 刚好盖住它，
+                // 再大就会把四角装饰推到内容外面（「关上」看着会贴到框外）。
+                val grow = 0.045f
                 translate(left = -size.width * grow, top = -size.height * grow) {
                     drawNine(bitmap, Size(size.width * (1 + grow * 2), size.height * (1 + grow * 2)))
                 }
@@ -61,7 +63,7 @@ internal fun ScrapbookDialogFrame(
             Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .padding(start = 38.dp, end = 38.dp, top = 56.dp, bottom = 32.dp),
+                .padding(start = 34.dp, end = 34.dp, top = 76.dp, bottom = 26.dp),
             content = content,
         )
     }
