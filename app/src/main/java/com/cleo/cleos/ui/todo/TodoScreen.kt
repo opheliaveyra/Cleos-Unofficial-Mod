@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
@@ -201,16 +202,26 @@ fun TodoTab(bottomInset: Dp) {
         },
     ) {
         if (state.loaded && state.pending.isEmpty() && state.done.isEmpty()) {
-            GlassSurface(
-                modifier = Modifier.align(Alignment.Center),
-                style = palette.notice,
-                shape = GlassShape.Rounded(22.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("还没有待办", color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.size(6.dp))
-                    Text("在下面写一件要做的事", color = palette.contentSecondary, fontSize = 14.sp)
+            val lavenderEmpty = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+            if (lavenderEmpty) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_ui_empty_todo),
+                    contentDescription = "还没有待办",
+                    modifier = Modifier.align(Alignment.Center).widthIn(max = 280.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                )
+            } else {
+                GlassSurface(
+                    modifier = Modifier.align(Alignment.Center),
+                    style = palette.notice,
+                    shape = GlassShape.Rounded(22.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("还没有待办", color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.size(6.dp))
+                        Text("在下面写一件要做的事", color = palette.contentSecondary, fontSize = 14.sp)
+                    }
                 }
             }
         }

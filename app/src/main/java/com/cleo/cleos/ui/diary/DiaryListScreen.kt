@@ -175,16 +175,26 @@ fun DiaryTab(bottomInset: Dp, onOpenEntry: (id: Long, secret: Boolean) -> Unit) 
     ) {
         val list = rows
         if (list != null && list.isEmpty()) {
-            GlassSurface(
-                modifier = Modifier.align(Alignment.Center),
-                style = palette.notice,
-                shape = GlassShape.Rounded(22.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(type.empty, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.size(6.dp))
-                    Text(type.hint, color = palette.contentSecondary, fontSize = 14.sp)
+            val lavenderEmpty = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+            if (lavenderEmpty) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_ui_empty_diary),
+                    contentDescription = type.empty,
+                    modifier = Modifier.align(Alignment.Center).widthIn(max = 280.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                )
+            } else {
+                GlassSurface(
+                    modifier = Modifier.align(Alignment.Center),
+                    style = palette.notice,
+                    shape = GlassShape.Rounded(22.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(type.empty, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.size(6.dp))
+                        Text(type.hint, color = palette.contentSecondary, fontSize = 14.sp)
+                    }
                 }
             }
         }
