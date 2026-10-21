@@ -76,6 +76,7 @@ import com.cleo.cleos.glass.LocalGlassPalette
 import com.cleo.cleos.ui.common.Avatar
 import com.cleo.cleos.ui.common.avatarLetter
 import com.cleo.cleos.ui.theme.CleosIcon
+import com.cleo.cleos.ui.theme.usesScrapbookArtwork
 
 /**
  * The pages behind the settings' list of groups. Everything used to be on one page, ten
@@ -405,6 +406,7 @@ internal fun RowDivider(inset: androidx.compose.ui.unit.Dp = 46.dp) {
 @Composable
 private fun Entry(icon: ImageVector, title: String, summary: String, summaryColor: Color? = null, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
+    val hasScrapbookArt = usesScrapbookArtwork(icon)
     Row(
         Modifier
             .fillMaxWidth()
@@ -415,10 +417,13 @@ private fun Entry(icon: ImageVector, title: String, summary: String, summaryColo
         Box(
             Modifier
                 .size(34.dp)
-                .background(palette.accent.copy(alpha = 0.12f), CircleShape),
+                .then(
+                    if (hasScrapbookArt) Modifier
+                    else Modifier.background(palette.accent.copy(alpha = 0.12f), CircleShape)
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
+            CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(if (hasScrapbookArt) 28.dp else 19.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
