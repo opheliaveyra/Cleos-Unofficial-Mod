@@ -501,18 +501,15 @@ private fun AvatarPairArtwork(
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val artW = maxWidth
         val artH = artW * 0.39990f
-        val avatar = artW * 0.27000f
+        val avatar = artW * 0.33000f
         val leftCx = artW * 0.24256f
         val rightCx = artW * 0.75845f
         val cy = artH * 0.48550f
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.fillMaxWidth().height(artH)) {
-                Image(
-                    painter = painterResource(R.drawable.scrap_avatar_pair_combo),
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // 先画头像，再画整图 —— **框压在头像上面**。
+                // 这样头像可以比圆大一圈，多出来的部分被框自然裁掉，边缘干净；
+                // 反过来（头像压框）头像一放大就会盖住兔子、黑猫那些装饰。
                 PairAvatar(
                     file = myFace, letter = myLetter, name = me, label = myLabel,
                     size = avatar,
@@ -528,6 +525,12 @@ private fun AvatarPairArtwork(
                     menuOpen = menuFor == Who.Ai,
                     onAvatar = onAvatarAi, onName = onNameAi, onChange = onChangeAi, onReset = onResetAi,
                     onMenuDismiss = onMenuDismiss,
+                )
+                Image(
+                    painter = painterResource(R.drawable.scrap_avatar_pair_combo),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
             Spacer(Modifier.height(10.dp))
