@@ -1,5 +1,6 @@
 package com.cleo.cleos.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -55,6 +56,8 @@ private sealed interface CenterView {
 @Composable
 internal fun ModelCenterPage(vm: SettingsViewModel, onOpenSpokenModel: () -> Unit = {}) {
     var view by remember { mutableStateOf<CenterView>(CenterView.Home) }
+    // 在子页按系统返回键，先回模型中心首页 —— 别一步退到设置外面去。
+    BackHandler(enabled = view != CenterView.Home) { view = CenterView.Home }
     when (val v = view) {
         CenterView.Home -> ModelCenterHome(
             vm,
