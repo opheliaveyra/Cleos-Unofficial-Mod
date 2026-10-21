@@ -99,7 +99,30 @@ fun GlassTopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = leading)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            Box(
+            // 紫雾手账：四个主页面用素材里的纸签当标题（纸签上已经写了字，所以代码这边不再画文字）。
+            // 只有「没有副标题」的页面换 —— 聊天页标题下面还挂着 TA 名字和模型，纸签塞不下那一行。
+            val paperTitle = if (subtitle == null && com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
+                when (title) {
+                    "主页" -> com.cleo.cleos.R.drawable.scrap_ui_title_home
+                    "日记" -> com.cleo.cleos.R.drawable.scrap_ui_title_diary
+                    "待办" -> com.cleo.cleos.R.drawable.scrap_ui_title_todo
+                    "聊天" -> com.cleo.cleos.R.drawable.scrap_ui_title_chat
+                    else -> null
+                }
+            } else null
+            if (paperTitle != null) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(paperTitle),
+                    contentDescription = title,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .height(46.dp)
+                        .then(
+                            if (onTitleClick == null) Modifier
+                            else Modifier.clickable(interactionSource = null, indication = null, onClick = onTitleClick),
+                        ),
+                )
+            } else Box(
                 Modifier
                     .liquidGlass(backdrop, palette.topBarTitle, GlassShape.Capsule)
                     .then(
