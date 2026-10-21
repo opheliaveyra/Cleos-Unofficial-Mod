@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cleo.cleos.ui.theme.usesScrapbookArtwork
 import com.cleo.cleos.AppContainer
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.LetterEntity
@@ -310,7 +311,7 @@ private fun GamesHomeCard(onOpen: () -> Unit) {
         contentPadding = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CleosIcon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.Rounded.SportsEsports, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(if (usesScrapbookArtwork(Icons.Rounded.SportsEsports)) 32.dp else 24.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("小游戏", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -333,7 +334,7 @@ private fun MemoryCard(ai: String, count: Int, onOpen: () -> Unit) {
         contentPadding = PaddingValues(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CleosIcon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.contentSecondary)
+            CleosIcon(Icons.Rounded.Psychology, contentDescription = null, tint = palette.contentSecondary, modifier = Modifier.size(if (usesScrapbookArtwork(Icons.Rounded.Psychology)) 32.dp else 24.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("记忆", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -368,6 +369,7 @@ private fun LetterCard(ai: String, letters: List<LetterEntity>, now: Long, onOpe
                 if (unread > 0) Icons.Rounded.MarkEmailUnread else Icons.Rounded.MailOutline,
                 contentDescription = null,
                 tint = if (unread > 0) palette.accentContent else palette.contentSecondary,
+                modifier = Modifier.size(if (usesScrapbookArtwork(Icons.Rounded.MailOutline)) 32.dp else 24.dp),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
