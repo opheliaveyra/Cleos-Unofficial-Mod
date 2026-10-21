@@ -54,3 +54,16 @@
 | bubble_file | f_48 |
 | bubble_reply | f_49 |
 | bubble_system | f_50 |
+
+## 头像框（2026-10-21 新增）
+
+| 文件 | 资源 | 用途 | 用在哪 |
+|---|---|---|---|
+| `scrap_avatar_frame_human.png` | `R.drawable.scrap_avatar_frame_human` | 「我」的头像装饰框（淡紫、兔子、薰衣草、手账胶带） | 主页「我和 TA」左头像 |
+| `scrap_avatar_frame_ai.png` | `R.drawable.scrap_avatar_frame_ai` | 「TA」的头像装饰框（雾蓝紫、黑猫、星月、星球） | 主页「我和 TA」右头像 |
+
+- 素材：768×768 RGBA，中心透明区约 58%（human 447px / ai 436px），四周透明
+- 渲染：`requiredSize(156.dp)` 溢出绘制、不参与布局；有框时头像用 90dp（无框仍 96dp）
+- 只在 `VisualTheme.LAVENDER` 下出现，原生主题没有任何框
+- 不替换、不裁剪用户头像；框只是盖在上面的装饰层，用户头像数据一个字节没动
+- 来源：夸克网盘 `cleos/scrap_avatar_frame_*.png`（Aster 绘制）

@@ -59,6 +59,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.cleo.cleos.R
+import com.cleo.cleos.data.VisualTheme
+import com.cleo.cleos.ui.theme.LocalVisualTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -176,12 +183,14 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                         // 「我与 TA」里的**我**：跟着当前角色走（角色专属 > 全局），
                         // 和聊天页走同一个解析入口（UserFaces）—— 不然主页和聊天里会是两张脸。
                         val myFace = com.cleo.cleos.data.UserFaces.forCompanion(ta, s)
+                        val isLavenderForFrames = LocalVisualTheme.current == VisualTheme.LAVENDER
                         Person(
                             file = myFace,
                             name = me,
                             letter = avatarLetter(s.userName, "我"),
                             label = if (s.userName.isBlank()) null else "我",
                             menuOpen = menuFor == Who.Me,
+                            frame = if (isLavenderForFrames) R.drawable.scrap_avatar_frame_human else null,
                             onAvatar = { if (myFace == null) pick(Who.Me) else menuFor = Who.Me },
                             onName = { naming = Who.Me },
                             onChange = { menuFor = null; pick(Who.Me) },
@@ -200,6 +209,7 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                             letter = ta.avatarEmoji ?: avatarLetter(ta.name, "TA"),
                             label = if (ta.name.isBlank()) null else "TA",
                             menuOpen = menuFor == Who.Ai,
+                            frame = if (isLavenderForFrames) R.drawable.scrap_avatar_frame_ai else null,
                             onAvatar = { if (ta.avatar == null && ta.avatarEmoji == null) pick(Who.Ai) else menuFor = Who.Ai },
                             onName = { naming = Who.Ai },
                             onChange = { menuFor = null; pick(Who.Ai) },
@@ -450,6 +460,8 @@ private fun Person(
     letter: String,
     label: String?,
     menuOpen: Boolean,
+    /** 紫雾手账的头像框（装饰层，套在头像外面）。null 就是不套框。 */
+    frame: Int? = null,
     onAvatar: () -> Unit,
     onName: () -> Unit,
     onChange: () -> Unit,
@@ -457,16 +469,31 @@ private fun Person(
     onMenuDismiss: () -> Unit,
 ) {
     val palette = LocalGlassPalette.current
+    val lavender = LocalVisualTheme.current == VisualTheme.LAVENDER
     Column(Modifier.width(112.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box {
+        Box(contentAlignment = Alignment.Center) {
             Avatar(
                 file,
                 letter,
-                96.dp,
+                // 套框时把头像收到 90dp：框的透明中心是 58%，156dp 的框正好露出 90dp，
+                // 这样框边不会压到头像边缘（96dp 时会被压出锯齿）。
+                if (frame != null) 90.dp else 96.dp,
                 Modifier
                     .clickable(onClickLabel = "换头像", onClick = onAvatar)
                     .semantics { contentDescription = "${name}的头像" },
             )
+            // 装饰层：不替换、不裁剪用户头像，只是盖一层框在外面。
+            // requiredSize 让它按 156dp 画出来但不参与布局 —— 列宽还是 112dp，
+            // 两个框刚好不会互相压住（两头像中心距约 157dp）。
+            // 素材中心透明（约 58%），脸完全露着，只有头像最外圈被框边压到。
+            if (frame != null) {
+                Image(
+                    painter = painterResource(frame),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.requiredSize(156.dp),
+                )
+            }
             DropdownMenu(expanded = menuOpen, onDismissRequest = onMenuDismiss) {
                 DropdownMenuItem(text = { Text("换一张") }, onClick = onChange)
                 DropdownMenuItem(text = { Text("用回默认") }, onClick = onReset)
