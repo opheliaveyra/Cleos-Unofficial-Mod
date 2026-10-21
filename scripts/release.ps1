@@ -102,7 +102,7 @@ if (-not $ghLoggedIn) {
         Die ("Release " + $Tag + " 已经存在。不会覆盖 —— 要发新版本就先把 versionName/versionCode 往上加。")
     }
 }
-$existingTag = git ls-remote --tags origin $Tag 2>$null
+$existingTag = git ls-remote --tags mine $Tag 2>$null
 if ($existingTag) {
     Die ("远端已经有 tag " + $Tag + " 了。先处理掉它，或者换个版本号。")
 }
