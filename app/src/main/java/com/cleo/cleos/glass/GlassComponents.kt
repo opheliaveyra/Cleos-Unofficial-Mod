@@ -3,6 +3,7 @@ package com.cleo.cleos.glass
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -20,8 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -153,6 +156,23 @@ fun GlassIconButton(
     tint: Color = LocalGlassPalette.current.content,
     size: Dp = 44.dp,
 ) {
+    // 完整按钮素材：图标 + 背景一体，直接占满按钮尺寸，不画玻璃底衬。
+    val fullButton = if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER)
+        com.cleo.cleos.ui.theme.ScrapbookIconMap.buttonByVectorName[icon.name] else null
+    if (fullButton != null) {
+        Box(
+            modifier.size(size).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.38f }),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(fullButton),
+                contentDescription = contentDescription,
+                modifier = Modifier.size(size),
+            )
+        }
+        return
+    }
     if (com.cleo.cleos.ui.theme.usesScrapbookArtwork(icon)) {
         CompositionLocalProvider(LocalContentColor provides if (enabled) tint else tint.copy(alpha = 0.38f)) {
             Box(

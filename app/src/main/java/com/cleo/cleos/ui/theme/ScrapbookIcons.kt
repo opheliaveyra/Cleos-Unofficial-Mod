@@ -142,6 +142,39 @@ internal object ScrapbookIconMap {
         put("Reply", intArrayOf(R.drawable.scrap_bubble_reply))
     }
 
+    /**
+     * 完整按钮素材：图标 + 背景一体。用于 GlassIconButton，渲染时占满整个按钮尺寸，
+     * 不再画玻璃底衬或缩小到 0.5f。
+     */
+    val buttonByVectorName: Map<String, Int> = buildMap {
+        fun put(name: String, id: Int) {
+            put("Filled.$name", id)
+            put("Outlined.$name", id)
+            put("Rounded.$name", id)
+            put("AutoMirrored.Filled.$name", id)
+            put("AutoMirrored.Outlined.$name", id)
+        }
+        put("Add", R.drawable.scrap_ui_button_add_circle)
+        put("Check", R.drawable.scrap_ui_button_confirm)
+        put("Done", R.drawable.scrap_ui_button_confirm)
+        put("Close", R.drawable.scrap_ui_button_cancel)
+        put("CalendarMonth", R.drawable.scrap_ui_button_calendar)
+        put("Event", R.drawable.scrap_ui_button_calendar)
+        put("MoreVert", R.drawable.scrap_ui_button_more)
+        put("MoreHoriz", R.drawable.scrap_ui_button_more)
+        put("Favorite", R.drawable.scrap_ui_button_heart)
+        put("FavoriteBorder", R.drawable.scrap_ui_button_heart)
+        put("Star", R.drawable.scrap_ui_button_star)
+        put("AutoAwesome", R.drawable.scrap_ui_button_star)
+        put("Edit", R.drawable.scrap_ui_button_edit)
+        put("EditNote", R.drawable.scrap_ui_button_edit)
+        put("DeleteOutline", R.drawable.scrap_ui_button_delete)
+        put("Delete", R.drawable.scrap_ui_button_delete)
+        put("KeyboardArrowRight", R.drawable.scrap_ui_button_next)
+        put("ArrowForward", R.drawable.scrap_ui_button_next)
+        put("NavigateNext", R.drawable.scrap_ui_button_next)
+    }
+
     /** 没有素材、必须回退原生的语义，记录在案便于出缺失清单。 */
     val knownMissing: Set<String> = setOf(
         "ArrowUpward", "ArrowDownward", "ArrowDropDown", "ExpandLess", "ExpandMore",
