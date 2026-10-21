@@ -127,7 +127,46 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
         val rowHeightPx = with(density) { 64.dp.toPx() }
 
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 64.dp).drawBehind {
+            Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                // 手势挂在这一层：子元素的 selectable 在它里面，
+                // 轻点先给子元素处理（正常切页），长按住才会轮到这里的拖动检测。
+                // 之前这段挂在一个盖住整条导航栏的 Box 上，把轻点整个吞掉了。
+                .pointerInput(tabCount, selected, tabWidthPx) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { start ->
+                            val idx = (start.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                            if (idx == selected) { dragging = true; hover = selected }
+                        },
+                        onDrag = { change, delta ->
+                            if (!dragging) return@detectDragGesturesAfterLongPress
+                            change.consume()
+                            scope.launch {
+                                val next = tapeShift.value + delta.x
+                                val minShift = -(selected + 0.5f) * tabWidthPx
+                                val maxShift = (tabCount - selected - 0.5f) * tabWidthPx
+                                tapeShift.snapTo(next.coerceIn(minShift, maxShift))
+                            }
+                            val c = (selected + 0.5f) * tabWidthPx + tapeShift.value
+                            hover = (c / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                        },
+                        onDragEnd = {
+                            if (!dragging) return@detectDragGesturesAfterLongPress
+                            val target = hover.coerceIn(0, tabCount - 1)
+                            val wantShift = (target - selected) * tabWidthPx
+                            dragging = false; hover = -1
+                            scope.launch {
+                                tapeShift.animateTo(wantShift, tween(170))
+                                if (target != selected) { selected = target; onSelect(target) }
+                                tapeShift.snapTo(0f)
+                            }
+                        },
+                        onDragCancel = {
+                            if (!dragging) return@detectDragGesturesAfterLongPress
+                            dragging = false; hover = -1
+                            scope.launch { tapeShift.animateTo(0f, tween(170)) }
+                        },
+                    )
+                }.drawBehind {
                 val w = size.width
                 val h = size.height
                 val e = 2.dp.toPx()
@@ -193,59 +232,6 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
             }
         }
 
-        // ---- 手势：长按揭起 + 拖动 + 松手贴合 ----
-        Box(
-            Modifier.fillMaxSize().pointerInput(tabCount, tabWidthPx, selected) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { start ->
-                        // 只有按在「当前选中的那一格」上才是揭胶带；按别处不拦，正常点就行。
-                        val idx = (start.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
-                        if (idx == selected) {
-                            dragging = true
-                            hover = selected
-                        }
-                    },
-                    onDrag = { change, delta ->
-                        if (!dragging) return@detectDragGesturesAfterLongPress
-                        change.consume()
-                        scope.launch {
-                            val next = tapeShift.value + delta.x
-                            // 不许拖出导航栏：最多偏到最左 / 最右那一格的中心。
-                            val minShift = -(selected + 0.5f) * tabWidthPx
-                            val maxShift = (tabCount - selected - 0.5f) * tabWidthPx
-                            tapeShift.snapTo(next.coerceIn(minShift, maxShift))
-                        }
-                        val c = (selected + 0.5f) * tabWidthPx + tapeShift.value
-                        hover = (c / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
-                    },
-                    onDragEnd = {
-                        if (!dragging) return@detectDragGesturesAfterLongPress
-                        val target = hover.coerceIn(0, tabCount - 1)
-                        val shiftNow = tapeShift.value
-                        val wantShift = (target - selected) * tabWidthPx
-                        dragging = false
-                        hover = -1
-                        scope.launch {
-                            // 先滑到目标格子上，再切换页面：顺序反了会看到「页面变了胶带还在飞」。
-                            tapeShift.animateTo(wantShift, tween(170))
-                            if (target != selected) {
-                                selected = target
-                                onSelect(target)
-                            }
-                            tapeShift.snapTo(0f)
-                        }
-                        if (shiftNow == wantShift) Unit
-                    },
-                    onDragCancel = {
-                        if (!dragging) return@detectDragGesturesAfterLongPress
-                        dragging = false
-                        hover = -1
-                        // 取消（来电、切后台、手势被打断）：平滑回到原格子，不切页。
-                        scope.launch { tapeShift.animateTo(0f, tween(170)) }
-                    },
-                )
-            },
-        )
     }
 }
 /**
