@@ -84,13 +84,42 @@ internal fun ScrapbookBackground() {
     )
 }
 
-/** Shared fallback material until page-specific paper pieces arrive in later batches. */
+/**
+ * 紫雾手账的纸面：暖白底 + 外框 + **内圈细虚线花边**。
+ *
+ * 之前只有「圆角 + 一条实线」，看起来就是普通圆角矩形 —— 和原版玻璃卡片分不出来。
+ * 现在补两层：外框是淡紫细实线，往里 3dp 再画一圈虚线（手账本里那种缝线边），
+ * 卡片立刻有纸感，而且不用为每张卡片单独配素材。
+ */
 internal fun scrapbookSurface(shape: GlassShape, style: GlassStyle): Modifier = Modifier.drawBehind {
     val radius = shape.radiusPx(size, this)
-    // Accent surfaces may carry white text; retain their saturated tint for contrast.
+    // 强调色卡片（比如主按钮）保留饱和底色，不然上面的白字会没对比度。
     val fill = if (style.tint.alpha >= 0.5f && style.tint.red < 0.7f) Purple else Paper
-    drawRoundRect(fill, cornerRadius = CornerRadius(radius,radius))
-    drawRoundRect(Color(0x3373538E), cornerRadius = CornerRadius(radius,radius), style = Stroke(0.7.dp.toPx()))
+    drawRoundRect(fill, cornerRadius = CornerRadius(radius, radius))
+    // 外框
+    drawRoundRect(
+        Color(0x4D73538E),
+        cornerRadius = CornerRadius(radius, radius),
+        style = Stroke(0.9.dp.toPx()),
+    )
+    // 内圈虚线花边：往里缩 3dp，短划线交替
+    val inset = 3.dp.toPx()
+    val inner = CornerRadius((radius - inset).coerceAtLeast(1f), (radius - inset).coerceAtLeast(1f))
+    if (size.width > inset * 4 && size.height > inset * 4) {
+        drawRoundRect(
+            Color(0x669C86BF),
+            topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+            size = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2),
+            cornerRadius = inner,
+            style = Stroke(
+                width = 0.8.dp.toPx(),
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                    floatArrayOf(2.6.dp.toPx(), 2.6.dp.toPx()),
+                    0f,
+                ),
+            ),
+        )
+    }
 }
 
 @Composable

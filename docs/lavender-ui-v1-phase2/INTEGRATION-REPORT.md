@@ -230,3 +230,53 @@ internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
 2. 10 个按钮还是原纸绘图标，没换新按钮素材
 3. 头像框 5 件的「在线/离线/选中」状态仍缺数据来源
 4. 空状态的花边/插画参考图不能直接用，需要代码重画（未做）
+
+---
+
+# 第六轮：公共组件层统一换肤（组件盘点 + 施工）
+
+## 组件盘点表
+
+| 页面 | 组件 | 当前实现 | 需要替换的素材 | 代码位置 | 状态 |
+|---|---|---|---|---|---|
+| 全部 | 标题签 | `GlassTopBar` 玻璃胶囊 | 4 个 title_* 纸签（有素材的页面）+ 纸面样式（无素材的页面） | `ui/common/GlassPage.kt:69` | ✅ 本轮 |
+| 全部 | 卡片底板 | `GlassSurface` 玻璃模糊 | 暖白纸面 + 虚线花边 | `glass/GlassComponents.kt:80` | ✅ 本轮 |
+| 全部 | 按钮 | `GlassButton` 玻璃 | 暖白纸面 | `glass/GlassComponents.kt:97` | ✅ 本轮 |
+| 全部 | 圆形图标按钮 | `GlassIconButton` 玻璃 | 暖白纸面 + 纸绘图标 | `glass/GlassComponents.kt:129` | ✅ 本轮 |
+| 全部 | 纸面样式 | 只有圆角 + 一条实线 | 加内圈虚线花边 | `ui/theme/LavenderScrapbook.kt:88` | ✅ 本轮 |
+| 聊天 | 消息气泡 | 九宫格 `bubble_*_blank` | — | `ui/chat/ScrapBubbles.kt` | ✅ 上轮 |
+| 聊天 | 输入栏 | 九宫格 `input_chat_blank` | — | `ui/chat/ChatScreen.kt` | ✅ 上轮 |
+| 聊天 | 时间分隔 | 纸面胶囊（随 GlassSurface 生效） | — | 同上 | ✅ 本轮自动 |
+| 聊天 | 语音转文字弹窗 | 系统风格 GlassSurface | 随卡片一起变纸面 | `AlertDialog` 调用处 | ⚠️ 部分（见剩余） |
+| 日记 | 分类标签选中 | `diary_selected_tape` + `flower` | — | `ui/diary/DiaryListScreen.kt` | ✅ 上轮 |
+| 日记 | 分类标签未选中 | 透明（无样式） | 需要未选中态设计 | 同上 | ❌ 未做 |
+| 日记 | 角色选择器 | GlassSurface 胶囊 | `selector_character_blank` | `DiaryListScreen.kt` | ❌ 未做 |
+| 日记/待办 | 空状态卡 | GlassSurface 纯白圆角 | 现在随卡片有虚线花边了，但插画还没做 | `DiaryListScreen.kt` | ⚠️ 部分 |
+| 待办 | 底部输入框 | 九宫格 `input_todo_blank` | — | `ui/todo/TodoScreen.kt` | ✅ 上轮 |
+| 待办 | 加号按钮 | `GlassIconButton` 纸面 | `button_add_circle` | `TodoScreen.kt` | ⚠️ 形状变了，素材未换 |
+| 对话记录/朋友圈/话题 | 标题签 | 玻璃胶囊 | 纸面（无素材，代码画） | `GlassPage.kt` | ✅ 本轮 |
+| 对话记录/朋友圈 | 筛选标签（私聊/群聊、全部/当前 TA） | 原生 Pill | 需要纸绘标签 | 各自页面 | ❌ 未做 |
+| 设置 | 所有分组卡片 | GlassSurface | 纸面 + 花边 | `GlassComponents.kt` | ✅ 本轮 |
+| 设置 | 图标底座 | 圆形浅紫 | `button_*` 系列 | `SettingsScreen.kt` | ⚠️ 形状对了，素材未换 |
+
+## 本轮关键改动（一处改，全站生效）
+
+1. **`GlassSurface`**：紫雾下改走 `scrapbookSurface`（118 处调用同时生效）
+2. **`GlassButton` / `GlassIconButton`**：同上
+3. **`GlassTopBar`**：紫雾下**所有**标题都换纸面 —— 有素材的 4 个页面用素材，其余（设置/对话记录/朋友圈/话题）用同一套纸面样式代码画，不再一半纸签一半玻璃
+4. **`scrapbookSurface`**：补了内圈虚线花边。之前只有一条实线，视觉上就是普通圆角矩形
+
+## 截图
+
+- `10-paper-edge.png`：主页，卡片有暖白底 + 虚线花边
+- `09-skin-settings.png`：设置页，标题和全部卡片一起变成纸面
+
+## 剩余问题
+
+1. **未选中态**：日记分类的未选中标签还是透明的，需要设计（选中已经有胶带+花）
+2. **筛选标签**：对话记录的「私聊/群聊」、朋友圈的「全部/当前 TA」还是原生 Pill
+3. **10 个按钮素材**没换成 `button_*`
+4. **角色选择器**没换成 `selector_character_blank`
+5. **空状态插画**：参考图不能直接用，花边/插画要用代码重画
+6. **弹窗**：只在部分路径上变成纸面，系统 AlertDialog 标题栏还是原生
+7. **9 件装饰件**仍无落点

@@ -85,9 +85,18 @@ fun GlassSurface(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
+    // 紫雾手账：所有卡片统一换成暖白纸面 + 淡紫细边（scrapbookSurface），
+    // 不再走玻璃模糊。118 处 GlassSurface 调用一次性生效，不用逐页改。
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
     Box(
         modifier
-            .liquidGlass(backdrop, style, shape)
+            .then(
+                if (lavender) {
+                    com.cleo.cleos.ui.theme.scrapbookSurface(shape, style)
+                } else {
+                    Modifier.liquidGlass(backdrop, style, shape)
+                },
+            )
             .padding(contentPadding),
         content = content,
     )
@@ -109,7 +118,14 @@ fun GlassButton(
     CompositionLocalProvider(LocalContentColor provides if (enabled) contentColor else contentColor.copy(alpha = 0.38f)) {
         Box(
             modifier
-                .liquidGlass(backdrop, style, shape, motion)
+                .then(
+                    if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
+                        // 紫雾：按钮也是纸面，不是玻璃
+                        com.cleo.cleos.ui.theme.scrapbookSurface(shape, style)
+                    } else {
+                        Modifier.liquidGlass(backdrop, style, shape, motion)
+                    },
+                )
                 .glassPress(motion, enabled = enabled)
                 .clickable(
                     interactionSource = null,

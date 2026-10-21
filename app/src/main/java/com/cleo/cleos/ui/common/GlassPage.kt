@@ -99,18 +99,19 @@ fun GlassTopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = leading)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            // 紫雾手账：四个主页面用素材里的纸签当标题（纸签上已经写了字，所以代码这边不再画文字）。
-            // 只有「没有副标题」的页面换 —— 聊天页标题下面还挂着 TA 名字和模型，纸签塞不下那一行。
-            val paperTitle = if (subtitle == null && com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
-                when (title) {
-                    "主页" -> com.cleo.cleos.R.drawable.scrap_v1_title_home
-                    "日记" -> com.cleo.cleos.R.drawable.scrap_v1_title_diary
-                    "待办" -> com.cleo.cleos.R.drawable.scrap_v1_title_todo
-                    "聊天" -> com.cleo.cleos.R.drawable.scrap_v1_title_chat
-                    else -> null
-                }
+            // 紫雾手账：**所有页面**的标题都换成纸签。
+            // 四个主页面有现成素材（title_home/diary/todo/chat）就直接用；
+            // 其他页面（设置、对话记录、朋友圈、话题…）没有对应素材，用同一套纸面样式代码画，
+            // 保证整站是同一套纸质感，而不是一半纸签一半玻璃胶囊。
+            val lavenderTop = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+            val paperTitle = if (lavenderTop) when (title) {
+                "主页" -> com.cleo.cleos.R.drawable.scrap_v1_title_home
+                "日记" -> com.cleo.cleos.R.drawable.scrap_v1_title_diary
+                "待办" -> com.cleo.cleos.R.drawable.scrap_v1_title_todo
+                "聊天" -> com.cleo.cleos.R.drawable.scrap_v1_title_chat
+                else -> null
             } else null
-            if (paperTitle != null) {
+            if (lavenderTop && paperTitle != null) {
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(paperTitle),
                     contentDescription = title,
@@ -122,6 +123,23 @@ fun GlassTopBar(
                             else Modifier.clickable(interactionSource = null, indication = null, onClick = onTitleClick),
                         ),
                 )
+            } else if (lavenderTop) {
+                androidx.compose.foundation.layout.Column {
+                    Box(
+                        Modifier
+                            .then(com.cleo.cleos.ui.theme.scrapbookSurface(GlassShape.Capsule, palette.topBarTitle))
+                            .then(
+                                if (onTitleClick == null) Modifier
+                                else Modifier.clickable(interactionSource = null, indication = null, onClick = onTitleClick),
+                            )
+                            .padding(horizontal = 18.dp, vertical = if (subtitle == null) 10.dp else 6.dp),
+                    ) {
+                        Text(title, color = palette.content, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (subtitle != null) {
+                        Text(subtitle, color = palette.contentSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             } else Box(
                 Modifier
                     .liquidGlass(backdrop, palette.topBarTitle, GlassShape.Capsule)
