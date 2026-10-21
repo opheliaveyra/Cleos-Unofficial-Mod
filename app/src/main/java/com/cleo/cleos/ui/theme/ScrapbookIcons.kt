@@ -147,32 +147,32 @@ internal object ScrapbookIconMap {
      * 不再画玻璃底衬或缩小到 0.5f。
      */
     val buttonByVectorName: Map<String, Int> = buildMap {
-        fun put(name: String, id: Int) {
+        fun reg(name: String, id: Int) {
             put("Filled.$name", id)
             put("Outlined.$name", id)
             put("Rounded.$name", id)
             put("AutoMirrored.Filled.$name", id)
             put("AutoMirrored.Outlined.$name", id)
         }
-        put("Add", R.drawable.scrap_ui_button_add_circle)
-        put("Check", R.drawable.scrap_ui_button_confirm)
-        put("Done", R.drawable.scrap_ui_button_confirm)
-        put("Close", R.drawable.scrap_ui_button_cancel)
-        put("CalendarMonth", R.drawable.scrap_ui_button_calendar)
-        put("Event", R.drawable.scrap_ui_button_calendar)
-        put("MoreVert", R.drawable.scrap_ui_button_more)
-        put("MoreHoriz", R.drawable.scrap_ui_button_more)
-        put("Favorite", R.drawable.scrap_ui_button_heart)
-        put("FavoriteBorder", R.drawable.scrap_ui_button_heart)
-        put("Star", R.drawable.scrap_ui_button_star)
-        put("AutoAwesome", R.drawable.scrap_ui_button_star)
-        put("Edit", R.drawable.scrap_ui_button_edit)
-        put("EditNote", R.drawable.scrap_ui_button_edit)
-        put("DeleteOutline", R.drawable.scrap_ui_button_delete)
-        put("Delete", R.drawable.scrap_ui_button_delete)
-        put("KeyboardArrowRight", R.drawable.scrap_ui_button_next)
-        put("ArrowForward", R.drawable.scrap_ui_button_next)
-        put("NavigateNext", R.drawable.scrap_ui_button_next)
+        reg("Add", R.drawable.scrap_ui_button_add_circle)
+        reg("Check", R.drawable.scrap_ui_button_confirm)
+        reg("Done", R.drawable.scrap_ui_button_confirm)
+        reg("Close", R.drawable.scrap_ui_button_cancel)
+        reg("CalendarMonth", R.drawable.scrap_ui_button_calendar)
+        reg("Event", R.drawable.scrap_ui_button_calendar)
+        reg("MoreVert", R.drawable.scrap_ui_button_more)
+        reg("MoreHoriz", R.drawable.scrap_ui_button_more)
+        reg("Favorite", R.drawable.scrap_ui_button_heart)
+        reg("FavoriteBorder", R.drawable.scrap_ui_button_heart)
+        reg("Star", R.drawable.scrap_ui_button_star)
+        reg("AutoAwesome", R.drawable.scrap_ui_button_star)
+        reg("Edit", R.drawable.scrap_ui_button_edit)
+        reg("EditNote", R.drawable.scrap_ui_button_edit)
+        reg("DeleteOutline", R.drawable.scrap_ui_button_delete)
+        reg("Delete", R.drawable.scrap_ui_button_delete)
+        reg("KeyboardArrowRight", R.drawable.scrap_ui_button_next)
+        reg("ArrowForward", R.drawable.scrap_ui_button_next)
+        reg("NavigateNext", R.drawable.scrap_ui_button_next)
     }
 
     /** 没有素材、必须回退原生的语义，记录在案便于出缺失清单。 */
