@@ -307,13 +307,23 @@ private fun TaPicker(tas: List<CompanionEntity>, current: Long, onPick: (Long) -
 /** 角色列表本身：两个主题共用，不重写一遍。 */
 @Composable
 private fun TaPickerList(tas: List<CompanionEntity>, current: Long, onPick: (Long) -> Unit) {
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
     LazyColumn(Modifier.heightIn(max = 420.dp)) {
         items(tas, key = { it.id }) { t ->
+            Box {
+                if (lavender) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_v1_selector_character_blank),
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                    )
+                }
             Row(
                 Modifier
                     .fillMaxWidth()
                     .clickable { onPick(t.id) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 8.dp, horizontal = if (lavender) 14.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Avatar(t.avatar, t.avatarEmoji ?: avatarLetter(t.name, "TA"), 36.dp)
@@ -334,6 +344,7 @@ private fun TaPickerList(tas: List<CompanionEntity>, current: Long, onPick: (Lon
                     )
                 }
             }
+            } // Box
         }
     }
 }
