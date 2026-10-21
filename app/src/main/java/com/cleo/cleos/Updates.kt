@@ -333,6 +333,15 @@ internal class Updates(context: Context, http: OkHttpClient, private val current
         return null
     }
 
+    /**
+     * 已经下载并校验过的包还在不在。
+     *
+     * 授权「安装未知应用」会跳走再回来，回来后不该让人重新下 24MB ——
+     * 有的话直接再调一次安装就行。
+     */
+    fun hasVerifiedPackage(): Boolean =
+        File(app.cacheDir, "updates").listFiles()?.any { it.name.endsWith(".apk", ignoreCase = true) } == true
+
     /** 交给系统安装器；用户自己点确认，不做静默安装。 */
     fun install() {
         val file = File(app.cacheDir, "updates").listFiles()?.firstOrNull { it.name.endsWith(".apk") } ?: return

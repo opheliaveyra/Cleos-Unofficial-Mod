@@ -141,7 +141,11 @@ internal fun UpdatePage(
                         is InstallStep.Failed -> {
                             Text(s.reason, color = palette.error, fontSize = 13.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Chip("重试", selected = false) { scope.launch { c.updates.downloadAndVerify(info) } }
+                                // 授权完回来，包还在，直接再装一次，不用重新下。
+                                if (c.updates.hasVerifiedPackage()) {
+                                    Chip("再装一次", selected = true) { c.updates.install() }
+                                }
+                                Chip("重新下载", selected = false) { scope.launch { c.updates.downloadAndVerify(info) } }
                                 Chip("打开 Release 页面", selected = false) { c.updates.openPage(info.pageUrl) }
                             }
                         }
