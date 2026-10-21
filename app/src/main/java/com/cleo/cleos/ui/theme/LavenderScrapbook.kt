@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -332,4 +333,55 @@ internal fun ScrapNinePatch(
         }
         content()
     }
+}
+
+/** 从资源里取位图（九宫格用）。取不到就返回 null，调用方回退到原底板。 */
+@Composable
+internal fun rememberScrapBitmap(@androidx.annotation.DrawableRes res: Int): androidx.compose.ui.graphics.ImageBitmap? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return androidx.compose.runtime.remember(res) {
+        runCatching {
+            val d = androidx.core.content.ContextCompat.getDrawable(context, res)
+            (d as? android.graphics.drawable.BitmapDrawable)?.bitmap?.asImageBitmap()
+        }.getOrNull()
+    }
+}
+
+/** 九宫格绘制：四角原样、边和中间单向拉伸。inset 是源图里四角不拉伸的宽度。 */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawScrapNinePatch(
+    src: androidx.compose.ui.graphics.ImageBitmap,
+    left: Int, top: Int, right: Int, bottom: Int,
+) {
+    val dw = size.width
+    val dh = size.height
+    val swf = src.width.toFloat()
+    val shf = src.height.toFloat()
+    val slf = left.toFloat().coerceIn(0f, swf - 2f)
+    val stf = top.toFloat().coerceIn(0f, shf - 2f)
+    val srf = (swf - right.toFloat()).coerceIn(slf + 1f, swf)
+    val sbf = (shf - bottom.toFloat()).coerceIn(stf + 1f, shf)
+    // 目标图上角按源图比例缩，但不超过一半，免得小尺寸时中间没地方
+    val dlf = slf.coerceAtMost(dw / 2f)
+    val dtf = stf.coerceAtMost(dh / 2f)
+    val drf = (dw - right.toFloat().coerceAtMost(dw / 2f)).coerceAtLeast(dlf)
+    val dbf = (dh - bottom.toFloat().coerceAtMost(dh / 2f)).coerceAtLeast(dtf)
+    fun blit(sx: Float, sy: Float, sw2: Float, sh2: Float, dx: Float, dy: Float, dw2: Float, dh2: Float) {
+        if (sw2 <= 0f || sh2 <= 0f || dw2 <= 0f || dh2 <= 0f) return
+        drawImage(
+            image = src,
+            srcOffset = androidx.compose.ui.unit.IntOffset(sx.toInt(), sy.toInt()),
+            srcSize = androidx.compose.ui.unit.IntSize(sw2.toInt().coerceAtLeast(1), sh2.toInt().coerceAtLeast(1)),
+            dstOffset = androidx.compose.ui.unit.IntOffset(dx.toInt(), dy.toInt()),
+            dstSize = androidx.compose.ui.unit.IntSize(dw2.toInt().coerceAtLeast(1), dh2.toInt().coerceAtLeast(1)),
+        )
+    }
+    blit(0f, 0f, slf, stf, 0f, 0f, dlf, dtf)
+    blit(slf, 0f, srf - slf, stf, dlf, 0f, drf - dlf, dtf)
+    blit(srf, 0f, swf - srf, stf, drf, 0f, dw - drf, dtf)
+    blit(0f, stf, slf, sbf - stf, 0f, dtf, dlf, dbf - dtf)
+    blit(slf, stf, srf - slf, sbf - stf, dlf, dtf, drf - dlf, dbf - dtf)
+    blit(srf, stf, swf - srf, sbf - stf, drf, dtf, dw - drf, dbf - dtf)
+    blit(0f, sbf, slf, shf - sbf, 0f, dbf, dlf, dh - dbf)
+    blit(slf, sbf, srf - slf, shf - sbf, dlf, dbf, drf - dlf, dh - dbf)
+    blit(srf, sbf, swf - srf, shf - sbf, drf, dbf, dw - drf, dh - dbf)
 }

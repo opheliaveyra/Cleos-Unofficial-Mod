@@ -52,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
@@ -90,6 +91,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import com.cleo.cleos.ui.theme.CleosIcon
+import com.cleo.cleos.ui.theme.drawScrapNinePatch
 
 data class TodoState(val pending: List<TodoEntity> = emptyList(), val done: List<TodoEntity> = emptyList(), val loaded: Boolean = false)
 
@@ -359,12 +361,29 @@ private fun DoneHeader(count: Int, expanded: Boolean, onToggle: () -> Unit, modi
 @Composable
 private fun AddBar(backdrop: Backdrop, text: String, onTextChange: (String) -> Unit, onAdd: () -> Unit) {
     val palette = LocalGlassPalette.current
+    // 紫雾手账：待办输入框用 Aster 的无字底板（input_todo_blank），九宫格铺，左下角的花保留。
+    val lavenderBar = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val todoBarBitmap = if (lavenderBar) {
+        com.cleo.cleos.ui.theme.rememberScrapBitmap(com.cleo.cleos.R.drawable.scrap_v1_input_todo_blank)
+    } else null
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
                 .weight(1f)
                 .heightIn(min = 50.dp)
-                .liquidGlass(backdrop, palette.input, GlassShape.Capsule)
+                .then(
+                    if (todoBarBitmap != null) {
+                        Modifier.drawBehind {
+                            drawScrapNinePatch(
+                                src = todoBarBitmap,
+                                // 素材 720×100，左下角那朵花大约占 60×46 源像素
+                                left = 60, top = 20, right = 40, bottom = 30,
+                            )
+                        }
+                    } else {
+                        Modifier.liquidGlass(backdrop, palette.input, GlassShape.Capsule)
+                    },
+                )
                 .padding(horizontal = 18.dp),
             contentAlignment = Alignment.CenterStart,
         ) {

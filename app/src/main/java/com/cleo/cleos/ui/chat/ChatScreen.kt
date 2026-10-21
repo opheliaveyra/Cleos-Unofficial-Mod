@@ -219,6 +219,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
 import com.cleo.cleos.ui.theme.CleosIcon
+import com.cleo.cleos.ui.theme.drawScrapNinePatch
 
 /** A gap longer than this between two messages gets a time line between them. */
 private const val TIME_GAP_MS = 10 * 60 * 1000L
@@ -1248,11 +1249,14 @@ fun ChatTab(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadeUnderTopBar(statusTop + TopBarHeight, bottom = inputTop),
+                // reverseLayout = true 时，contentPadding 的 top/bottom 是**跟着反转**的：
+                // top 落在视觉最下面、bottom 落在视觉最上面。原来这两个值写反了 ——
+                // 视觉顶部的留白只有输入栏那么高，滚到最上面时第一条消息被标题胶囊压住。
                 contentPadding = PaddingValues(
                     start = 12.dp,
                     end = 12.dp,
-                    top = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp),
-                    bottom = inputTop + 12.dp,
+                    top = inputTop + 12.dp,
+                    bottom = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp),
                 ),
                 // Bottom: a short conversation should sit just above the input, where the
                 // newest message is, not float up under the title. spacedBy without an
@@ -2823,6 +2827,11 @@ private fun ChatInputBar(
     // A tap on the empty box lands on the 按住说话 layer, so the keyboard is opened by hand.
     val keyboard = LocalSoftwareKeyboardController.current
     val canSend = text.isNotBlank() || attachments.isNotEmpty() || files.isNotEmpty() || share != null
+    // 紫雾手账：输入栏用 Aster 的无字底板（input_chat_blank），九宫格铺 —— 花在左下角，那个角要保留。
+    val lavenderBar = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val inputBitmap = if (lavenderBar) {
+        com.cleo.cleos.ui.theme.rememberScrapBitmap(com.cleo.cleos.R.drawable.scrap_v1_input_chat_blank)
+    } else null
     Column(
         modifier
             .fillMaxWidth()
@@ -2831,7 +2840,19 @@ private fun ChatInputBar(
             // 所以跟着一起对齐了。
             .padding(horizontal = 28.dp)
             .heightIn(min = BarHeight)
-            .liquidGlass(backdrop, palette.input, GlassShape.Rounded(BarHeight / 2)),
+            .then(
+                if (inputBitmap != null) {
+                    Modifier.drawBehind {
+                        drawScrapNinePatch(
+                            src = inputBitmap,
+                            // 素材 720×110，左下角那朵花大约占 60×50 源像素
+                            left = 60, top = 22, right = 40, bottom = 34,
+                        )
+                    }
+                } else {
+                    Modifier.liquidGlass(backdrop, palette.input, GlassShape.Rounded(BarHeight / 2))
+                },
+            ),
     ) {
         if (editing) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
