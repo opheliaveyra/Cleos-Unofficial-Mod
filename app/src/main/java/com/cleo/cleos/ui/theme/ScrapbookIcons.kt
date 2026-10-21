@@ -109,10 +109,9 @@ internal object ScrapbookIconMap {
         put("VolumeUp", intArrayOf(R.drawable.scrap_volume))
         put("Refresh", intArrayOf(R.drawable.scrap_refresh))
         put("Close", intArrayOf(R.drawable.scrap_close))
-        // 之前映射的是 scrap_check.png —— 那张画成了「淡蓝圆 + 水滴状的勾 + 花」，
-        // 20dp 下认不出是对勾。现在换成 scrap_check_v2：从成功提示素材里切出来的绿勾，
-        // 勾占满画面，一眼可读。
-        put("Check", intArrayOf(R.drawable.scrap_check_v2))
+        // 图标总表里第 5 排第 8 个就是它：淡紫圆 + 深色对勾 + 右下角小花。
+        // 这张就是「对勾」的正确素材，之前我误判成弃用、还临时切了成功提示的绿勾，都撤掉。
+        put("Check", intArrayOf(R.drawable.scrap_check))
         put("Info", intArrayOf(R.drawable.scrap_info))
         put("Warning", intArrayOf(R.drawable.scrap_warning))
         put("WarningAmber", intArrayOf(R.drawable.scrap_warning))
