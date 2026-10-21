@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.imageResource
 
 val LocalVisualTheme = staticCompositionLocalOf { VisualTheme.NATIVE }
 
@@ -274,4 +275,61 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTornTape(size: 
 
     // 浅紫和纸：26% 不透明度，图标透得出来，但胶带边缘看得出来。
     drawPath(path, Color(0xFFA78FD0).copy(alpha = 0.46f))
+}
+
+/**
+ * 九宫格底板：把一张手绘底板切成 9 块 —— 四角原样保留（花边不会被拉变形），
+ * 四边和中间只做单向拉伸。这是把 Aster 的底板用到任意尺寸的正确做法。
+ *
+ * 参数是**源图里**四角不拉伸区域的像素宽度。
+ */
+@Composable
+internal fun ScrapNinePatch(
+    @androidx.annotation.DrawableRes res: Int,
+    modifier: Modifier = Modifier,
+    left: Int = 0,
+    top: Int = 0,
+    right: Int = 0,
+    bottom: Int = 0,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit = {},
+) {
+    val bitmap = androidx.compose.ui.graphics.ImageBitmap.imageResource(res)
+    androidx.compose.foundation.layout.Box(modifier, contentAlignment = contentAlignment) {
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            val dw = size.width
+            val dh = size.height
+            // 全部用 Float，避免 Int/Float 混用。
+            val swf = bitmap.width.toFloat()
+            val shf = bitmap.height.toFloat()
+            val slf = left.toFloat().coerceIn(0f, swf - 2f)
+            val stf = top.toFloat().coerceIn(0f, shf - 2f)
+            val srf = (swf - right.toFloat()).coerceIn(slf + 1f, swf)
+            val sbf = (shf - bottom.toFloat()).coerceIn(stf + 1f, shf)
+            val dlf = slf
+            val dtf = stf
+            val drf = (dw - right.toFloat()).coerceAtLeast(dlf + 1f)
+            val dbf = (dh - bottom.toFloat()).coerceAtLeast(dtf + 1f)
+            fun blit(sx: Float, sy: Float, sw2: Float, sh2: Float, dx: Float, dy: Float, dw2: Float, dh2: Float) {
+                if (sw2 <= 0f || sh2 <= 0f || dw2 <= 0f || dh2 <= 0f) return
+                drawImage(
+                    image = bitmap,
+                    srcOffset = androidx.compose.ui.unit.IntOffset(sx.toInt(), sy.toInt()),
+                    srcSize = androidx.compose.ui.unit.IntSize(sw2.toInt().coerceAtLeast(1), sh2.toInt().coerceAtLeast(1)),
+                    dstOffset = androidx.compose.ui.unit.IntOffset(dx.toInt(), dy.toInt()),
+                    dstSize = androidx.compose.ui.unit.IntSize(dw2.toInt().coerceAtLeast(1), dh2.toInt().coerceAtLeast(1)),
+                )
+            }
+            blit(0f, 0f, slf, stf, 0f, 0f, dlf, dtf)
+            blit(slf, 0f, srf - slf, stf, dlf, 0f, drf - dlf, dtf)
+            blit(srf, 0f, swf - srf, stf, drf, 0f, dw - drf, dtf)
+            blit(0f, stf, slf, sbf - stf, 0f, dtf, dlf, dbf - dtf)
+            blit(slf, stf, srf - slf, sbf - stf, dlf, dtf, drf - dlf, dbf - dtf)
+            blit(srf, stf, swf - srf, sbf - stf, drf, dtf, dw - drf, dbf - dtf)
+            blit(0f, sbf, slf, shf - sbf, 0f, dbf, dlf, dh - dbf)
+            blit(slf, sbf, srf - slf, shf - sbf, dlf, dbf, drf - dlf, dh - dbf)
+            blit(srf, sbf, swf - srf, shf - sbf, drf, dbf, dw - drf, dh - dbf)
+        }
+        content()
+    }
 }

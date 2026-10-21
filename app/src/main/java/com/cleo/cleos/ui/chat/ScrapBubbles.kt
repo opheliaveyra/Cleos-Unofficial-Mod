@@ -88,7 +88,7 @@ private fun DrawScope.drawNinePatch(src: ImageBitmap, dst: Size) {
 /** 气泡素材 ↔ 语义。没有对应素材的场景会退回接收/发送那张。 */
 internal object ScrapBubbleRes {
     fun forMessage(mine: Boolean): Int =
-        if (mine) com.cleo.cleos.R.drawable.scrap_bubble_send else com.cleo.cleos.R.drawable.scrap_bubble_recv
+        if (mine) com.cleo.cleos.R.drawable.scrap_v1_bubble_self_blank else com.cleo.cleos.R.drawable.scrap_v1_bubble_ta_blank
 
     val typing = com.cleo.cleos.R.drawable.scrap_bubble_typing
     val voice = com.cleo.cleos.R.drawable.scrap_bubble_voice
