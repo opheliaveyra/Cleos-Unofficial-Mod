@@ -58,6 +58,11 @@ internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
     contentSecondary = Color(0xFF655A70),
     accent = Purple,
     accentContent = Purple,
+    // mineContent 原来没覆盖，用的是 GlassTheme 里的默认值 Color.White ——
+    // 那是给「深色玻璃气泡上的白字」准备的。紫雾换成暖白纸底板之后，
+    // 白字压在暖白底上等于没有对比度（我方气泡、以及所有借用 mineContent 的地方都中招）。
+    // 这里统一压成深灰紫，和 content 同色，等于「浅底板一律深字」。
+    mineContent = Ink,
 )
 
 /**

@@ -169,3 +169,64 @@ top 落在视觉最下面、bottom 落在视觉最上面。原代码把 `statusT
 ## 验收
 
 真机截图 `06-bubble-ink-adaptive.png`：TA 气泡和我方气泡现在都是深色字，两边对比度一致。
+
+
+---
+
+# 第五轮：文字配色全面自查（四页）
+
+## 根因（不是逐个控件的问题）
+
+`scrapbookPalette()` 没有覆盖 `mineContent`，于是继承了 `GlassTheme.kt:57` 的默认值 **`Color.White`**。
+那个默认值是给「深色玻璃气泡上的白字」准备的；紫雾换成暖白纸底板之后，白字压在暖白底上等于没有对比度。
+
+**一处修好，所有借用 `mineContent` 的地方同时生效**：
+- 聊天我方气泡（BubbleThemes.kt:91）
+- 收藏页三条（FavoritesScreen.kt:206/207/214）
+- 自定义气泡色（BubbleColor.kt:74）
+
+```kotlin
+internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
+    content = Ink, contentSecondary = Color(0xFF655A70),
+    accent = Purple, accentContent = Purple,
+    mineContent = Ink,   // ← 新增：浅底板一律深字
+)
+```
+
+## 四个页面的自查结果
+
+| 页面 | 检查项 | 结果 |
+|---|---|---|
+| 聊天 | 双方正文 | ✅ 深灰紫 #3A2E4B（10.4:1） |
+| 聊天 | 时间/引用/发送状态 | ✅ contentSecondary #655A70（6.3:1） |
+| 聊天 | 输入框占位 | ✅ contentSecondary |
+| 聊天 | 残留硬编码 | ✅ 只有视频时长（黑底白字）和深色按钮（白字），对比度正常 |
+| 日记 | 分类选项 | ✅ 改成 palette.content（去掉了上一轮的硬编码） |
+| 日记 | 标题/正文/空状态 | ✅ 标题用纸签，正文和提示走 palette |
+| 日记 | 角色选择器 | ✅ palette.content |
+| 待办 | 输入框/待办文字/完成状态 | ✅ palette.content + contentSecondary |
+| 待办 | 空状态提示 | ✅ 现有文字，未叠两层 |
+| 主页 | 卡片标题/统计数字/说明文字/按钮 | ✅ 全部 palette 来源 |
+
+**没有新增 `LavenderTextColors`**：紫雾已经有一套 `GlassPalette`（content / contentSecondary / accent / accentContent），
+再建一套只会出现两个颜色来源。按你「优先复用已有主题配色机制」的要求，直接补 `mineContent` 一个字段。
+
+## 对比度实测（WCAG 公式）
+
+| 用途 | 颜色 | 底色 | 比值 | AA 4.5 |
+|---|---|---|---|---|
+| 气泡正文 | #3A2E4B | #EDE8F5 | 10.44 | ✅ |
+| 正文 | #40364F | #FFFBF5 | 10.96 | ✅ |
+| 次要文字 | #655A70 | #FFFBF5 | 6.27 | ✅ |
+| 强调 | #73538E | #FFFBF5 | 6.07 | ✅ |
+
+## 截图
+
+`07-ink-chat.png` / `07-ink-diary.png` / `07-ink-todo.png` / `07-ink-home.png`
+
+## 剩余问题
+
+1. 9 件独立装饰件还没落位（等指定位置）
+2. 10 个按钮还是原纸绘图标，没换新按钮素材
+3. 头像框 5 件的「在线/离线/选中」状态仍缺数据来源
+4. 空状态的花边/插画参考图不能直接用，需要代码重画（未做）

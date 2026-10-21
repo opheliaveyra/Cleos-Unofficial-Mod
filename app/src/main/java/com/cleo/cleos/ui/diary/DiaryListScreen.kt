@@ -367,7 +367,7 @@ private fun DiaryFilters(
                         }
                         Text(
                             t.label,
-                            color = if (on && !lavenderTabs) Color.White else if (on) androidx.compose.ui.graphics.Color(0xFF3A2E4B) else palette.content,
+                            color = if (on && !lavenderTabs) Color.White else palette.content,
                             fontSize = 13.sp,
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1,
