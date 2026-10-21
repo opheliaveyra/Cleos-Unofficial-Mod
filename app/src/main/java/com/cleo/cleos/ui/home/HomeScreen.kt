@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -180,11 +182,34 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 28.dp),
             ) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.Top) {
-                        // 「我与 TA」里的**我**：跟着当前角色走（角色专属 > 全局），
-                        // 和聊天页走同一个解析入口（UserFaces）—— 不然主页和聊天里会是两张脸。
-                        val myFace = com.cleo.cleos.data.UserFaces.forCompanion(ta, s)
-                        val isLavenderForFrames = LocalVisualTheme.current == VisualTheme.LAVENDER
+                    // 「我与 TA」里的**我**：跟着当前角色走（角色专属 > 全局），
+                    // 和聊天页走同一个解析入口（UserFaces）—— 不然主页和聊天里会是两张脸。
+                    val myFace = com.cleo.cleos.data.UserFaces.forCompanion(ta, s)
+                    val isLavenderForFrames = LocalVisualTheme.current == VisualTheme.LAVENDER
+                    if (isLavenderForFrames) {
+                        // 紫雾手账：用 Aster 那张**一整张**的双框 + 花结，头像按图里的两个透明圆定位。
+                        // 拆成三块拼的时候边缘永远对不齐，一整张是对齐最稳的做法。
+                        AvatarPairArtwork(
+                            myFace = myFace,
+                            me = me,
+                            myLetter = avatarLetter(s.userName, "我"),
+                            myLabel = if (s.userName.isBlank()) null else "我",
+                            taFace = ta.avatar,
+                            ai = ai,
+                            taLetter = ta.avatarEmoji ?: avatarLetter(ta.name, "TA"),
+                            taLabel = if (ta.name.isBlank()) null else "TA",
+                            menuFor = menuFor,
+                            onAvatarMe = { if (myFace == null) pick(Who.Me) else menuFor = Who.Me },
+                            onNameMe = { naming = Who.Me },
+                            onChangeMe = { menuFor = null; pick(Who.Me) },
+                            onResetMe = { menuFor = null; c.appScope.launch { setAvatar(c, Who.Me, null, ta.id) } },
+                            onAvatarAi = { if (ta.avatar == null && ta.avatarEmoji == null) pick(Who.Ai) else menuFor = Who.Ai },
+                            onNameAi = { naming = Who.Ai },
+                            onChangeAi = { menuFor = null; pick(Who.Ai) },
+                            onResetAi = { menuFor = null; c.appScope.launch { setAvatar(c, Who.Ai, null, ta.id) } },
+                            onMenuDismiss = { menuFor = null },
+                        )
+                    } else Row(verticalAlignment = Alignment.Top) {
                         Person(
                             file = myFace,
                             name = me,
@@ -198,28 +223,13 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                             onReset = { menuFor = null; c.appScope.launch { setAvatar(c, Who.Me, null, ta.id) } },
                             onMenuDismiss = { menuFor = null },
                         )
-                        // 中间那个连接装饰：紫雾手账用 Aster 的丝带花结，其他主题还是原来的星星。
-                        // 36dp 是按两边头像的 156dp 框实测出来的 —— 再大就会和框的边饰挤在一起。
-                        if (isLavenderForFrames) {
-                            Image(
-                                painter = painterResource(R.drawable.scrap_avatar_connection_flower),
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                // Row 是 Top 对齐的（原来那颗星靠大 padding 自己往下压），
-                                // 所以花结要显式居中，不然会贴在头像顶上一截。
-                                // 按效果图的比例：花结（含丝带）约等于头像框直径的 1/3（156 × 0.31 ≈ 48dp），
-                                // 素材里丝带只占 74%，所以 Image 要 65dp 才画得出 48dp 的视觉效果。
-                                // Row 居中对的是整个 Person 列（含名字那几行），所以比头像圆心低一点，往上抬 12dp。
-                                modifier = Modifier.align(Alignment.CenterVertically).offset(y = (-12).dp).padding(horizontal = 4.dp).size(65.dp),
-                            )
-                        } else {
-                            Text(
-                                "✧",
-                                color = palette.accentContent,
-                                fontSize = 22.sp,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 34.dp),
-                            )
-                        }
+                        // 原生主题还是那颗星（紫雾走的是上面的整图，不经过这里）。
+                        Text(
+                            "✧",
+                            color = palette.accentContent,
+                            fontSize = 22.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 34.dp),
+                        )
                         Person(
                             file = ta.avatar,
                             name = ai,
@@ -470,6 +480,112 @@ private fun TaRow(tas: List<CompanionEntity>, currentId: Long, onSelect: (Long) 
     }
 }
 
+
+/**
+ * 紫雾手账的双头像：**一整张** Aster 的效果图（两个框 + 中间花结），头像按图里的两个透明圆定位。
+ *
+ * 为什么不三块拼：框是从两侧往中间溢出的，中间再塞一朵花结，三块的交界永远差一点；
+ * 一整张图是作者画好的，对齐关系不用我猜。比例全部来自原图测量：
+ *   头像直径 488/1983、左圆心 481/1983、右圆心 1504/1983、圆心 y 385/793。
+ */
+@Composable
+private fun AvatarPairArtwork(
+    myFace: String?, me: String, myLetter: String, myLabel: String?,
+    taFace: String?, ai: String, taLetter: String, taLabel: String?,
+    menuFor: Who?,
+    onAvatarMe: () -> Unit, onNameMe: () -> Unit, onChangeMe: () -> Unit, onResetMe: () -> Unit,
+    onAvatarAi: () -> Unit, onNameAi: () -> Unit, onChangeAi: () -> Unit, onResetAi: () -> Unit,
+    onMenuDismiss: () -> Unit,
+) {
+    val palette = LocalGlassPalette.current
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val artW = maxWidth
+        val artH = artW * 0.39990f
+        val avatar = artW * 0.24609f
+        val leftCx = artW * 0.24256f
+        val rightCx = artW * 0.75845f
+        val cy = artH * 0.48550f
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().height(artH)) {
+                Image(
+                    painter = painterResource(R.drawable.scrap_avatar_pair_combo),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                PairAvatar(
+                    file = myFace, letter = myLetter, name = me, label = myLabel,
+                    size = avatar,
+                    x = leftCx - avatar / 2f, y = cy - avatar / 2f,
+                    menuOpen = menuFor == Who.Me,
+                    onAvatar = onAvatarMe, onName = onNameMe, onChange = onChangeMe, onReset = onResetMe,
+                    onMenuDismiss = onMenuDismiss,
+                )
+                PairAvatar(
+                    file = taFace, letter = taLetter, name = ai, label = taLabel,
+                    size = avatar,
+                    x = rightCx - avatar / 2f, y = cy - avatar / 2f,
+                    menuOpen = menuFor == Who.Ai,
+                    onAvatar = onAvatarAi, onName = onNameAi, onChange = onChangeAi, onReset = onResetAi,
+                    onMenuDismiss = onMenuDismiss,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            // 名字跟着两个圆心走（圆心在 24% / 76%，用两等分刚好对上）。
+            Row(Modifier.fillMaxWidth()) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    PairLabel(me, myLabel, palette, onNameMe)
+                }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    PairLabel(ai, taLabel, palette, onNameAi)
+                }
+            }
+        }
+    }
+}
+
+/** 按算好的坐标摆一个头像（不进 Row/Column 的流式布局）。 */
+@Composable
+private fun BoxScope.PairAvatar(
+    file: String?, letter: String, name: String, label: String?,
+    size: androidx.compose.ui.unit.Dp,
+    x: androidx.compose.ui.unit.Dp, y: androidx.compose.ui.unit.Dp,
+    menuOpen: Boolean,
+    onAvatar: () -> Unit, onName: () -> Unit, onChange: () -> Unit, onReset: () -> Unit,
+    onMenuDismiss: () -> Unit,
+) {
+    Box(Modifier.offset(x = x, y = y).size(size)) {
+        Avatar(
+            file,
+            letter,
+            size,
+            Modifier
+                .fillMaxSize()
+                .clickable(onClickLabel = "换头像", onClick = onAvatar)
+                .semantics { contentDescription = name + "的头像" },
+        )
+        DropdownMenu(expanded = menuOpen, onDismissRequest = onMenuDismiss) {
+            DropdownMenuItem(text = { Text("换一张") }, onClick = onChange)
+            DropdownMenuItem(text = { Text("用回默认") }, onClick = onReset)
+        }
+    }
+}
+
+@Composable
+private fun PairLabel(name: String, label: String?, palette: com.cleo.cleos.glass.GlassPalette, onName: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            name,
+            color = palette.content,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable(onClickLabel = "改名字", onClick = onName),
+        )
+        if (label != null) Text(label, color = palette.contentSecondary, fontSize = 12.sp)
+    }
+}
 @Composable
 private fun Person(
     file: String?,
