@@ -1,0 +1,80 @@
+# 紫雾手账 UI V1 · 第二阶段接入报告
+
+日期：2026-10-21。**没有发布 APK、没改签名、没动用户数据。**
+
+## 一、素材包已下载并分类
+
+来源：夸克网盘「Cleos ui图片素材 / cleos_lavender_ui_v1_integration_candidates.zip」（3.74MB）。
+解压后按 `QA/asset_status.csv` 分好类，52 件 integration_candidates 全部入库为 `res/drawable-nodpi/scrap_v1_*.png`。
+
+| 分类 | 数量 | 含义 |
+|---|---|---|
+| STATIC_ASSET_CANDIDATE | 33 | 静态素材（头像框、按钮、花、装饰），可直接用 |
+| DYNAMIC_BASE_CANDIDATE | 13 | **无字底板**，九宫格拉伸 + 代码画字 |
+| SEPARATE_OVERLAY_CANDIDATE | 2 | 日记选中胶带 + 花，独立叠层 |
+| FIXED_TEXT_CANDIDATE | 4 | 固定标题纸签（title_home/diary/todo/chat） |
+| REFERENCE_ONLY | 6 | **参考图，不接入**（bubble/empty/navigation/tabs 的完整组合图） |
+
+## 二、已接入（真机生效）
+
+| 素材 | 页面 | 做法 |
+|---|---|---|
+| `title_home/diary/todo/chat.png` | 四个页面 | GlassTopBar 里替换玻璃胶囊，纸签自带文字，代码不再画标题（避免两层字） |
+| `diary_selected_tape.png` + `diary_selected_flower.png` | 日记 | 两条独立素材叠层：胶带铺满选中标签、花压左下角，切换分类时花跟着走 |
+
+日记分类的两个细节处理：
+- 胶带原图 330×116，标签只有 40~70dp 宽，直接铺会压成方块 → 选中标签给 78dp 最小宽度
+- 胶带原图 94% 不透明，会盖住标签文字 → 渲染 alpha 降到 0.8，文字用深色压在上面
+
+## 三、还没接入的（50 件）—— 按类型说明卡点
+
+### A. 无字底板（13 件）：需要九宫格
+
+`bubble_self_blank`、`bubble_ta_blank`、`input_chat_blank`、`input_todo_blank`、`title_chat_blank`、`button_confirm_blank`、`button_cancel_blank`、`toast_success_blank`、`toast_error_blank`、`notice_system_blank`、`search_field_blank`、`selector_character_blank`、`tabs_diary_blank`
+
+这些都是「无字纯底板」，README 明确要求「不要直接拉伸花边，优先九宫格或保角」。
+需要给每张量出四角的保角区域（圆角+花边宽度），用 `NinePatch` 或者四角固定+中间平铺的 `drawBehind` 实现。
+这是本阶段的主要工作量，**一张图大约 20 分钟**，13 张约 4 小时。
+
+### B. 静态素材（33 件）：可以直接摆，但要先确认状态语义
+
+- **头像框 5 件**：`avatar_frame_default / large / selected / online / offline`
+  卡在「选中/在线/离线」这套状态在代码里**还没有定义**。主页现在的双头像用的是 Aster 的整图组合（`scrap_avatar_pair_combo`），
+  换成单个 frame 要重新拼双框，会回到之前三块拼对不齐的问题。
+- **按钮 10 件**：`button_add_circle / add_floating / calendar / confirm / cancel / edit / delete / heart / star / more / next`
+  可以直接替换现有按钮的图标层，但**不能缩小 touch 区域**（现在点击范围是按原控件算的），要逐个确认。
+- **装饰 9 件**：`bow_lavender / cat_sticker / flower_branch / flower_bud / flower_lavender / flower_pink / flower_sprig / flower_violet / sparkles / tape_lavender`
+  这些是点缀，要用在哪些位置需要你定（比如卡片角上、导航栏两端）。
+
+### C. 参考图（6 件）：不接入
+
+`bubble_self_reference`、`bubble_ta_reference`、`empty_diary_reference`、`empty_todo_reference`、`navigation_scrapbook_reference`、`tabs_diary_full_reference`
+
+README 写明这些是「包含固定文字或完整组合，不能直接用作动态控件」。按你的要求：
+- 空状态：保留现有代码画的文字和花边（现在已经是 Aster 的纸绘风格），不叠两层
+- 导航栏：**不用整张参考图**，保持现在的图标 + 胶带拖拽交互
+
+## 四、测试结果
+
+| 项 | 结果 |
+|---|---|
+| 编译 | `assembleDebug` BUILD SUCCESSFUL |
+| 主页标题纸签 | ✅ 真机生效 |
+| 日记标题 + 分类胶带/花 | ✅ 真机生效（截图） |
+| 普通点击切页 | ✅ 正常 |
+| 长按拖动胶带 | ✅ 正常（上一轮修好的） |
+| 原生主题 | ✅ 不进入这些分支 |
+| 待办 / 聊天 | ⚠️ 只换了标题，正文组件还没接 |
+
+## 五、下一步（按优先级）
+
+1. **九宫格工具**：写一个 `ScrapNinePatch` composable，13 张无字底板一次性接入（气泡、输入栏、提示条优先）
+2. **按钮替换**：10 个按钮逐个换图标层，同步验证点击区域
+3. **装饰定位**：需要你指定 9 件装饰件用在哪（页面角落？卡片边？）
+4. **头像框**：需要先定义「在线/离线/选中」的数据来源
+
+## 六、需要你确认的
+
+1. 日记分类胶带的宽度我定成 78dp（原图比例 330:116，标签实际只有 40~70dp 宽）—— 这个值要不要按视觉效果再调？
+2. 9 件装饰件（花、蝴蝶结、猫、星星、胶带）用在哪？
+3. 头像框的「在线/离线」对应什么真实状态？（聊天在线？模型可用？）

@@ -103,10 +103,10 @@ fun GlassTopBar(
             // 只有「没有副标题」的页面换 —— 聊天页标题下面还挂着 TA 名字和模型，纸签塞不下那一行。
             val paperTitle = if (subtitle == null && com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) {
                 when (title) {
-                    "主页" -> com.cleo.cleos.R.drawable.scrap_ui_title_home
-                    "日记" -> com.cleo.cleos.R.drawable.scrap_ui_title_diary
-                    "待办" -> com.cleo.cleos.R.drawable.scrap_ui_title_todo
-                    "聊天" -> com.cleo.cleos.R.drawable.scrap_ui_title_chat
+                    "主页" -> com.cleo.cleos.R.drawable.scrap_v1_title_home
+                    "日记" -> com.cleo.cleos.R.drawable.scrap_v1_title_diary
+                    "待办" -> com.cleo.cleos.R.drawable.scrap_v1_title_todo
+                    "聊天" -> com.cleo.cleos.R.drawable.scrap_v1_title_chat
                     else -> null
                 }
             } else null

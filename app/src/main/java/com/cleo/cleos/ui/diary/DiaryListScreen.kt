@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -326,20 +328,46 @@ private fun DiaryFilters(
                     .padding(horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val lavenderTabs = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
                 DiaryType.entries.forEach { t ->
                     val on = t == type
                     Box(
                         Modifier
                             // 固定等高（不是被文字撑出来的），大字体下也不会把整排撑高。
                             .height(34.dp)
-                            .background(if (on) palette.accent else Color.Transparent, CircleShape)
+                            .then(
+                                if (on && !lavenderTabs) Modifier.background(palette.accent, CircleShape)
+                                else Modifier,
+                            )
                             .clickable(interactionSource = null, indication = null) { onType(t) }
+                            .widthIn(min = if (on && lavenderTabs) 78.dp else 0.dp)
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
+                        // 紫雾手账：选中态是**两条独立素材**叠出来的 ——
+                        // 胶带铺满标签，花压在胶带左下角。花是单独一层，所以换分类时它会跟着走。
+                        if (on && lavenderTabs) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_v1_diary_selected_tape),
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                                // 胶带自身的 alpha 拉到 0.8 —— 原图 94% 不透明，会把标签文字压没。
+                                alpha = 0.8f,
+                                modifier = Modifier.matchParentSize(),
+                            )
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_v1_diary_selected_flower),
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = (-6).dp, y = 4.dp)
+                                    .size(20.dp),
+                            )
+                        }
                         Text(
                             t.label,
-                            color = if (on) Color.White else palette.content,
+                            color = if (on && !lavenderTabs) Color.White else if (on) androidx.compose.ui.graphics.Color(0xFF3A2E4B) else palette.content,
                             fontSize = 13.sp,
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1,
