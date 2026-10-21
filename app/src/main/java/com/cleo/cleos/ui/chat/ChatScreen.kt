@@ -1202,6 +1202,40 @@ fun ChatTab(
                     .padding(bottom = inputBottom)
                     .onSizeChanged { inputHeight = it.height },
             )
+            // 模型切换：**贴在输入栏下面**（不在里面、也不浮在消息上）。
+            // 输入栏底部本来就留了 inputBottom（导航栏高度），胶囊塞在这条缝里，
+            // 既不占输入栏高度、也不会和消息区重叠。
+            if (!selecting && !recording && modelChoices.isNotEmpty() &&
+                com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+            ) {
+                Row(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        // 贴着输入栏**上沿**（外侧 4dp 间隙）：不在纸面里，也不压消息。
+                        .padding(start = 28.dp, bottom = inputBottom + with(density) { inputHeight.toDp() } + 4.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    Box(
+                        Modifier
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                            .clickable(interactionSource = null, indication = null, onClick = { modelMenu = true })
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CleosIcon(Icons.Rounded.Tune, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                state.model.takeIf { it.isNotBlank() } ?: "选模型",
+                                color = palette.contentSecondary,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                            )
+                            Text(" ▾", color = palette.contentSecondary, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
             if (!selecting && !recording && !drawerOpen && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 80)) {
                 GlassIconButton(Icons.Rounded.ArrowDownward, "回到最新消息", {
                     scope.launch { listState.scrollToItem(0) }
@@ -1269,9 +1303,9 @@ fun ChatTab(
                     // 副标题就点不到了 —— 这就是「模型菜单点不开」的真正原因。
                     top = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp)
                         + (if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) 36.dp else 0.dp),
-                    // 底部：输入栏实测顶部 + 52dp。多出来的 28dp 是给输入栏上方那枚模型胶囊的 ——
-                    // 只留 24dp 的话最后一条消息会横穿胶囊。
-                    bottom = inputTop + 52.dp,
+                    // 底部：输入栏顶部 + 64dp。其中 4+26dp 是贴着输入栏上沿的模型胶囊，
+                    // 剩下的给气泡下沿的角花。留不够的话最后一条消息会横穿胶囊。
+                    bottom = inputTop + 64.dp,
                 ),
                 // Bottom: a short conversation should sit just above the input, where the
                 // newest message is, not float up under the title. spacedBy without an
@@ -2872,36 +2906,6 @@ private fun ChatInputBar(
                 },
             ),
     ) {
-        // 模型切换：贴着输入栏**里面**的第一行（不是浮在消息上）。
-        // 放这里的好处：输入栏自己会因为有这一行而变高，onSizeChanged 自动更新 inputHeight，
-        // 消息列表的底部留白跟着变，不用再手动算。
-        if (onModelClick != null) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, top = 6.dp),
-                horizontalArrangement = Arrangement.Start,
-            ) {
-                Box(
-                    Modifier
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-                        .clickable(interactionSource = null, indication = null, onClick = onModelClick)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CleosIcon(Icons.Rounded.Tune, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            modelLabel?.takeIf { it.isNotBlank() } ?: "选模型",
-                            color = palette.contentSecondary,
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                        )
-                        Text(" ▾", color = palette.contentSecondary, fontSize = 11.sp)
-                    }
-                }
-            }
-        }
         if (editing) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(editHint, color = palette.contentSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 2)
