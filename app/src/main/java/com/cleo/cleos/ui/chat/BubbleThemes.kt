@@ -80,7 +80,16 @@ fun ChatBubbleSurface(
     val palette = LocalGlassPalette.current
     val id = BubbleThemes.valid(theme)
     val style = if (mine) palette.bubbleMine else palette.bubble
-    val glassInk = if (mine) palette.mineContent else palette.content
+    // 气泡文字颜色要跟着**气泡样式**走，不是跟着发送方走：
+    // 紫雾手账的两张底板（bubble_self_blank / bubble_ta_blank）都是暖白偏浅紫的浅底，
+    // 之前按发送方取色，我方气泡用了 mineContent（浅色），在浅底上几乎没有对比度。
+    val isLavenderBubble = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+    val glassInk = if (isLavenderBubble) {
+        // 深灰紫 #3A2E4B 在暖白/浅紫底上对比度约 11:1，远超 WCAG AA 的 4.5:1。
+        androidx.compose.ui.graphics.Color(0xFF3A2E4B)
+    } else {
+        if (mine) palette.mineContent else palette.content
+    }
     val padding = PaddingValues(horizontal = horizontalPadding.coerceIn(6, 24).dp, vertical = verticalPadding.coerceIn(4, 16).dp)
     val decor = decoration.normalized()
     val faceCorner = decor.resolvedCorner(true, id)
