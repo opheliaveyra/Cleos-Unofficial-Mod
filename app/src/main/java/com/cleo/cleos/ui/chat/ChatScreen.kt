@@ -715,7 +715,10 @@ fun ChatTab(
     var diaryRequestId by rememberSaveable(state.conversationId) { mutableStateOf<Long?>(null) }
     val secretDraft by c.chat.secretDraft.collectAsStateWithLifecycle()
     val feedDraft by c.chat.feedDraft.collectAsStateWithLifecycle()
-    var inputHeight by remember { mutableIntStateOf(0) }
+    // 首帧还没测量时必须是「输入栏大概多高」，不能是 0 ——
+    // 用 0 的话 LazyColumn 的底部留白会是 0，最后一条消息直接被输入栏压住（P0）。
+    val densityForBar = androidx.compose.ui.platform.LocalDensity.current
+    var inputHeight by remember { mutableIntStateOf(with(densityForBar) { 64.dp.roundToPx() }) }
     var pickingAttachment by remember { mutableStateOf(false) }
     // 顶部那个模型名点一下能换模型（见 ChatViewModel.modelChoices）。
     val modelChoices by vm.modelChoices.collectAsStateWithLifecycle()
@@ -1064,8 +1067,9 @@ fun ChatTab(
             }
             if (selecting) {
                 GlassSurface(
+                    // 这条是多选操作栏，不是输入栏 —— 不能拿它的高度去算消息列表的底部留白。
                     modifier = Modifier.align(Alignment.BottomCenter).padding(start = 28.dp, end = 28.dp, bottom = inputBottom)
-                        .fillMaxWidth().onSizeChanged { inputHeight = it.height },
+                        .fillMaxWidth(),
                     shape = GlassShape.Rounded(24.dp), contentPadding = PaddingValues(8.dp),
                 ) {
                     Row {
@@ -1249,14 +1253,18 @@ fun ChatTab(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadeUnderTopBar(statusTop + TopBarHeight, bottom = inputTop),
-                // reverseLayout = true 时，contentPadding 的 top/bottom 是**跟着反转**的：
-                // top 落在视觉最下面、bottom 落在视觉最上面。原来这两个值写反了 ——
-                // 视觉顶部的留白只有输入栏那么高，滚到最上面时第一条消息被标题胶囊压住。
+                // contentPadding 是**物理方向**的（top 就是屏幕上面），reverseLayout 只翻转
+                // item 顺序和滚动方向，不会把 top/bottom 反过来。
+                // 我上一轮把它俩交换了，结果两边都留不够：顶部第一条被标题压、底部最后一条被输入栏压。
                 contentPadding = PaddingValues(
                     start = 12.dp,
                     end = 12.dp,
-                    top = inputTop + 12.dp,
-                    bottom = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp),
+                    // 顶部：状态栏 + 标题栏 + 一点余量。紫雾的标题纸签比玻璃胶囊高（约 70dp），
+                    // 所以再让 16dp，否则第一条消息的上沿会被纸签的胶带头压住。
+                    top = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp)
+                        + (if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) 16.dp else 0.dp),
+                    // 底部：输入栏实测顶部 + 24dp（气泡下沿有角花，12dp 会被纸边压住）。
+                    bottom = inputTop + 24.dp,
                 ),
                 // Bottom: a short conversation should sit just above the input, where the
                 // newest message is, not float up under the title. spacedBy without an

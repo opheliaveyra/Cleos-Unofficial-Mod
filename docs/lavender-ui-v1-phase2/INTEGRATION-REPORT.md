@@ -280,3 +280,47 @@ internal fun scrapbookPalette() = GlassPalettes.build(dark = false).copy(
 5. **空状态插画**：参考图不能直接用，花边/插画要用代码重画
 6. **弹窗**：只在部分路径上变成纸面，系统 AlertDialog 标题栏还是原生
 7. **9 件装饰件**仍无落点
+
+---
+
+# P0：聊天消息被标题/输入栏遮挡
+
+## 根因（两个，都在布局层）
+
+### 1. contentPadding 的方向理解错了
+
+`LazyColumn(reverseLayout = true)` 只翻转 **item 顺序和滚动方向**，`contentPadding` 依然是 **物理方向**（top 就是屏幕上面）。
+我在上一轮把它俩交换了，以为 reverse 会反过来 —— 结果两边都不够：顶部第一条被标题压，底部最后一条被输入栏压。
+
+已改回物理方向，并按紫雾的实际情况留足：
+```kotlin
+contentPadding = PaddingValues(
+    start = 12.dp, end = 12.dp,
+    top = statusTop + TopBarHeight + 8.dp + (紫雾 ? 16.dp : 0.dp),  // 纸签比玻璃胶囊高
+    bottom = inputTop + 24.dp,                                        // 气泡下沿有角花
+)
+```
+
+### 2. inputHeight 首帧是 0，多选栏还会覆盖它
+
+- `var inputHeight by remember { mutableIntStateOf(0) }` → 首帧 `inputTop = inputBottom`，底部留白差一整个输入栏
+  改成默认 `64.dp`（输入栏最小高度），测量完再修正
+- 多选操作栏（收藏/删除那条）也挂了 `.onSizeChanged { inputHeight = it.height }`，会把输入栏高度覆盖成操作栏高度
+  已移除，它不该参与消息列表的留白计算
+
+## 验收
+
+| 状态 | 结果 | 截图 |
+|---|---|---|
+| 滚动到最底部 | ✅ 最后一条消息和气泡下沿完整可见，与输入栏有间距 | 12-p0-bottom.png |
+| 滚动到最顶部 | ✅ 第一条消息从标题纸签下方开始（图片类卡片顶部仍会贴得很近，但没有被压掉内容） | 11-p0-top.png |
+| 键盘展开 | ⚠️ **未验证** —— adb 注入的点击不能让输入框拿到焦点，`mInputShown=false`，需要人工点一下输入框确认 |
+
+## 未改动
+
+只改了 ChatScreen 的两处布局参数和一处默认值，没有碰消息数据、数据库、主题判断和长按交互。
+
+## 遗留
+
+1. 键盘态需要人工验证一次（点输入框 → 输入栏上移 → 最后一条消息仍完整）
+2. 图片消息卡片在滚动到顶部时会贴着标题纸签下沿，如果要更宽松可以把 top 再加 8dp
