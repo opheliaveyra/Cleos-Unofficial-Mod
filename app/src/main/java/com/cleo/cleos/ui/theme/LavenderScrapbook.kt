@@ -28,6 +28,19 @@ import com.cleo.cleos.glass.GlassPalettes
 import com.cleo.cleos.glass.GlassShape
 import com.cleo.cleos.glass.GlassStyle
 import com.cleo.cleos.glass.GlassTab
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 val LocalVisualTheme = staticCompositionLocalOf { VisualTheme.NATIVE }
 
@@ -94,7 +107,25 @@ internal fun VisualThemePicker(selected: String, onSelect: (String) -> Unit) {
 /** Same outer height as glass navigation, so existing insets/IME visibility stay owned by MainScreen. */
 @Composable
 internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.height(92.dp), contentAlignment = Alignment.Center) {
+    // 胶带是可以揭起来换位置的：长按选中的那格 -> 揭起 -> 跟着手指走 -> 松手贴到目标上。
+    // 位置全部按导航栏的实际宽度算，不写死坐标。
+    var selected by remember { mutableStateOf(selectedIndex) }
+    if (selected != selectedIndex) selected = selectedIndex
+    // 胶带相对「当前选中格子中心」的水平偏移（px）。拖动时跟手，松手时归零或跳到新格子。
+    val tapeShift = remember { Animatable(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var hover by remember { mutableStateOf(-1) }
+    val scope = rememberCoroutineScope()
+    val lift by animateFloatAsState(if (dragging) 1f else 0f, tween(180), label = "lift")
+    val density = LocalDensity.current
+    val tapeW = 52.dp
+    val tabCount = tabs.size.coerceAtLeast(1)
+
+    BoxWithConstraints(modifier.height(92.dp), contentAlignment = Alignment.Center) {
+        val tabWidthPx = with(density) { maxWidth.toPx() } / tabCount
+        val tapeWidthPx = with(density) { tapeW.toPx() }
+        val rowHeightPx = with(density) { 64.dp.toPx() }
+
         Row(
             Modifier.fillMaxWidth().heightIn(min = 64.dp).drawBehind {
                 val w = size.width
@@ -117,10 +148,11 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEachIndexed { index,tab ->
-                val active = selectedIndex == index
+                val active = selected == index
+                val targeted = dragging && hover == index
                 Column(
                     Modifier.weight(1f).heightIn(min=56.dp)
-                        .selectable(selected=active,role=Role.Tab,onClick={onSelect(index)})
+                        .selectable(selected=active,role=Role.Tab,onClick={ onSelect(index) })
                         .padding(vertical=5.dp),
                     horizontalAlignment=Alignment.CenterHorizontally,
                     verticalArrangement=Arrangement.spacedBy(2.dp),
@@ -130,16 +162,23 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
                             imageVector = if (active) tab.selectedIcon else tab.icon,
                             contentDescription = null,
                             modifier = Modifier.size(if (active) 31.dp else 28.dp),
-                            tint = if (active) Purple else Ink,
+                            // 拖动经过时给一点反馈：图标变大一点、颜色靠近紫色，但不提前切页。
+                            tint = if (active || targeted) Purple else Ink,
                         )
-                        // 选中态：一块手撕和纸胶带**盖在图标上面**，图标透过胶带显现。
-                        // 不画任何阴影/发光/底座 —— 胶带本身就是唯一的那层。
+                        // 胶带就画在图标这一格里 —— 静止位置本来就是对的，
+                        // 拖动时只叠一个 translationX，比重新算绝对坐标可靠得多。
                         if (active) {
                             Box(
                                 Modifier
                                     .offset(y = 1.dp)
                                     .width(52.dp)
                                     .height(36.dp)
+                                    .graphicsLayer {
+                                        translationX = if (dragging) tapeShift.value else 0f
+                                        scaleX = 1f + lift * 0.06f
+                                        scaleY = 1f + lift * 0.06f
+                                        rotationZ = lift * -2.5f
+                                    }
                                     .drawBehind { drawTornTape(size) },
                             )
                         }
@@ -153,9 +192,62 @@ internal fun ScrapbookTabBar(tabs: List<GlassTab>, selectedIndex: Int, onSelect:
                 }
             }
         }
+
+        // ---- 手势：长按揭起 + 拖动 + 松手贴合 ----
+        Box(
+            Modifier.fillMaxSize().pointerInput(tabCount, tabWidthPx, selected) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { start ->
+                        // 只有按在「当前选中的那一格」上才是揭胶带；按别处不拦，正常点就行。
+                        val idx = (start.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                        if (idx == selected) {
+                            dragging = true
+                            hover = selected
+                        }
+                    },
+                    onDrag = { change, delta ->
+                        if (!dragging) return@detectDragGesturesAfterLongPress
+                        change.consume()
+                        scope.launch {
+                            val next = tapeShift.value + delta.x
+                            // 不许拖出导航栏：最多偏到最左 / 最右那一格的中心。
+                            val minShift = -(selected + 0.5f) * tabWidthPx
+                            val maxShift = (tabCount - selected - 0.5f) * tabWidthPx
+                            tapeShift.snapTo(next.coerceIn(minShift, maxShift))
+                        }
+                        val c = (selected + 0.5f) * tabWidthPx + tapeShift.value
+                        hover = (c / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                    },
+                    onDragEnd = {
+                        if (!dragging) return@detectDragGesturesAfterLongPress
+                        val target = hover.coerceIn(0, tabCount - 1)
+                        val shiftNow = tapeShift.value
+                        val wantShift = (target - selected) * tabWidthPx
+                        dragging = false
+                        hover = -1
+                        scope.launch {
+                            // 先滑到目标格子上，再切换页面：顺序反了会看到「页面变了胶带还在飞」。
+                            tapeShift.animateTo(wantShift, tween(170))
+                            if (target != selected) {
+                                selected = target
+                                onSelect(target)
+                            }
+                            tapeShift.snapTo(0f)
+                        }
+                        if (shiftNow == wantShift) Unit
+                    },
+                    onDragCancel = {
+                        if (!dragging) return@detectDragGesturesAfterLongPress
+                        dragging = false
+                        hover = -1
+                        // 取消（来电、切后台、手势被打断）：平滑回到原格子，不切页。
+                        scope.launch { tapeShift.animateTo(0f, tween(170)) }
+                    },
+                )
+            },
+        )
     }
 }
-
 /**
  * 手撕和纸胶带：横向矩形 + 两端细密小三角锯齿。
  *
@@ -195,5 +287,5 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTornTape(size: 
     path.close()
 
     // 浅紫和纸：26% 不透明度，图标透得出来，但胶带边缘看得出来。
-    drawPath(path, Color(0xFFA78FD0).copy(alpha = 0.28f))
+    drawPath(path, Color(0xFFA78FD0).copy(alpha = 0.46f))
 }
