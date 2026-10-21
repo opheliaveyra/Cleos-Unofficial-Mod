@@ -324,3 +324,56 @@ contentPadding = PaddingValues(
 
 1. 键盘态需要人工验证一次（点输入框 → 输入栏上移 → 最后一条消息仍完整）
 2. 图片消息卡片在滚动到顶部时会贴着标题纸签下沿，如果要更宽松可以把 top 再加 8dp
+
+---
+
+# 图标底框盘点（纸绘框替换普通圆框）
+
+## 结论先说
+
+之前「去掉原生圆框」被我理解成了「不要底框」，这是错的。正确的是：
+**用 Aster 画的纸绘装饰框替换普通浅紫圆** —— 图标仍然有底框，只是框变成了纸绘的。
+
+## 盘点表
+
+| 位置 | 当前实现 | 应替换为 | 代码位置 | 状态 |
+|---|---|---|---|---|
+| 设置页所有功能行 | 34dp 浅紫圆 | `avatar_frame_default`（纸绘圆框+角花） | `ui/settings/SettingsPages.kt:406 Entry()` | 本轮已改：44dp 框 + 19dp 图标分层 |
+| 主页「添加」按钮 | 已有纸绘图标 | 保持 | `ui/home/HomeScreen.kt:471` | 已正确 |
+| 主页「信」卡片 | GlassSurface + 纸绘信封图 | 保持 | HomeScreen | 已正确 |
+| 日记归属范围胶囊 | palette.card.tint 胶囊 | 需要纸绘框 | `DiaryListScreen.kt:298` | 未改 |
+| 日记类型标签底板 | palette.card.tint 胶囊 | 需要纸绘框 | `DiaryListScreen.kt:327` | 未改 |
+| 聊天操作按钮 | content.copy(0.08f) 圆 | button_* 系列 | `ChatScreen.kt:2741` | 未改 |
+| 记录/收藏页筛选 Chip | 原生 Pill | 需要纸绘标签 | 多处 | 未改 |
+| 头像裁切页按钮 | 原生圆 | 需要纸绘框 | `AvatarCrop.kt:166` | 未改 |
+| 记忆/信件页选中态 | palette.accent 实心圆 | 需要选中态素材 | MemoryEditScreen:294 / LetterScreen:287 | 未改 |
+
+## 素材可用性
+
+| 素材 | 尺寸 | 能当什么 |
+|---|---|---|
+| `avatar_frame_default` | 125×130 | 图标圆框（本轮用在设置页） |
+| `avatar_frame_selected` | 127×130 | 选中态图标框 |
+| `avatar_frame_online/_offline` | 115×127 / 123×129 | 状态态图标框 |
+| `button_add_circle` | 120×124 | 圆形按钮底座 |
+| `button_confirm/cancel/more` 等 | ~130×110 | 按钮底座 |
+
+**缺口**：没有「通用方形/圆角小卡片框」素材（约 122×112、无花无字）来做筛选 Chip 和小标签底板。
+这一项需要 Aster 补画，或缩小 `avatar_frame_default` 代替（花会太密）。
+
+## 本轮改动
+
+`SettingsPages.kt` 的 `Entry()`：紫雾下 44dp `avatar_frame_default` + 19dp 图标分层，
+点击区仍是整行 56dp（未缩小）；原主题保持 34dp 浅紫圆。
+
+## 未验证
+
+本轮结束后没截到设置页确认图（返回键没生效，截到了朋友圈页），下次打开设置页需再确认。
+
+## 遗留
+
+1. 日记页两个胶囊（归属范围 / 类型标签底板）
+2. 聊天页操作按钮 → button_* 系列
+3. 记录/收藏页筛选 Chip
+4. 记忆/信件页选中态
+5. 通用小卡片框素材缺失（需要补画）

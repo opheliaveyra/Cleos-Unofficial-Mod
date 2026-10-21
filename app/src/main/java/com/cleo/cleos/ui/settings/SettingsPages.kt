@@ -412,13 +412,29 @@ private fun Entry(icon: ImageVector, title: String, summary: String, summaryColo
             .clickable(interactionSource = null, indication = null, onClickLabel = "打开", onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(34.dp)
-                .background(palette.accent.copy(alpha = 0.12f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
+        // 紫雾手账：图标底座不是「浅紫圆」也不是「裸露」，而是 Aster 画的**纸绘圆框**。
+        // 框和图标分层：框 44dp（比原来的 34dp 大，给花边留位置），图标仍 19dp 居中。
+        // 原主题保持 34dp 的浅紫圆。
+        val lavenderEntry = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
+        if (lavenderEntry) {
+            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(com.cleo.cleos.R.drawable.scrap_v1_avatar_frame_default),
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier.matchParentSize(),
+                )
+                CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
+            }
+        } else {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .background(palette.accent.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                CleosIcon(icon, contentDescription = null, tint = palette.accentContent, modifier = Modifier.size(19.dp))
+            }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
