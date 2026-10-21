@@ -3127,7 +3127,7 @@ private fun SentFileCard(file: MessageFile) {
         )
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f, fill = false)) {
-            Text(file.name, color = palette.content, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(file.name, color = palette.content, fontSize = 13.sp, maxLines = if (lavender) 2 else 1, overflow = TextOverflow.Ellipsis)
             Text(
                 fileStatus(file),
                 color = if (failed) palette.error else palette.contentSecondary,
@@ -3139,10 +3139,14 @@ private fun SentFileCard(file: MessageFile) {
     }
     }
     if (lavender) {
-        ScrapBubble(
-            res = ScrapBubbleRes.file,
-            padding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-            modifier = Modifier.widthIn(max = bubbleMaxWidth()),
+        Box(
+            Modifier
+                .widthIn(max = bubbleMaxWidth())
+                .then(com.cleo.cleos.ui.theme.scrapbookSurface(
+                    com.cleo.cleos.glass.GlassShape.Rounded(12.dp),
+                    palette.notice,
+                ))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
         ) { inner(Modifier.fillMaxWidth()) }
     } else {
         inner(
