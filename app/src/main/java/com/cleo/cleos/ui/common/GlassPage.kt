@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -112,17 +113,48 @@ fun GlassTopBar(
                 else -> null
             } else null
             if (lavenderTop && paperTitle != null) {
-                androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(paperTitle),
-                    contentDescription = title,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    modifier = Modifier
-                        .height(46.dp)
-                        .then(
-                            if (onTitleClick == null) Modifier
-                            else Modifier.clickable(interactionSource = null, indication = null, onClick = onTitleClick),
-                        ),
-                )
+                androidx.compose.foundation.layout.Column {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(paperTitle),
+                        contentDescription = title,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        modifier = Modifier
+                            .height(46.dp)
+                            .then(
+                                if (onTitleClick == null) Modifier
+                                else Modifier.clickable(interactionSource = null, indication = null, onClick = onTitleClick),
+                            ),
+                    )
+                    // 副标题必须留着 —— 聊天页的**模型切换就是这个位置**。
+                    // 我上一版换纸签时只画了标题图，把这一行整个丢了，所以模型菜单点不开了。
+                    // 这里补回来：副标题 + ▾，点了就开模型列表。
+                    if (subtitle != null) {
+                        Box(
+                            Modifier
+                                .padding(top = 2.dp)
+                                .then(
+                                    if (onSubtitleClick == null) Modifier
+                                    else Modifier
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                        .clickable(interactionSource = null, indication = null, onClick = onSubtitleClick)
+                                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                                ),
+                        ) {
+                            androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    subtitle,
+                                    color = palette.contentSecondary,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (onSubtitleClick != null) {
+                                    Text(" ▾", color = palette.contentSecondary, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
             } else if (lavenderTop) {
                 androidx.compose.foundation.layout.Column {
                     Box(

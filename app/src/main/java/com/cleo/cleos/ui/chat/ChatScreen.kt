@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.TravelExplore
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Send
@@ -1185,6 +1186,8 @@ fun ChatTab(
                     }
                 },
                 onFieldFocus = { drawerOpen = false },
+                modelLabel = state.model.takeIf { it.isNotBlank() },
+                onModelClick = if (modelChoices.isEmpty()) null else ({ modelMenu = true }),
                 drawer = {
                     StickerDrawer(
                         stickers = stickers,
@@ -1261,8 +1264,11 @@ fun ChatTab(
                     end = 12.dp,
                     // 顶部：状态栏 + 标题栏 + 一点余量。紫雾的标题纸签比玻璃胶囊高（约 70dp），
                     // 所以再让 16dp，否则第一条消息的上沿会被纸签的胶带头压住。
+                    // 紫雾的标题是纸签 + 副标题**两行**（副标题就是模型切换入口），
+                    // 总高比原来的单行胶囊多一截。留白不够的话第一条消息会把副标题压住，
+                    // 副标题就点不到了 —— 这就是「模型菜单点不开」的真正原因。
                     top = statusTop + TopBarHeight + 8.dp + (if (barShown) ListeningBarSpace else 0.dp)
-                        + (if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) 16.dp else 0.dp),
+                        + (if (com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER) 36.dp else 0.dp),
                     // 底部：输入栏实测顶部 + 24dp（气泡下沿有角花，12dp 会被纸边压住）。
                     bottom = inputTop + 24.dp,
                 ),
@@ -2827,6 +2833,9 @@ private fun ChatInputBar(
     drawerOpen: Boolean = false,
     onDrawer: () -> Unit = {},
     onFieldFocus: () -> Unit = {},
+    /** 紫雾手账：输入栏里的模型切换按钮（标题区纸签下方那行模型名太容易被消息压住）。 */
+    modelLabel: String? = null,
+    onModelClick: (() -> Unit)? = null,
     drawer: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2954,6 +2963,21 @@ private fun ChatInputBar(
                 background = if (searching) palette.accent.copy(alpha = 0.18f) else Color.Transparent,
                 slotHeight = BarHeight,
             )
+            // 紫雾手账：模型切换做成输入栏里的独立按钮。
+            // 之前放在标题纸签下面那行，第一条消息一滚上来就把它压住，点都点不到。
+            if (onModelClick != null) {
+                // 用图标而不是模型名：输入栏就五个格子的宽度，塞文字进去「发消息」必被挤。
+                // 当前的模型名放在长按提示和菜单里，这里只负责「进得去」。
+                BarIconButton(
+                    Icons.Rounded.Tune,
+                    "切换模型" + (modelLabel?.takeIf { it.isNotBlank() }?.let { "（现在用 $it）" } ?: ""),
+                    onClick = onModelClick,
+                    enabled = !editing,
+                    tint = if (searching) palette.accentContent else palette.contentSecondary,
+                    background = Color.Transparent,
+                    slotHeight = BarHeight,
+                )
+            }
             Box(
                 Modifier
                     .weight(1f)
