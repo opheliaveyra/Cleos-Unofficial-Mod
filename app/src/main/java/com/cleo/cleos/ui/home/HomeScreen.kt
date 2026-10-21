@@ -501,7 +501,7 @@ private fun AvatarPairArtwork(
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val artW = maxWidth
         val artH = artW * 0.39990f
-        val avatar = artW * 0.24609f
+        val avatar = artW * 0.27000f
         val leftCx = artW * 0.24256f
         val rightCx = artW * 0.75845f
         val cy = artH * 0.48550f
