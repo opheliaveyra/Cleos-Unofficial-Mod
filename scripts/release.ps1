@@ -88,7 +88,10 @@ Ok ("工作区干净，HEAD = " + $head)
 Step 3 "检查 Tag 和 Release 是否已经存在"
 if (-not (Test-Path $Gh)) { Die ("找不到 gh：" + $Gh) }
 $ghLoggedIn = $false
-& $Gh auth status 2>&1 | Out-Null
+$prev = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $Gh auth status 2>$null | Out-Null
+$ErrorActionPreference = $prev
 if ($LASTEXITCODE -eq 0) { $ghLoggedIn = $true }
 if (-not $ghLoggedIn) {
     if ($Publish) {
@@ -97,8 +100,11 @@ if (-not $ghLoggedIn) {
     Warn "gh 还没登录 —— 预演可以继续，但正式发布会停在这一步"
 } else {
     Ok "gh 已登录"
+    $ErrorActionPreference = "Continue"
     & $Gh release view $Tag --repo $Repo --json tagName 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
+    $seen = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+    if ($seen -eq 0) {
         Die ("Release " + $Tag + " 已经存在。不会覆盖 —— 要发新版本就先把 versionName/versionCode 往上加。")
     }
 }
