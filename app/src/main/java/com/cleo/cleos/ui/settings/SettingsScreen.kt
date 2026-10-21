@@ -265,19 +265,26 @@ internal fun Field(
 @Composable
 internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
     Box(
         Modifier
-            // 底衬不能太淡：压在插画壁纸上时，7% 的底等于没有（见 docs/UI_READABILITY.md）。
-            .background(if (selected) palette.accent else palette.content.copy(alpha = 0.14f), CircleShape)
-            .border(1.dp, palette.content.copy(alpha = 0.16f), CircleShape)
+            .then(
+                if (lavender) com.cleo.cleos.ui.theme.scrapbookSurface(
+                    com.cleo.cleos.glass.GlassShape.Capsule,
+                    if (selected) palette.chrome else palette.notice,
+                ) else Modifier
+                    .background(if (selected) palette.accent else palette.content.copy(alpha = 0.14f), CircleShape)
+                    .border(1.dp, palette.content.copy(alpha = 0.16f), CircleShape)
+            )
             .clickable(interactionSource = null, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         // **一行，不折行**：窄屏上被挤窄时，字会竖着排成一条 —— 比截断还难认。
         Text(
             text,
-            color = if (selected) Color.White else palette.content,
+            color = if (lavender) palette.content else if (selected) Color.White else palette.content,
             fontSize = 14.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             softWrap = false,
         )

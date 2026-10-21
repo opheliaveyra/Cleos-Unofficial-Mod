@@ -525,10 +525,16 @@ private fun FeedTabs(topics: Boolean, enabled: Boolean, onPick: (Boolean) -> Uni
 @Composable
 private fun FeedChip(label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
+    val lavender = com.cleo.cleos.ui.theme.LocalVisualTheme.current == com.cleo.cleos.data.VisualTheme.LAVENDER
     Text(label, color = if (selected) palette.content else palette.contentSecondary, fontSize = 13.sp,
         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
         modifier = Modifier.clip(RoundedCornerShape(50))
-            .background(palette.content.copy(alpha = if (selected) .14f else .06f))
+            .then(
+                if (lavender) com.cleo.cleos.ui.theme.scrapbookSurface(
+                    com.cleo.cleos.glass.GlassShape.Capsule,
+                    if (selected) palette.chrome else palette.notice,
+                ) else Modifier.background(palette.content.copy(alpha = if (selected) .14f else .06f))
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 5.dp))
 }
