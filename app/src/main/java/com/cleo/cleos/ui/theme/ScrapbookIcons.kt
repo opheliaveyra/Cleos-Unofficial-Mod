@@ -109,10 +109,10 @@ internal object ScrapbookIconMap {
         put("VolumeUp", intArrayOf(R.drawable.scrap_volume))
         put("Refresh", intArrayOf(R.drawable.scrap_refresh))
         put("Close", intArrayOf(R.drawable.scrap_close))
-        // 注意：不要给 "Check" 映射 scrap_check。
-        // 那张素材是早期画的，勾的形状不清晰（看起来像水滴），而且底圈和花占了太多空间，
-        // 缩小到菜单里的 20dp 根本认不出是「对勾」。对勾是纯功能性标记，必须一眼可读，
-        // 所以这里回落到 CleosIcon 的默认勾，不套纸绘。
+        // 之前映射的是 scrap_check.png —— 那张画成了「淡蓝圆 + 水滴状的勾 + 花」，
+        // 20dp 下认不出是对勾。现在换成 scrap_check_v2：从成功提示素材里切出来的绿勾，
+        // 勾占满画面，一眼可读。
+        put("Check", intArrayOf(R.drawable.scrap_check_v2))
         put("Info", intArrayOf(R.drawable.scrap_info))
         put("Warning", intArrayOf(R.drawable.scrap_warning))
         put("WarningAmber", intArrayOf(R.drawable.scrap_warning))
