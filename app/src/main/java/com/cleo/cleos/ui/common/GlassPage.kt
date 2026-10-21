@@ -154,6 +154,8 @@ fun GlassTopBar(
                             }
                         }
                     }
+                    titleMenu()
+                    subtitleMenu()
                 }
             } else if (lavenderTop) {
                 androidx.compose.foundation.layout.Column {
@@ -171,6 +173,8 @@ fun GlassTopBar(
                     if (subtitle != null) {
                         Text(subtitle, color = palette.contentSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                    titleMenu()
+                    subtitleMenu()
                 }
             } else Box(
                 Modifier
