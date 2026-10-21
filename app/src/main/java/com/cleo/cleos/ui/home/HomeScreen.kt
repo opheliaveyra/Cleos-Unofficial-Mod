@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -197,12 +198,28 @@ fun HomeTab(bottomInset: Dp, onOpenSettings: () -> Unit, onOpenLetters: () -> Un
                             onReset = { menuFor = null; c.appScope.launch { setAvatar(c, Who.Me, null, ta.id) } },
                             onMenuDismiss = { menuFor = null },
                         )
-                        Text(
-                            "✧",
-                            color = palette.accentContent,
-                            fontSize = 22.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 34.dp),
-                        )
+                        // 中间那个连接装饰：紫雾手账用 Aster 的丝带花结，其他主题还是原来的星星。
+                        // 36dp 是按两边头像的 156dp 框实测出来的 —— 再大就会和框的边饰挤在一起。
+                        if (isLavenderForFrames) {
+                            Image(
+                                painter = painterResource(R.drawable.scrap_avatar_connection_flower),
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                // Row 是 Top 对齐的（原来那颗星靠大 padding 自己往下压），
+                                // 所以花结要显式居中，不然会贴在头像顶上一截。
+                                // 按效果图的比例：花结（含丝带）约等于头像框直径的 1/3（156 × 0.31 ≈ 48dp），
+                                // 素材里丝带只占 74%，所以 Image 要 65dp 才画得出 48dp 的视觉效果。
+                                // Row 居中对的是整个 Person 列（含名字那几行），所以比头像圆心低一点，往上抬 12dp。
+                                modifier = Modifier.align(Alignment.CenterVertically).offset(y = (-12).dp).padding(horizontal = 4.dp).size(65.dp),
+                            )
+                        } else {
+                            Text(
+                                "✧",
+                                color = palette.accentContent,
+                                fontSize = 22.sp,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 34.dp),
+                            )
+                        }
                         Person(
                             file = ta.avatar,
                             name = ai,

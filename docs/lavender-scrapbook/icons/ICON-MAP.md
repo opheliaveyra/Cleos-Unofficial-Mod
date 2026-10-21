@@ -67,3 +67,14 @@
 - 只在 `VisualTheme.LAVENDER` 下出现，原生主题没有任何框
 - 不替换、不裁剪用户头像；框只是盖在上面的装饰层，用户头像数据一个字节没动
 - 来源：夸克网盘 `cleos/scrap_avatar_frame_*.png`（Aster 绘制）
+
+## 头像之间的连接装饰（2026-10-21）
+
+| 文件 | 资源 | 用途 | 用在哪 | 主题条件 |
+|---|---|---|---|---|
+| `scrap_avatar_connection_flower.png` | `R.drawable.scrap_avatar_connection_flower` | 两个头像之间的丝带花结（淡紫 + 雾蓝双色） | 主页「我和 TA」双头像之间 | 仅 `VisualTheme.LAVENDER`；其他主题仍是 `✧` 文字星星 |
+
+- 素材：320×320 RGBA，透明背景，内容 238×210
+- 渲染：`size(65.dp)`（素材内容只占 74%，视觉花结约 48dp，约等于头像框直径的 1/3）
+- 垂直对齐：Row 是 Top 对齐，用 `align(CenterVertically)` + `offset(y = -12.dp)` 让花结对准头像圆心
+- 不加底板、阴影、发光；和两侧头像框的丝带有轻微叠压 —— 这是设计要的效果（同 Aster 的效果图）
