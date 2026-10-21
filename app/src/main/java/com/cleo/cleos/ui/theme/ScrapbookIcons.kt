@@ -109,9 +109,10 @@ internal object ScrapbookIconMap {
         put("VolumeUp", intArrayOf(R.drawable.scrap_volume))
         put("Refresh", intArrayOf(R.drawable.scrap_refresh))
         put("Close", intArrayOf(R.drawable.scrap_close))
-        // 图标总表里第 5 排第 8 个就是它：淡紫圆 + 深色对勾 + 右下角小花。
-        // 这张就是「对勾」的正确素材，之前我误判成弃用、还临时切了成功提示的绿勾，都撤掉。
-        put("Check", intArrayOf(R.drawable.scrap_check))
+        // 直接从用户给的图标总表里裁的对勾（第 5 排，X 和 i 之间）：
+        // 淡紫圆 + 深紫对勾 + 右下角小花，白底已经抠成透明，96×96。
+        // 之前用 scrap_check.png 那版勾的笔画太细，20dp 下糊成一团。
+        put("Check", intArrayOf(R.drawable.scrap_check_v3))
         put("Info", intArrayOf(R.drawable.scrap_info))
         put("Warning", intArrayOf(R.drawable.scrap_warning))
         put("WarningAmber", intArrayOf(R.drawable.scrap_warning))
