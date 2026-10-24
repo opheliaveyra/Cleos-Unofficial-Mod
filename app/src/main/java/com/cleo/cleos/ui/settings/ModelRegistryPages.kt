@@ -384,8 +384,11 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                         if (usedBy.isNotEmpty()) append(" · ").append(usedBy.joinToString("、") { it.label }).append(" 在用")
                     },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Busy("测看图", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Busy("测图片", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
                     Busy("测看视频", vm.testing == config.id) { vm.testConfig(config, Capability.Video) }
                     TextButton(onClick = { vm.showPendingCapability("音频理解") }) { Text("测音频", fontSize = 12.sp) }
                     TextButton(onClick = { vm.showPendingCapability("工具调用") }) { Text("测工具", fontSize = 12.sp) }
