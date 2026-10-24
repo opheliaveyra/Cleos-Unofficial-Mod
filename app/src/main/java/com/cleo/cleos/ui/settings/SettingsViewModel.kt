@@ -1351,6 +1351,31 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
      * 看图就画一张印着随机码的图、看视频就现造一小段带码的视频，**答对了才把能力记上**。
      */
     /** Explicitly report unavailable probes; never claim a model lacks the capability. */
+    /** Test real tool-call output, not just an HTTP 200 response. */
+    fun testTools(config: com.cleo.cleos.data.ModelConfig) {
+        if (testing != null) return
+        val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
+        if (provider == null) {
+            registryMessage = "服务商不存在，无法测试工具调用"
+            return
+        }
+        testing = config.id
+        capabilityResult = null
+        viewModelScope.launch {
+            try {
+                capabilityResult = config.id to c.capabilityTester.testTools(provider.baseUrl, config.model)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                capabilityResult = config.id to com.cleo.cleos.ai.ProbeResult(
+                    false, e.message ?: "工具验证请求失败", outcome = com.cleo.cleos.ai.ProbeOutcome.FAILED,
+                )
+            } finally {
+                testing = null
+            }
+        }
+    }
+
     fun showPendingCapability(label: String) {
         capabilityResult = null
         registryMessage = "「$label」真实能力探测尚未接入。未发起请求，结果保持未验证。"
