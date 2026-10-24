@@ -1341,8 +1341,8 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     /** 删一条模型配置：引用它的功能退回全局默认。 */
-    fun removeConfig(id: String) = registryAction {
-        val affected = c.registry.removeConfig(id)
+    fun removeConfig(id: String, replacementId: String? = null) = registryAction {
+        val affected = c.registry.removeConfig(id, replacementId)
         "已删除这条模型配置" + if (affected.isEmpty()) "。" else "；${affected.joinToString("、") { it.label }} 回到跟随全局默认。"
     }
 
