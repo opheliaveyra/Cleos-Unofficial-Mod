@@ -463,6 +463,8 @@ private fun ConfigDialog(
     var maxTokens by remember { mutableStateOf(config?.maxTokens?.toString().orEmpty()) }
     var confirmingDelete by remember(config?.id) { mutableStateOf(false) }
     var replacementId by remember(config?.id) { mutableStateOf("") }
+    val validTemperature = temperature.isBlank() || (temperature.toFloatOrNull()?.let { it in 0f..2f } == true)
+    val validTokens = maxTokens.isBlank() || (maxTokens.toIntOrNull()?.let { it > 0 } == true)
     AlertDialog(
         onDismissRequest = onDismiss,
         // 窄屏：宽度自己定；内容比屏幕高时能滚，底下的按钮永远够得着。
@@ -539,7 +541,7 @@ private fun ConfigDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = providerId.isNotBlank() && model.isNotBlank(), onClick = {
+            TextButton(enabled = providerId.isNotBlank() && model.isNotBlank() && validTemperature && validTokens, onClick = {
                 onSave(providerId, model, name, temperature.toFloatOrNull(), maxTokens.toIntOrNull())
             }) { Text("保存") }
         },
@@ -798,7 +800,13 @@ private fun OverridesDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(temperature.toFloatOrNull(), maxTokens.toIntOrNull()) }) { Text("保存") } },
+        confirmButton = {
+            val validTemp = temperature.isBlank() || (temperature.toFloatOrNull()?.let { it in 0f..2f } == true)
+            val validMax = maxTokens.isBlank() || (maxTokens.toIntOrNull()?.let { it > 0 } == true)
+            TextButton(enabled = validTemp && validMax, onClick = {
+                onSave(temperature.toFloatOrNull(), maxTokens.toIntOrNull())
+            }) { Text("保存") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
 }
