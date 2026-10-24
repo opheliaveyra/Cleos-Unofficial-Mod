@@ -1350,6 +1350,12 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
      * 「测一下」：照 Operit 的做法，**测它真实要干的那件事** ——
      * 看图就画一张印着随机码的图、看视频就现造一小段带码的视频，**答对了才把能力记上**。
      */
+    /** Explicitly report unavailable probes; never claim a model lacks the capability. */
+    fun showPendingCapability(label: String) {
+        capabilityResult = null
+        registryMessage = "「$label」真实能力探测尚未接入。未发起请求，结果保持未验证。"
+    }
+
     fun testConfig(config: com.cleo.cleos.data.ModelConfig, capability: com.cleo.cleos.data.Capability) {
         if (testing != null) return
         val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
@@ -1479,7 +1485,8 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
                 batchModels = clean
                 val existing = configsOfProvider(providerId)
                 // 已添加的不勾；其余默认勾上（人还能自己改）。
-                batchPicked = clean.filterNot { it in existing }.toSet()
+                // Do not preselect every returned model: some providers expose hundreds.
+                batchPicked = emptySet()
                 batchMessage = if (clean.isEmpty()) {
                     "接口没给型号列表 —— 用下面的「手动添加」粘贴型号"
                 } else {
