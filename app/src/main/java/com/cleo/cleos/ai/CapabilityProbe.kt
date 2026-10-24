@@ -160,6 +160,8 @@ class CapabilityTester(
             }
             if (valid) ProbeResult(true, "工具调用通过：模型正确返回测试工具及参数", outcome = ProbeOutcome.PASSED)
             else ProbeResult(false, "请求结束，但没有收到参数正确的测试工具调用", outcome = ProbeOutcome.UNVERIFIED)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: ChatException) {
             val unsupported = looksUnsupported(e)
             ProbeResult(false, e.message?.take(160) ?: "工具调用请求失败",
