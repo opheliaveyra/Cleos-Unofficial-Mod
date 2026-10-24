@@ -391,7 +391,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                     Busy("测图片", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
                     Busy("测看视频", vm.testing == config.id) { vm.testConfig(config, Capability.Video) }
                     TextButton(onClick = { vm.showPendingCapability("音频理解") }) { Text("测音频", fontSize = 12.sp) }
-                    TextButton(onClick = { vm.showPendingCapability("工具调用") }) { Text("测工具", fontSize = 12.sp) }
+                    Busy("测工具", vm.testing == config.id) { vm.testTools(config) }
                     TextButton(onClick = { editing = config }) { Text("编辑", fontSize = 12.sp) }
                 }
                 vm.capabilityResult?.takeIf { it.first == config.id }?.let { (_, result) -> ProbeResultLine(result) }
