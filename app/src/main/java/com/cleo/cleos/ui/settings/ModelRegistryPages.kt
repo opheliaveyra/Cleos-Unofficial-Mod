@@ -412,7 +412,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 editing = null
             },
             onSetDefault = { vm.setDefaultConfig(config?.id.orEmpty()) },
-            onDelete = { config?.let { vm.removeConfig(it.id) } },
+            onDelete = { replacement -> config?.let { vm.removeConfig(it.id, replacement) } },
             isDefault = config != null && data.defaultConfigId == config.id,
             affected = data.configs.firstOrNull { it.id == config?.id }
                 ?.let { c -> featuresUsing(data, setOf(c.id)) }.orEmpty(),
@@ -430,7 +430,7 @@ private fun ConfigDialog(
     onDismiss: () -> Unit,
     onSave: (providerId: String, model: String, name: String, temperature: Float?, maxTokens: Int?) -> Unit,
     onSetDefault: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (String?) -> Unit,
 ) {
     val palette = LocalGlassPalette.current
     var providerId by remember { mutableStateOf(config?.providerId ?: data.providers.firstOrNull()?.id.orEmpty()) }
@@ -438,6 +438,8 @@ private fun ConfigDialog(
     var name by remember { mutableStateOf(config?.name.orEmpty()) }
     var temperature by remember { mutableStateOf(config?.temperature?.toString().orEmpty()) }
     var maxTokens by remember { mutableStateOf(config?.maxTokens?.toString().orEmpty()) }
+    var confirmingDelete by remember(config?.id) { mutableStateOf(false) }
+    var replacementId by remember(config?.id) { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         // 窄屏：宽度自己定；内容比屏幕高时能滚，底下的按钮永远够得着。
@@ -484,7 +486,31 @@ private fun ConfigDialog(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (!isDefault) TextButton(onClick = { onSetDefault(); onDismiss() }) { Text("设为全局默认", fontSize = 12.sp) }
-                        TextButton(onClick = { onDelete(); onDismiss() }) { Text("删除", fontSize = 12.sp) }
+                        TextButton(onClick = { confirmingDelete = true }) { Text("删除", fontSize = 12.sp) }
+                    }
+                    if (confirmingDelete) {
+                        Text("确认删除「${config.label}」？", color = palette.error, fontSize = 13.sp)
+                        if (affected.isNotEmpty()) {
+                            Text("以下功能会恢复跟随全局默认：${affected.joinToString("、") { it.label }}", color = palette.contentSecondary, fontSize = 12.sp)
+                        }
+                        if (isDefault && data.configs.size > 1) {
+                            Text("它是全局默认。请先选择接替模型：", color = palette.contentSecondary, fontSize = 12.sp)
+                            data.configs.filter { it.id != config.id }.forEach { candidate ->
+                                OptionRow(candidate.label, candidate.model, replacementId == candidate.id) {
+                                    replacementId = candidate.id
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { confirmingDelete = false }) { Text("取消删除") }
+                            TextButton(
+                                enabled = !isDefault || data.configs.size == 1 || replacementId.isNotBlank(),
+                                onClick = {
+                                    onDelete(if (isDefault) replacementId.takeIf { it.isNotBlank() } else null)
+                                    onDismiss()
+                                },
+                            ) { Text("确认删除", color = palette.error) }
+                        }
                     }
                 }
             }
