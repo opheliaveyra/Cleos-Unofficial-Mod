@@ -1395,13 +1395,24 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         testing = config.id
         testResult = null
         viewModelScope.launch {
-            val result = when (capability) {
-                com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)
-                com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
+            try {
+                val result = when (capability) {
+                    com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)
+                    com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
+                }
+                if (result.passed) c.registry.setCapability(config.id, capability, true)
+                capabilityResult = config.id to result
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                capabilityResult = config.id to com.cleo.cleos.ai.ProbeResult(
+                    passed = false,
+                    message = "验证过程中发生错误：${e.message?.take(160) ?: e.javaClass.simpleName}",
+                    outcome = com.cleo.cleos.ai.ProbeOutcome.FAILED,
+                )
+            } finally {
+                testing = null
             }
-            if (result.passed) c.registry.setCapability(config.id, capability, true)
-            capabilityResult = config.id to result
-            testing = null
         }
     }
 
