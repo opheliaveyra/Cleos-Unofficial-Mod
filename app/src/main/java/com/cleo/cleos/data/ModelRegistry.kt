@@ -215,16 +215,28 @@ class ModelRegistry(private val secrets: SecretStore) {
         })
     }
 
-    /** 删一条配置：功能退回全局默认，并返回被退回的那些。 */
-    suspend fun removeConfig(id: String): Set<Feature> {
+    /**
+     * Delete one model configuration atomically. If it is the global default and
+     * other configurations remain, an explicit replacement is required.
+     * Dependent feature routes fall back to the (possibly replaced) default.
+     */
+    suspend fun removeConfig(id: String, replacementId: String? = null): Set<Feature> {
         var affected = emptySet<Feature>()
         edit { data ->
+            require(data.configs.any { it.id == id }) { "模型配置不存在" }
+            val remaining = data.configs.filterNot { it.id == id }
+            val removingDefault = data.defaultConfigId == id
+            if (removingDefault && remaining.isNotEmpty()) {
+                require(replacementId != null && remaining.any { it.id == replacementId }) {
+                    "请先选择接替的全局默认模型"
+                }
+            }
             val (routes, hit) = retarget(data.routes, setOf(id))
             affected = hit
             data.copy(
-                configs = data.configs.filterNot { it.id == id },
+                configs = remaining,
                 routes = routes,
-                defaultConfigId = if (data.defaultConfigId == id) "" else data.defaultConfigId,
+                defaultConfigId = if (removingDefault) replacementId.orEmpty() else data.defaultConfigId,
             )
         }
         return affected
