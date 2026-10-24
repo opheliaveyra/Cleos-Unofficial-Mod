@@ -13,6 +13,7 @@ import com.cleo.cleos.data.StickerText
 import com.cleo.cleos.data.db.AppDatabase
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.Feature
+import com.cleo.cleos.data.db.TokenUsageEntity
 import com.cleo.cleos.data.db.ConversationEntity
 import com.cleo.cleos.data.db.MessageEntity
 import kotlinx.coroutines.CancellationException
@@ -214,7 +215,7 @@ class Recaps(
             }
             val key = secrets.key(use.baseUrl)?.takeIf { it.isNotBlank() } ?: return
             val text = StringBuilder()
-            client.stream(ApiEndpoint(use.baseUrl, key, use.model), Recap.request(ta, s.userName, conversation.recap, batch, zone()), temperature = use.temperature, maxTokens = use.maxTokens)
+            client.stream(ApiEndpoint(use.baseUrl, key, use.model), Recap.request(ta, s.userName, conversation.recap, batch, zone()), temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "recap"))
                 .collect { if (it is ChatEvent.Delta) text.append(it.text) }
             val recap = Recap.clean(text.toString()) ?: return
             val last = batch.last()

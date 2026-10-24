@@ -114,7 +114,7 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
         val text = StringBuilder()
         client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedAiRules.system(ta, interests, allowPhoto)),
-            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context")), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens)
+            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context")), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "feed"))
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }
         if (text.isBlank()) error("TA 这次没有写下内容，请稍后再试")
         return FeedAiRules.drafting(text.toString(), sources, allowPhoto)
@@ -139,7 +139,7 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
             onRequest()
             client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
                 ApiMessage("system", FeedAiRules.system(ta, s.feedInterests).substringBefore("只输出 JSON：") + FeedPhotoRules.instruction(maximum)),
-                ApiMessage("user", context)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens)
+                ApiMessage("user", context)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "feed"))
                 .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的配图选择过长" }; text.append(it.text) } }
             FeedPhotoRules.choice(text.toString(), candidates, maximum)
         }
@@ -232,7 +232,7 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
         onRequest()
         client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedVisitRules.system(ta, s.feedInterests, allowPost, FeedPhotoRules.enabled(s, taId))),
-            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context", images = photos)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens)
+            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context", images = photos)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "feed"))
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }
         val draft = FeedVisitRules.decode(text.toString(), targets, sources, allowPost, FeedPhotoRules.enabled(s, taId))
         if (!current()) return@once FeedVisitResult(false, "设置或聊天状态改变，这次未更新动态", true)
@@ -309,7 +309,7 @@ class FeedAi(private val db: AppDatabase, private val settings: SettingsReposito
         val text = StringBuilder()
         client.stream(ApiEndpoint(use.baseUrl, key, use.model), listOf(
             ApiMessage("system", FeedAiRules.reactionSystem(ta, settings.current().feedInterests)),
-            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context\n本次实际收到 ${photos.size} 张图片。", images = photos)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens)
+            ApiMessage("user", "当前本地时间：${ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm XXX"))}\n$context\n本次实际收到 ${photos.size} 张图片。", images = photos)), thinking = ta.deepThinking, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "feed"))
             .collect { if (it is ChatEvent.Delta) { check(text.length + it.text.length <= 16000) { "TA 的输出过长" }; text.append(it.text) } }
         val reaction = FeedAiRules.reaction(text.toString())
         db.withTransaction {

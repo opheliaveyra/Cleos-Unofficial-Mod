@@ -12,6 +12,7 @@ import com.cleo.cleos.data.db.AppDatabase
 import com.cleo.cleos.data.db.CompanionEntity
 import com.cleo.cleos.data.db.DiaryEntryEntity
 import com.cleo.cleos.data.db.Feature
+import com.cleo.cleos.data.db.TokenUsageEntity
 import com.cleo.cleos.data.db.LetterEntity
 import com.cleo.cleos.data.db.MemoryEntity
 import com.cleo.cleos.data.db.MessageEntity
@@ -396,7 +397,7 @@ class Letters(
             ),
         )
         val text = StringBuilder()
-        client.stream(ApiEndpoint(use.baseUrl, key, use.model), messages, temperature = use.temperature, maxTokens = use.maxTokens).collect { if (it is ChatEvent.Delta) text.append(it.text) }
+        client.stream(ApiEndpoint(use.baseUrl, key, use.model), messages, temperature = use.temperature, maxTokens = use.maxTokens, usageTag = UsageTag(scope = TokenUsageEntity.SCOPE_TA, scopeId = ta.id, scopeName = ta.name, purpose = "letter")).collect { if (it is ChatEvent.Delta) text.append(it.text) }
         return text.toString().trim().ifEmpty { null }
     }
 
