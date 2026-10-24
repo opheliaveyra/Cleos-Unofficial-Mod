@@ -173,11 +173,6 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
     // 添加按钮放最上面，而且是颗**实心按钮**，不靠透明底色。
     AddButton("＋ 添加服务商") { if (!vm.registryBusy) adding = true }
 
-    if (data.providers.isEmpty()) {
-        PageNote("还没有服务商。请先在下方添加服务商，再回来添加模型。")
-        if (showProviderSetup) ProvidersPage(vm)
-    }
-
     Section("已添加") {
         if (data.providers.isEmpty()) {
             Text("还没有。点上面的「＋ 添加服务商」，填上地址和 Key。", color = LocalGlassPalette.current.contentSecondary, fontSize = 13.sp)
@@ -362,6 +357,11 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
             }
         }
+    }
+
+    if (data.providers.isEmpty()) {
+        PageNote("还没有服务商。请先在下方添加服务商，再回来添加模型。")
+        if (showProviderSetup) ProvidersPage(vm)
     }
 
     Section("已添加") {
