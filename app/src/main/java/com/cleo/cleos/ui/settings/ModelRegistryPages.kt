@@ -146,7 +146,7 @@ private fun AddButton(text: String, onClick: () -> Unit) {
     Box(
         Modifier
             .background(palette.accentContent, CircleShape)
-            .clickable(interactionSource = null, indication = null, onClick = onClick)
+            .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 10.dp),
     ) {
         Text(
@@ -172,6 +172,11 @@ internal fun ProvidersPage(vm: SettingsViewModel) {
 
     // 添加按钮放最上面，而且是颗**实心按钮**，不靠透明底色。
     AddButton("＋ 添加服务商") { if (!vm.registryBusy) adding = true }
+
+    if (data.providers.isEmpty()) {
+        PageNote("还没有服务商。请先在下方添加服务商，再回来添加模型。")
+        if (showProviderSetup) ProvidersPage(vm)
+    }
 
     Section("已添加") {
         if (data.providers.isEmpty()) {
@@ -339,17 +344,20 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ModelConfig?>(null) }
     var batchOpen by remember { mutableStateOf(false) }
+    var showProviderSetup by remember { mutableStateOf(false) }
 
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
 
     // 添加按钮放最上面，并且是**实心按钮**，不靠透明底色。
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AddButton(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置") {
-            if (!vm.registryBusy && data.providers.isNotEmpty()) adding = true
+        AddButton(if (data.providers.isEmpty()) "＋ 先添加服务商" else "＋ 添加模型配置") {
+            if (!vm.registryBusy) {
+                if (data.providers.isEmpty()) showProviderSetup = !showProviderSetup else adding = true
+            }
         }
-        AddButton("＋ 批量添加模型") {
-            if (!vm.registryBusy && data.providers.isNotEmpty()) {
+        if (data.providers.isNotEmpty()) AddButton("＋ 批量添加模型") {
+            if (!vm.registryBusy) {
                 batchOpen = true
                 vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
             }
@@ -379,6 +387,8 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Busy("测看图", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
                     Busy("测看视频", vm.testing == config.id) { vm.testConfig(config, Capability.Video) }
+                    TextButton(onClick = { vm.showPendingCapability("音频理解") }) { Text("测音频", fontSize = 12.sp) }
+                    TextButton(onClick = { vm.showPendingCapability("工具调用") }) { Text("测工具", fontSize = 12.sp) }
                     TextButton(onClick = { editing = config }) { Text("编辑", fontSize = 12.sp) }
                 }
                 vm.capabilityResult?.takeIf { it.first == config.id }?.let { (_, result) -> ProbeResultLine(result) }
