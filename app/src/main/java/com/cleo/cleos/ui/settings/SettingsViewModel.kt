@@ -1341,8 +1341,8 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     /** 删一条模型配置：引用它的功能退回全局默认。 */
-    fun removeConfig(id: String) = registryAction {
-        val affected = c.registry.removeConfig(id)
+    fun removeConfig(id: String, replacementId: String? = null) = registryAction {
+        val affected = c.registry.removeConfig(id, replacementId)
         "已删除这条模型配置" + if (affected.isEmpty()) "。" else "；${affected.joinToString("、") { it.label }} 回到跟随全局默认。"
     }
 
@@ -1350,6 +1350,37 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
      * 「测一下」：照 Operit 的做法，**测它真实要干的那件事** ——
      * 看图就画一张印着随机码的图、看视频就现造一小段带码的视频，**答对了才把能力记上**。
      */
+    /** Explicitly report unavailable probes; never claim a model lacks the capability. */
+    /** Test real tool-call output, not just an HTTP 200 response. */
+    fun testTools(config: com.cleo.cleos.data.ModelConfig) {
+        if (testing != null) return
+        val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
+        if (provider == null) {
+            registryMessage = "服务商不存在，无法测试工具调用"
+            return
+        }
+        testing = config.id
+        capabilityResult = null
+        viewModelScope.launch {
+            try {
+                capabilityResult = config.id to c.capabilityTester.testTools(provider.baseUrl, config.model)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                capabilityResult = config.id to com.cleo.cleos.ai.ProbeResult(
+                    false, e.message ?: "工具验证请求失败", outcome = com.cleo.cleos.ai.ProbeOutcome.FAILED,
+                )
+            } finally {
+                testing = null
+            }
+        }
+    }
+
+    fun showPendingCapability(label: String) {
+        capabilityResult = null
+        registryMessage = "「$label」真实能力探测尚未接入。未发起请求，结果保持未验证。"
+    }
+
     fun testConfig(config: com.cleo.cleos.data.ModelConfig, capability: com.cleo.cleos.data.Capability) {
         if (testing != null) return
         val provider = registry.value.providers.firstOrNull { it.id == config.providerId }
@@ -1364,13 +1395,24 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
         testing = config.id
         testResult = null
         viewModelScope.launch {
-            val result = when (capability) {
-                com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)
-                com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
+            try {
+                val result = when (capability) {
+                    com.cleo.cleos.data.Capability.Image -> c.capabilityTester.testImage(provider.baseUrl, config.model)
+                    com.cleo.cleos.data.Capability.Video -> c.capabilityTester.testVideo(provider.baseUrl, config.model)
+                }
+                if (result.passed) c.registry.setCapability(config.id, capability, true)
+                capabilityResult = config.id to result
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                capabilityResult = config.id to com.cleo.cleos.ai.ProbeResult(
+                    passed = false,
+                    message = "验证过程中发生错误：${e.message?.take(160) ?: e.javaClass.simpleName}",
+                    outcome = com.cleo.cleos.ai.ProbeOutcome.FAILED,
+                )
+            } finally {
+                testing = null
             }
-            if (result.passed) c.registry.setCapability(config.id, capability, true)
-            capabilityResult = config.id to result
-            testing = null
         }
     }
 
@@ -1479,7 +1521,8 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
                 batchModels = clean
                 val existing = configsOfProvider(providerId)
                 // 已添加的不勾；其余默认勾上（人还能自己改）。
-                batchPicked = clean.filterNot { it in existing }.toSet()
+                // Do not preselect every returned model: some providers expose hundreds.
+                batchPicked = emptySet()
                 batchMessage = if (clean.isEmpty()) {
                     "接口没给型号列表 —— 用下面的「手动添加」粘贴型号"
                 } else {

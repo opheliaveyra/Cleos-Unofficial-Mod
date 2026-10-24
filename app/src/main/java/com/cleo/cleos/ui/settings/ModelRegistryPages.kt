@@ -146,7 +146,7 @@ private fun AddButton(text: String, onClick: () -> Unit) {
     Box(
         Modifier
             .background(palette.accentContent, CircleShape)
-            .clickable(interactionSource = null, indication = null, onClick = onClick)
+            .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 10.dp),
     ) {
         Text(
@@ -338,22 +338,31 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     val data by vm.registry.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ModelConfig?>(null) }
+    var pendingDefault by remember { mutableStateOf<ModelConfig?>(null) }
     var batchOpen by remember { mutableStateOf(false) }
+    var showProviderSetup by remember { mutableStateOf(false) }
 
     PageNote("一条模型配置 = 某家服务商的某个型号 + 默认参数。功能绑的是它：改这里，绑它的功能一起变。")
     MessageLine(vm.registryMessage)
 
     // 添加按钮放最上面，并且是**实心按钮**，不靠透明底色。
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AddButton(if (data.providers.isEmpty()) "先加一个服务商" else "＋ 添加模型配置") {
-            if (!vm.registryBusy && data.providers.isNotEmpty()) adding = true
+        AddButton(if (data.providers.isEmpty()) "＋ 先添加服务商" else "＋ 添加模型配置") {
+            if (!vm.registryBusy) {
+                if (data.providers.isEmpty()) showProviderSetup = !showProviderSetup else adding = true
+            }
         }
-        AddButton("＋ 批量添加模型") {
-            if (!vm.registryBusy && data.providers.isNotEmpty()) {
+        if (data.providers.isNotEmpty()) AddButton("＋ 批量添加模型") {
+            if (!vm.registryBusy) {
                 batchOpen = true
                 vm.openBatch(data.providers.firstOrNull()?.id.orEmpty())
             }
         }
+    }
+
+    if (data.providers.isEmpty()) {
+        PageNote("还没有服务商。请先在下方添加服务商，再回来添加模型。")
+        if (showProviderSetup) ProvidersPage(vm)
     }
 
     Section("已添加") {
@@ -376,9 +385,14 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                         if (usedBy.isNotEmpty()) append(" · ").append(usedBy.joinToString("、") { it.label }).append(" 在用")
                     },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Busy("测看图", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Busy("测图片", vm.testing == config.id) { vm.testConfig(config, Capability.Image) }
                     Busy("测看视频", vm.testing == config.id) { vm.testConfig(config, Capability.Video) }
+                    TextButton(onClick = { vm.showPendingCapability("音频理解") }) { Text("测音频", fontSize = 12.sp) }
+                    Busy("测工具", vm.testing == config.id) { vm.testTools(config) }
                     TextButton(onClick = { editing = config }) { Text("编辑", fontSize = 12.sp) }
                 }
                 vm.capabilityResult?.takeIf { it.first == config.id }?.let { (_, result) -> ProbeResultLine(result) }
@@ -401,11 +415,30 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 adding = false
                 editing = null
             },
-            onSetDefault = { vm.setDefaultConfig(config?.id.orEmpty()) },
-            onDelete = { config?.let { vm.removeConfig(it.id) } },
+            onSetDefault = { config?.let { pendingDefault = it; editing = null } },
+            onDelete = { replacement -> config?.let { vm.removeConfig(it.id, replacement) } },
             isDefault = config != null && data.defaultConfigId == config.id,
             affected = data.configs.firstOrNull { it.id == config?.id }
                 ?.let { c -> featuresUsing(data, setOf(c.id)) }.orEmpty(),
+        )
+    }
+    pendingDefault?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDefault = null },
+            title = { Text("切换全局默认模型？") },
+            text = {
+                Text(
+                    "新的全局默认是「${target.label}」。所有未单独绑定模型的功能会跟随切换；已单独绑定的功能不变。",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.setDefaultConfig(target.id)
+                    pendingDefault = null
+                    editing = null
+                }) { Text("确认切换") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDefault = null }) { Text("取消") } },
         )
     }
 }
@@ -420,7 +453,7 @@ private fun ConfigDialog(
     onDismiss: () -> Unit,
     onSave: (providerId: String, model: String, name: String, temperature: Float?, maxTokens: Int?) -> Unit,
     onSetDefault: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (String?) -> Unit,
 ) {
     val palette = LocalGlassPalette.current
     var providerId by remember { mutableStateOf(config?.providerId ?: data.providers.firstOrNull()?.id.orEmpty()) }
@@ -428,6 +461,10 @@ private fun ConfigDialog(
     var name by remember { mutableStateOf(config?.name.orEmpty()) }
     var temperature by remember { mutableStateOf(config?.temperature?.toString().orEmpty()) }
     var maxTokens by remember { mutableStateOf(config?.maxTokens?.toString().orEmpty()) }
+    var confirmingDelete by remember(config?.id) { mutableStateOf(false) }
+    var replacementId by remember(config?.id) { mutableStateOf("") }
+    val validTemperature = temperature.isBlank() || (temperature.toFloatOrNull()?.let { it in 0f..2f } == true)
+    val validTokens = maxTokens.isBlank() || (maxTokens.toIntOrNull()?.let { it > 0 } == true)
     AlertDialog(
         onDismissRequest = onDismiss,
         // 窄屏：宽度自己定；内容比屏幕高时能滚，底下的按钮永远够得着。
@@ -464,6 +501,12 @@ private fun ConfigDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (!validTemperature) {
+                    Text("温度必须在 0–2 之间，或留空使用服务商默认值。", color = palette.error, fontSize = 12.sp)
+                }
+                if (!validTokens) {
+                    Text("最长回复 token 必须是大于 0 的整数，或留空。", color = palette.error, fontSize = 12.sp)
+                }
                 if (config != null) {
                     Text(
                         "能力靠「测一下」验出来，不能手填 —— 名字里带 VL 却只会看文字的见过太多了。",
@@ -474,13 +517,37 @@ private fun ConfigDialog(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (!isDefault) TextButton(onClick = { onSetDefault(); onDismiss() }) { Text("设为全局默认", fontSize = 12.sp) }
-                        TextButton(onClick = { onDelete(); onDismiss() }) { Text("删除", fontSize = 12.sp) }
+                        TextButton(onClick = { confirmingDelete = true }) { Text("删除", fontSize = 12.sp) }
+                    }
+                    if (confirmingDelete) {
+                        Text("确认删除「${config.label}」？", color = palette.error, fontSize = 13.sp)
+                        if (affected.isNotEmpty()) {
+                            Text("以下功能会恢复跟随全局默认：${affected.joinToString("、") { it.label }}", color = palette.contentSecondary, fontSize = 12.sp)
+                        }
+                        if (isDefault && data.configs.size > 1) {
+                            Text("它是全局默认。请先选择接替模型：", color = palette.contentSecondary, fontSize = 12.sp)
+                            data.configs.filter { it.id != config.id }.forEach { candidate ->
+                                OptionRow(candidate.label, candidate.model, replacementId == candidate.id) {
+                                    replacementId = candidate.id
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { confirmingDelete = false }) { Text("取消删除") }
+                            TextButton(
+                                enabled = !isDefault || data.configs.size == 1 || replacementId.isNotBlank(),
+                                onClick = {
+                                    onDelete(if (isDefault) replacementId.takeIf { it.isNotBlank() } else null)
+                                    onDismiss()
+                                },
+                            ) { Text("确认删除", color = palette.error) }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(enabled = providerId.isNotBlank() && model.isNotBlank(), onClick = {
+            TextButton(enabled = providerId.isNotBlank() && model.isNotBlank() && validTemperature && validTokens, onClick = {
                 onSave(providerId, model, name, temperature.toFloatOrNull(), maxTokens.toIntOrNull())
             }) { Text("保存") }
         },
@@ -739,7 +806,13 @@ private fun OverridesDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(temperature.toFloatOrNull(), maxTokens.toIntOrNull()) }) { Text("保存") } },
+        confirmButton = {
+            val validTemp = temperature.isBlank() || (temperature.toFloatOrNull()?.let { it in 0f..2f } == true)
+            val validMax = maxTokens.isBlank() || (maxTokens.toIntOrNull()?.let { it > 0 } == true)
+            TextButton(enabled = validTemp && validMax, onClick = {
+                onSave(temperature.toFloatOrNull(), maxTokens.toIntOrNull())
+            }) { Text("保存") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
 }
