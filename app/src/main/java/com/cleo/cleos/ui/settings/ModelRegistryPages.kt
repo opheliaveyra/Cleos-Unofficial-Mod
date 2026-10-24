@@ -501,6 +501,12 @@ private fun ConfigDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (!validTemperature) {
+                    Text("温度必须在 0–2 之间，或留空使用服务商默认值。", color = palette.error, fontSize = 12.sp)
+                }
+                if (!validTokens) {
+                    Text("最长回复 token 必须是大于 0 的整数，或留空。", color = palette.error, fontSize = 12.sp)
+                }
                 if (config != null) {
                     Text(
                         "能力靠「测一下」验出来，不能手填 —— 名字里带 VL 却只会看文字的见过太多了。",
