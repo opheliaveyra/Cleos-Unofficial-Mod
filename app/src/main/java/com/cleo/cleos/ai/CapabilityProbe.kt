@@ -139,6 +139,7 @@ class CapabilityTester(
                     })
                 })
                 put("required", kotlinx.serialization.json.buildJsonArray { add("code") })
+                put("additionalProperties", false)
             },
         )
         return try {
