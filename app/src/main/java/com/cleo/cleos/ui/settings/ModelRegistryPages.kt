@@ -338,6 +338,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
     val data by vm.registry.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ModelConfig?>(null) }
+    var pendingDefault by remember { mutableStateOf<ModelConfig?>(null) }
     var batchOpen by remember { mutableStateOf(false) }
     var showProviderSetup by remember { mutableStateOf(false) }
 
@@ -414,11 +415,30 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 adding = false
                 editing = null
             },
-            onSetDefault = { vm.setDefaultConfig(config?.id.orEmpty()) },
+            onSetDefault = { config?.let { pendingDefault = it } },
             onDelete = { replacement -> config?.let { vm.removeConfig(it.id, replacement) } },
             isDefault = config != null && data.defaultConfigId == config.id,
             affected = data.configs.firstOrNull { it.id == config?.id }
                 ?.let { c -> featuresUsing(data, setOf(c.id)) }.orEmpty(),
+        )
+    }
+    pendingDefault?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDefault = null },
+            title = { Text("切换全局默认模型？") },
+            text = {
+                Text(
+                    "新的全局默认是「${target.label}」。所有未单独绑定模型的功能会跟随切换；已单独绑定的功能不变。",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.setDefaultConfig(target.id)
+                    pendingDefault = null
+                    editing = null
+                }) { Text("确认切换") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDefault = null }) { Text("取消") } },
         )
     }
 }
