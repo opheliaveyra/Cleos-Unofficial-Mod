@@ -9,6 +9,10 @@ import com.cleo.cleos.data.ImageStore
 import com.cleo.cleos.data.ModelProfile
 import com.cleo.cleos.data.SecretStore
 import kotlin.random.Random
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.add
 
 /**
  * 探一个模型到底会不会看图。
@@ -112,6 +116,57 @@ class CapabilityTester(
     private val secrets: SecretStore,
     private val client: ChatClient,
 ) {
+
+    /**
+     * Real tool-calling probe. The nonce is only in the user request, and the
+     * function schema requires an exact echo. No real device tool is executed.
+     */
+    suspend fun testTools(baseUrl: String, model: String): ProbeResult {
+        val key = secrets.key(baseUrl)?.takeIf { it.isNotBlank() }
+            ?: return ProbeResult(false, "没有 API Key，无法验证工具调用", outcome = ProbeOutcome.FAILED)
+        val nonce = CapabilityProbe.newCode()
+        val spec = ToolSpec(
+            name = "cleos_capability_echo",
+            groups = emptySet(),
+            action = "回传测试码",
+            description = "Return the supplied code through the code argument. Do not write a normal chat response.",
+            parameters = kotlinx.serialization.json.buildJsonObject {
+                put("type", "object")
+                put("properties", kotlinx.serialization.json.buildJsonObject {
+                    put("code", kotlinx.serialization.json.buildJsonObject {
+                        put("type", "string")
+                        put("description", "The exact four-character code")
+                    })
+                })
+                put("required", kotlinx.serialization.json.buildJsonArray { add("code") })
+            },
+        )
+        return try {
+            var calls = emptyList<ToolCall>()
+            client.stream(
+                ApiEndpoint(baseUrl, key, model),
+                listOf(ApiMessage("user", "Call cleos_capability_echo with code $nonce. Do not answer in text.")),
+                tools = listOf(spec),
+            ).collect { event ->
+                if (event is ChatEvent.ToolCalls) calls = calls + event.calls
+            }
+            val valid = calls.any { call ->
+                if (call.name != spec.name) false
+                else runCatching {
+                    val args = kotlinx.serialization.json.Json.parseToJsonElement(call.arguments).jsonObject
+                    args["code"]?.jsonPrimitive?.content == nonce
+                }.getOrDefault(false)
+            }
+            if (valid) ProbeResult(true, "工具调用通过：模型正确返回测试工具及参数", outcome = ProbeOutcome.PASSED)
+            else ProbeResult(false, "请求结束，但没有收到参数正确的测试工具调用", outcome = ProbeOutcome.UNVERIFIED)
+        } catch (e: ChatException) {
+            val unsupported = looksUnsupported(e)
+            ProbeResult(false, e.message?.take(160) ?: "工具调用请求失败",
+                outcome = if (unsupported) ProbeOutcome.UNSUPPORTED else ProbeOutcome.FAILED)
+        } catch (e: Exception) {
+            ProbeResult(false, "工具调用验证失败：${e.message?.take(160)}", outcome = ProbeOutcome.FAILED)
+        }
+    }
 
     suspend fun testVideo(profile: ModelProfile): ProbeResult = testVideo(profile.baseUrl, profile.model)
 
