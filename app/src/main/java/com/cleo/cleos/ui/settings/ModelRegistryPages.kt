@@ -415,7 +415,7 @@ internal fun ModelConfigsPage(vm: SettingsViewModel) {
                 adding = false
                 editing = null
             },
-            onSetDefault = { config?.let { pendingDefault = it } },
+            onSetDefault = { config?.let { pendingDefault = it; editing = null } },
             onDelete = { replacement -> config?.let { vm.removeConfig(it.id, replacement) } },
             isDefault = config != null && data.defaultConfigId == config.id,
             affected = data.configs.firstOrNull { it.id == config?.id }
