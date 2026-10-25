@@ -1,5 +1,22 @@
 package com.cleo.cleos.ui.settings
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import kotlin.math.atan2
+import kotlin.math.min
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -40,6 +57,8 @@ internal fun UsagePage(vm: SettingsViewModel) {
     var loaded by remember { mutableStateOf(false) }
     var clearing by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf<String?>(null) }
+    var grouping by remember { mutableStateOf("purpose") }
+    var details by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(range, clearing) {
@@ -60,72 +79,121 @@ internal fun UsagePage(vm: SettingsViewModel) {
     val said = shown.sumOf { it.output }
     val missing = shown.count { it.source == TokenUsageEntity.SOURCE_MISSING }
 
-    Section("用量统计") {
-        Text(
-            "每次模型请求都会记一条：服务商、模型、角色/群、用途、输入/输出 Token。" +
-                "服务商没返回 usage 的标「未提供」，不会拿 0 冒充；估算的值也不会写成实际。",
-            color = palette.contentSecondary, fontSize = 12.sp, lineHeight = 18.sp,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            UsageRange.entries.forEach { r ->
-                Chip(r.label, selected = range == r) { range = r }
-            }
-        }
+    val known = rows.filter { it.source != TokenUsageEntity.SOURCE_MISSING }
+    val total = known.sumOf { it.input + it.output }
+    val groups = known.groupBy { if (grouping == "purpose") it.purpose else it.model }
+        .mapValues { (_, items) -> items.sumOf { it.input + it.output } }
+        .filterValues { it > 0 }.toList().sortedByDescending { it.second }
+    val slices = if (groups.size > 7) groups.take(7) + ("其他" to groups.drop(7).sumOf { it.second }) else groups
+    val colors = listOf(0xFF9B86D6, 0xFFB8A6E9, 0xFFE4B5CF, 0xFF8BB7C6, 0xFFD8B883, 0xFF92BCA5, 0xFFC5A5C8, 0xFF9EA7CB)
+    val active = slices.find { it.first == filter }
+    val shown = if (filter == null) rows else rows.filter {
+        val key = if (grouping == "purpose") it.purpose else it.model
+        if (filter == "其他" && groups.size > 7) groups.drop(7).any { g -> g.first == key } else key == filter
     }
 
-    Section("合计（${shown.size} 次请求）") {
-        Text("输入 ${asked} · 输出 ${said} · 总计 ${asked + said}", color = palette.content, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        if (missing > 0) {
-            Text("其中 $missing 次服务商没有返回用量（标「未提供」）", color = palette.contentSecondary, fontSize = 12.sp)
+    Section("用量统计") {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            UsageRange.entries.forEach { r -> Chip(r.label, selected = range == r) { range = r; filter = null } }
         }
-        val byPurpose = shown.groupBy { it.purpose }.mapValues { (_, list) -> list.sumOf { it.input + it.output } }
-        if (byPurpose.isNotEmpty()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                byPurpose.entries.sortedByDescending { it.value }.forEach { (p, total) ->
-                    Chip("$p $total", selected = filter == p) { filter = if (filter == p) null else p }
-                }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f).background(palette.content.copy(alpha = 0.06f), RoundedCornerShape(14.dp)).padding(12.dp)) {
+                Text("总 Token", color = palette.contentSecondary, fontSize = 12.sp)
+                Text("%,d".format(total), color = palette.content, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(Modifier.weight(1f).background(palette.content.copy(alpha = 0.06f), RoundedCornerShape(14.dp)).padding(12.dp)) {
+                Text("请求次数", color = palette.contentSecondary, fontSize = 12.sp)
+                Text(rows.size.toString(), color = palette.content, fontSize = 21.sp, fontWeight = FontWeight.Bold)
             }
         }
-        val byScope = shown.filter { it.scopeName.isNotBlank() }.groupBy { it.scopeName }.mapValues { (_, list) -> list.sumOf { it.input + it.output } }
-        if (byScope.isNotEmpty()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                byScope.entries.sortedByDescending { it.value }.take(8).forEach { (name, total) ->
-                    Chip("$name $total", selected = false) { }
+        if (missing > 0) Text("$missing 次请求未返回用量，不计入 Token 合计", color = palette.contentSecondary, fontSize = 12.sp)
+    }
+
+    Section("用量分布") {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("按功能", selected = grouping == "purpose") { grouping = "purpose"; filter = null }
+            Chip("按模型", selected = grouping == "model") { grouping = "model"; filter = null }
+        }
+        if (!loaded) {
+            Text("正在读取…", color = palette.contentSecondary, fontSize = 13.sp)
+        } else if (total <= 0 || slices.isEmpty()) {
+            Text("这段时间还没有可统计的 Token 用量", color = palette.contentSecondary, fontSize = 13.sp)
+        } else {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.fillMaxWidth().height(220.dp).pointerInput(slices, filter) {
+                        detectTapGestures { pos ->
+                            val dx = pos.x - size.width / 2f
+                            val dy = pos.y - size.height / 2f
+                            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+                            val radius = min(size.width, size.height) * 0.35f
+                            if (distance < radius * 0.6f || distance > radius * 1.4f) {
+                                filter = null
+                            } else {
+                                val angle = ((Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 450.0) % 360.0).toFloat()
+                                var cursor = 0f
+                                var hit: String? = null
+                                slices.forEach { (name, value) ->
+                                    val sweep = value.toFloat() / total.toFloat() * 360f
+                                    if (angle >= cursor && angle < cursor + sweep) hit = name
+                                    cursor += sweep
+                                }
+                                filter = if (filter == hit) null else hit
+                            }
+                        }
+                    }) {
+                        val diameter = min(size.width, size.height)
+                        val stroke = diameter * 0.17f
+                        var angle = -90f
+                        slices.forEachIndexed { index, (_, value) ->
+                            val sweep = value.toFloat() / total.toFloat() * 360f
+                            drawArc(
+                                color = Color(colors[index % colors.size]).copy(alpha = if (filter == null || filter == slices[index].first) 1f else 0.25f),
+                                startAngle = angle, sweepAngle = sweep, useCenter = false, style = Stroke(stroke)
+                            )
+                            angle += sweep
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(active?.first ?: "总用量", color = palette.contentSecondary, fontSize = 12.sp, maxLines = 1)
+                        Text(if (active == null) "%,d".format(total) else "%.1f%%".format(active.second.toDouble() / total * 100),
+                            color = palette.content, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                        Text(if (active == null) "Token" else "%,d Token".format(active.second),
+                            color = palette.contentSecondary, fontSize = 11.sp)
+                    }
                 }
             }
+            slices.forEachIndexed { index, (name, value) ->
+                Row(Modifier.fillMaxWidth().clickable { filter = if (filter == name) null else name }.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(10.dp).background(Color(colors[index % colors.size]), RoundedCornerShape(3.dp)))
+                    Text(name, color = palette.content, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text("%,d · %.1f%%".format(value, value.toDouble() / total * 100),
+                        color = palette.contentSecondary, fontSize = 12.sp)
+                }
+            }
+            Text("点击圆环或分类查看占比，再展开下方记录查看详情", color = palette.contentSecondary, fontSize = 11.sp)
         }
     }
 
     Section("最近请求") {
-        if (!loaded) {
-            Text("正在读取…", color = palette.contentSecondary, fontSize = 13.sp)
-        } else if (shown.isEmpty()) {
-            Text("这段时间还没有记录。", color = palette.contentSecondary, fontSize = 13.sp)
-        } else {
+        Chip(if (details) "收起详细记录" else "展开详细记录（" + shown.size + "）", selected = details) { details = !details }
+        if (details) {
             val formatter = remember { DateTimeFormatter.ofPattern("MM-dd HH:mm") }
             shown.take(200).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        formatter.format(Instant.ofEpochMilli(row.at).atZone(ZoneId.systemDefault())).toString(),
-                        color = palette.contentSecondary, fontSize = 11.sp,
-                    )
-                    Text(row.model.take(24), color = palette.content, fontSize = 11.sp)
-                    Text(
-                        if (row.scopeName.isBlank()) row.purpose else "${row.scopeName}${if (row.speaker.isBlank()) "" else "·${row.speaker}"}",
-                        color = palette.contentSecondary, fontSize = 11.sp,
-                    )
-                    Text(
-                        if (row.source == TokenUsageEntity.SOURCE_MISSING) "未提供" else "${row.input}+${row.output}",
-                        color = if (row.source == TokenUsageEntity.SOURCE_MISSING) palette.contentSecondary else palette.content,
-                        fontSize = 11.sp,
-                    )
-                    if (!row.ok) Text("失败", color = palette.error, fontSize = 11.sp)
+                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(formatter.format(Instant.ofEpochMilli(row.at).atZone(ZoneId.systemDefault())) + " · " + row.purpose,
+                            color = palette.contentSecondary, fontSize = 11.sp)
+                        Text(if (row.source == TokenUsageEntity.SOURCE_MISSING) "未提供" else "%,d Token".format(row.input + row.output),
+                            color = palette.content, fontSize = 12.sp)
+                    }
+                    Text(row.model + if (row.ok) "" else " · 失败", color = if (row.ok) palette.contentSecondary else palette.error, fontSize = 11.sp)
                 }
             }
+            if (shown.size > 200) Text("仅展示最近 200 条", color = palette.contentSecondary, fontSize = 11.sp)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("清空统计", selected = false) { clearing = true }
-        }
+        Chip("清空统计", selected = false) { clearing = true }
     }
 
     notice?.let { Text(it, color = palette.contentSecondary, fontSize = 12.sp) }
