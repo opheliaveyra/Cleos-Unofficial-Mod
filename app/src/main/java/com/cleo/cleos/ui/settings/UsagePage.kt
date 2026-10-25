@@ -148,7 +148,7 @@ internal fun UsagePage(vm: SettingsViewModel) {
                         slices.forEachIndexed { index, (_, value) ->
                             val sweep = value.toFloat() / total.toFloat() * 360f
                             drawArc(
-                                color = Color(colors[index % colors.size]).copy(alpha = if (filter == null || filter == slices[index].first) 1f else 0.25f),
+                                color = Color(colors[index % colors.size].toInt()).copy(alpha = if (filter == null || filter == slices[index].first) 1f else 0.25f),
                                 startAngle = angle, sweepAngle = sweep, useCenter = false, style = Stroke(stroke)
                             )
                             angle += sweep
@@ -166,7 +166,7 @@ internal fun UsagePage(vm: SettingsViewModel) {
             slices.forEachIndexed { index, (name, value) ->
                 Row(Modifier.fillMaxWidth().clickable { filter = if (filter == name) null else name }.padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(10.dp).background(Color(colors[index % colors.size]), RoundedCornerShape(3.dp)))
+                    Box(Modifier.size(10.dp).background(Color(colors[index % colors.size].toInt()), RoundedCornerShape(3.dp)))
                     Text(name, color = palette.content, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
                     Text("%,d · %.1f%%".format(value, value.toDouble() / total * 100),
                         color = palette.contentSecondary, fontSize = 12.sp)
