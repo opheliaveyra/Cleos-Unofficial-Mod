@@ -220,3 +220,23 @@
 **P0 三处后台 Token 用量统计全部完成真机验证。** 每条记录的 scope=TA、模型名、输入/输出 tokens 均为实际值，由服务商返回，未出现伪造或 0 冒充。
 
 证据：[tok02-feed-post-created.png](tok02-feed-post-created.png)、[tok02-feed-verified-final.png](tok02-feed-verified-final.png)
+
+---
+
+## 九、测试 TA 命名（便于区分与引用）
+
+复测期间设备上有 3 个 TA，名字原本都是「TA」，无法区分。经玖玖同意后统一改名：
+
+| 位置 | 名称 | 头像 | 状态/用途 |
+|---|---|---|---|
+| 第 1 个 | **Mira** | M | 主测试 TA：60 条消息，recap / letter / feed 三项 P0 验证均在此 TA 上完成 |
+| 第 2 个 | **Nova** | N | 备用测试 TA |
+| 第 3 个 | **Echo** | E | 新建测试 TA（10月28日创建，19 条消息） |
+
+改名方式：主页选中 TA → 设置 → 资料与性格 → 名字。名字在全局同步更新（信、记忆、用量统计的角色行等）。
+
+**对报告的影响**：本报告前文用量统计中的「TA」行（19677 / 20424 tokens）即为 **Mira** 的用量；改名后用量页会显示新名字。
+
+> 注：`input text` 通过讯飞输入法输入中文会被吞掉（"小满"实际未写入），最终改用 AOSP LatinIME 输入英文名，已验证成功。
+
+证据：[retest-ta-naming.png](retest-ta-naming.png)
