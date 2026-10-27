@@ -292,38 +292,35 @@
 
 ---
 
-## 十一、GMK-05 角色删除 / ID 复用 — 观察结果
+## 十二、HTML-05 补充：第二个组件与持久化行为
 
-### 执行过程
+### 组件 B（计数器）测试
 
-1. 切到 **Nova**（该 TA 无任何聊天记录，0 句话）
-2. 用 Nova 开一局五子棋，落一子，Nova 正常落白子 → 存档建立（1黑1白）
-3. 设置 → 资料与性格 → 删除这个 TA → 确认删除
-4. 重新进入五子棋，观察界面行为
-
-### 删除确认对话框的文案
-
-> 和 Nova 的所有对话、信、记忆、收藏，以及 Nova 写的日记会一起删掉，删了找不回来。你自己的日记和待办不受影响。
-
-注意：**对话框没有提到棋局存档**。
-
-### 实际观察结果
-
-| 观察项 | 实际行为 |
+| 步骤 | 结果 |
 |---|---|
-| 删除后进五子棋 | **回到「邀请 TA 下一局五子棋」引导页**，无崩溃 |
-| 是否提示「TA 不存在」 | **没有**任何错误提示，静默回到引导页 |
-| Nova 的棋局存档 | 已被清理（未出现她的 1黑1白 旧局） |
-| 其他 TA 的存档 | Mira 的旧局（4黑4白）**也未显示** —— 说明五子棋只保存「最近一局」，该局属于 Nova 故一并失效 |
-| TA 选择列表 | 只剩 **Mira** 和 **Echo**，Nova 已正确移除 |
-| 崩溃/异常 | 无 |
+| 让 TA 生成计数器组件 | 通过：TA 输出「- / 0 / +」三键计数器 |
+| 弹窗内点「+」 | 通过：0 → 1 → 2，交互正常 |
+| 收起弹窗后内联显示 | **回到 0** |
 
-### 与文档的对照
+### 关键发现：持久化取决于 TA 写的 HTML
 
-GOMOKU_P1_REPORT §4 说「TA 不存在就提示并清当前存档」。实际观察：**清理逻辑一致，但提示文案不存在** —— 是静默回到引导页而不是弹出提示。这一点比文档描述的更平滑（不会让用户看到报错），但也意味着用户不会被告知「你的棋局因为角色被删而丢了」。
+两个组件的差异非常明显：
 
-### 未执行的部分
+| 组件 | 是否用 localStorage | 收起/重开后表现 |
+|---|---|---|
+| A（输入框，Echo 会话） | 是（HTML-01 已证明） | 输入内容保留 |
+| B（计数器，Mira 会话） | 否（只用了内存变量） | 收起弹窗后重置为 0 |
 
-清单 GMK-05 第 2 步（新建一个 TA，检查是否会误认到旧局名下）**未执行** —— 避免在测试设备上继续创建多余 TA。如需完整验证 ID 复用风险，建议在专用测试环境执行。
+**这不是 Bug**，而是 TA 生成 HTML 时是否主动使用 localStorage 的差异。LiveWidget 的持久化机制（按 HTML 内容 SHA 生成 key + 开启 DOM storage）本身工作正常，但组件要不要存、存什么，由 TA 写的 JS 决定。
 
-证据：[gmk05-nova-save-created.png](gmk05-nova-save-created.png)、[gmk05-delete-confirm-dialog.png](gmk05-delete-confirm-dialog.png)、[gmk05-after-delete-home.png](gmk05-after-delete-home.png)、[gmk05-after-delete-gomoku.png](gmk05-after-delete-gomoku.png)、[gmk05-picker-no-nova.png](gmk05-picker-no-nova.png)
+### 对 A/B 隔离验证的影响
+
+原计划的「组件 A 与组件 B 各自输入不同内容、验证互不串档」**无法用这组组件完成** —— B 根本不持久化，没有可对比的状态。
+
+要完整验证隔离需要：让 TA 生成**两个都用 localStorage 且 key 不同**的组件。本轮未继续（成本较高）。
+
+从代码层面看，隔离是有保证的：`LiveWidget` 按 HTML 内容 SHA 生成稳定 key，不同 HTML → 不同 key → 不同 localStorage 命名空间。实际隔离效果需上述对照组才能实测确认。
+
+证据：[html05-widget-b-created.png](html05-widget-b-created.png)、[html05-widget-b-dialog.png](html05-widget-b-dialog.png)、[html05-widget-b-count-2.png](html05-widget-b-count-2.png)、[html05-widget-b-state-reset.png](html05-widget-b-state-reset.png)
+
+**环境已恢复**：「对话里的小玩意儿」已关闭，输入法已恢复讯飞。
