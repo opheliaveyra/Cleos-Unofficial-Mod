@@ -137,3 +137,86 @@
 - 在测试专用会话中预置历史消息（不推荐，等同构造数据）
 
 证据：[tok01-batch-attempt.png](tok01-batch-attempt.png)
+
+---
+
+## 七、TOK-01 / TOK-03 验证通过（玖玖协助对话后）
+
+玖玖在设备上手动对话，会话消息数越过 Recap 折叠阈值，同时操作了信件功能。用量页实测结果：
+
+### 用量总览
+
+| 项 | 值 |
+|---|---|
+| 总请求 | **56 次**（基线 34 次） |
+| 输入 tokens | 351853 |
+| 输出 tokens | 15449 |
+| 总计 | 367302 |
+| 服务商未返回用量 | 1 次（标「未提供」，未用 0 冒充） |
+
+### 按用途分布（含新增）
+
+| purpose | tokens | 状态 |
+|---|---|---|
+| chat | 342559 | 正常 |
+| game_tic_tac_toe | 10926 | 正常 |
+| game_gomoku | 9498 | 正常（本轮五子棋测试增量） |
+| **recap** | **2177** | **本轮新增，P0 验证通过** |
+| **letter** | **2142** | **本轮新增，P0 验证通过** |
+| feed | 无 | 仍未触发 |
+
+### 最近请求明细（关键行）
+
+```
+10-28 04:30  入梦 Flash  recap   1600+577   ← Recap.kt usageTag 生效
+10-28 04:27  入梦 Flash  letter  1941+201   ← Letters.kt usageTag 生效
+```
+
+### 结论
+
+- **TOK-01（purpose=recap）— 通过**：用量页出现 recap 记录，归属 TA，模型为入梦 Flash，token 为实际值 1600+577。
+- **TOK-03（purpose=letter）— 通过**：用量页出现 letter 记录，归属 TA，模型为入梦 Flash，token 为实际值 1941+201。
+- 附带验证：「服务商没返回 usage 标「未提供」，不会拿 0 冒充」的设计在实际数据中出现了 1 次，符合预期。
+
+**P0 三个目标中，recap 与 letter 已完成实测验证。仅剩 feed 未验证。**
+
+证据：[tok01-tok03-recap-letter-verified.png](tok01-tok03-recap-letter-verified.png)、[tok01-tok03-recent-requests-detail.png](tok01-tok03-recent-requests-detail.png)
+
+---
+
+## 八、TOK-02 验证通过 — P0 三个目标全部完成
+
+### Feed 触发过程
+
+1. 聊天页右上角「动态」图标 → 进入「朋友圈」页面
+2. 右上角「...」菜单 →「让 TA 逛逛」
+3. 弹出「让 TA 说点日常」→ 选择 TA → 点「去逛逛」
+4. TA 成功发出一条动态（10月28日 04:34）：
+
+> 凌晨四点半的广场格外安静，风里带着点微凉。忽然有点想念那种没有闹钟、没有待办事项的清晨，睡到自然醒再喝杯热豆浆的感觉。你们今天起得早吗？
+
+### 用量页实测（57 次请求）
+
+| purpose | tokens | 状态 |
+|---|---|---|
+| chat | 342559 | 正常 |
+| game_tic_tac_toe | 10926 | 正常 |
+| game_gomoku | 9498 | 正常 |
+| **recap** | **2177** | ✅ 通过 |
+| **letter** | **2142** | ✅ 通过 |
+| **feed** | **781** | ✅ **本轮新增，通过** |
+| TA（按角色汇总） | 20424 | 正常 |
+
+最近请求新增：**10-28 04:34 入梦 Flash feed 720+61**
+
+### P0 最终结论
+
+| P0 目标 | purpose | 实测记录 | 结论 |
+|---|---|---|---|
+| Recap.kt usageTag | recap | 2177 tokens（1600+577） | ✅ 通过 |
+| Letters.kt usageTag | letter | 2142 tokens（1941+201） | ✅ 通过 |
+| FeedAi.kt usageTag | feed | 781 tokens（720+61） | ✅ 通过 |
+
+**P0 三处后台 Token 用量统计全部完成真机验证。** 每条记录的 scope=TA、模型名、输入/输出 tokens 均为实际值，由服务商返回，未出现伪造或 0 冒充。
+
+证据：[tok02-feed-post-created.png](tok02-feed-post-created.png)、[tok02-feed-verified-final.png](tok02-feed-verified-final.png)
