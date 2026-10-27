@@ -1,0 +1,118 @@
+# Cleos 真机复测报告 · 补充（API Key 配置后）
+
+> 执行人：津渡（DSH）
+> 执行日期：2026-10-28
+> 前置报告：RETEST-ACCEPTANCE-20261028.md（无 Key 阶段）
+> 构建基线：8f2b237
+
+---
+
+## 一、API Key 配置后环境变化
+
+原报告执行时设备无 API Key，导致多项阻塞。之后设备配置发生变化：
+
+| 项 | 无 Key 阶段 | Key 配置后 |
+|---|---|---|
+| 服务商 | DeepSeek（1 家，无 Key） | DeepSeek（无 Key）+ **肖恩**（有 Key） |
+| 模型配置 | 1 条（deepseek-v4-flash · DeepSeek） | 2 条（+ **入梦 Flash · 肖恩**） |
+| 当前聊天模型 | deepseek-v4-flash · DeepSeek | 改为 **入梦 Flash · 肖恩** |
+| TA 可用性 | 所有调用失败「TA 还没填 API Key」 | **正常应答** |
+
+**验证证据**：
+- [key-verified-ta-replied.png](key-verified-ta-replied.png)：TA 正常回复（第一轮）
+- [key-restored-ta-works.png](key-restored-ta-works.png)：TA 正常回复（恢复配置后复核）
+
+**重要发现：Key 按服务商地址绑定。** 服务商页明确说明「Key 按地址存，换型号不用重填」。改变接口地址等同于换了一家新服务商，原地址下的 Key 不会被复用，表现为「这个地址还没有 Key」。
+
+---
+
+## 二、Key 配置后新增通过的项
+
+### GMK-02 断网时 TA 落子失败处理 — 完整通过
+
+此前仅观察到「无 Key」的失败路径，本次用飞行模式测试了真实网络失败：
+
+| 步骤 | 实测结果 |
+|---|---|
+| 开飞行模式后落子 | 黑子落盘成功 |
+| TA 回合失败提示 | 「找不到服务器：检查地址，或者网络是不是断了」 |
+| 棋盘/玩家棋子 | 黑子完整保留，不丢 |
+| 是否无限重试 | 无自动重试，只出现一次失败 + 手动「让它再试一次」 |
+| 恢复网络后手动重试 | TA 成功落白子，回合切换为「轮到你（黑）」 |
+| 是否重复落子 | 只落一子，无重复请求 |
+
+证据：[gmk02-airplane-on.png](gmk02-airplane-on.png)、[gmk02-network-fail.png](gmk02-network-fail.png)、[gmk02-retry-success.png](gmk02-retry-success.png)
+
+### TOK Token 统计链路 — 实测确认工作
+
+基线（TOK-00）：34 次请求 / 输入 174538 / 输出 13354 / 总计 187892
+一次真实模型调用后：**35 次请求 / 输入 182139 / 输出 13417 / 总计 195556**
+
+| purpose | 基线 | 调用后 | 增量 |
+|---|---|---|---|
+| chat | 168215 | **175879** | **+7664** |
+| game_tic_tac_toe | 10926 | 10926 | 0 |
+| game_gomoku | 8751 | 8751 | 0 |
+| recap / feed / letter | 无 | 无 | — |
+
+「最近请求」新增：**10-28 04:13 入梦 Flash chat 7601+63**
+
+结论：**usageTag → TokenUsageEntity → UsagePage 整条链路工作正常**，新调用被正确记录（scope=TA、purpose=chat、模型=入梦 Flash、输入/输出 token 为实际值）。这直接验证了 P0 所依赖的统计机制本体。
+
+证据：[tok00-baseline.png](tok00-baseline.png)、[tok-chat-record-verified.png](tok-chat-record-verified.png)
+
+### GMK-03 超时（60s）行为 — 无法用改地址方式测试（发现设计事实）
+
+原计划将模型地址改为不可达地址 (http://192.0.2.1) 以触发 60s 超时。实测：
+
+- 改地址并保存后，落子立即提示「**TA 还没填 API Key**」——Key 与地址绑定，新地址下没有 Key。
+- **本地 Key 校验先于网络请求**，请求根本没有发出，无法进入 60s 超时路径。
+
+这解释了无 Key 阶段的同类现象：不是网络路径问题，而是本地 Key 校验失败。
+
+**结论**：60 秒超时行为在当前条件下无法测试。要测需要保持地址与 Key 不变、但让该地址不可达（hosts 劫持 / 路由器屏蔽 / 代理拦截），当前无 root 且无法改设备网络策略。
+
+已完整恢复原地址 https://speed31.toter.me 并复核 TA 可用。证据：[gmk03-address-changed.png](gmk03-address-changed.png)、[gmk03-key-bound-to-address.png](gmk03-key-bound-to-address.png)、[gmk03-address-restored.png](gmk03-address-restored.png)
+
+---
+
+## 三、仍未完成的项（如实说明）
+
+| 项 | 状态 | 原因 |
+|---|---|---|
+| TOK-01 Recap | 未执行 | 需会话消息 > 60 条。当前新会话 4 条，需约 28 轮对话（约 56 次模型调用）。成本与时长可接受，建议单独执行。 |
+| TOK-02 Feed | 未执行 | 需先配置外部新闻源（Feed 设置），环境未配置。 |
+| TOK-03 Letters | 未执行 | 需写信后等待 TA 回信（回信时机由策略决定，可能数小时至 24 小时）。 |
+| HTML-05 多组件隔离 | 未执行 | 需聊天中由 TA 生成两个不同 HTML 小组件；自检页只有一个带输入框的样例。 |
+| GMK-05 角色删除/ID 复用 | 未执行 | 观察项，需新建并删除一次性 TA，会改动设备真实数据，风险较高未执行。 |
+| LINT-01 启动屏 | 不适用 | 设备 Android 10（SDK 29），启动屏属性需 API 31+。 |
+| PR-01 / PR-02 | 未执行 | 需切换分支单独构建，属可选项。 |
+
+---
+
+## 四、本轮总结
+
+**Key 配置后，最关键的阻塞解除**：
+
+- 已验证 TA 正常调用模型
+- 已验证 Token 统计链路端到端工作（P0 机制本体）
+- GMK-02 断网失败处理完整通过（此前仅部分）
+- 澄清「修改地址 ≠ 模拟网络超时」这一设计事实
+
+**仍待补测**：TOK-01/02/03（recap/feed/letter 实际用量记录）、HTML-05、GMK-03（需网络层手段）。
+
+---
+
+## 五、证据清单（本轮新增）
+
+| 文件 | 内容 |
+|---|---|
+| key-verified-ta-replied.png | Key 生效后 TA 首次正常回复 |
+| key-restored-ta-works.png | 恢复地址后复核 TA 可用 |
+| tok-chat-record-verified.png | 用量页：35 次请求，chat 增量 7664 |
+| gmk02-airplane-on.png | 飞行模式开启、新局待落子 |
+| gmk02-network-fail.png | 断网失败提示「找不到服务器」 |
+| gmk02-retry-success.png | 恢复网络后重试成功、TA 落白子 |
+| gmk03-address-changed.png | 服务商地址改为不可达地址 |
+| gmk03-key-bound-to-address.png | 改地址后立即报「TA 还没填 API Key」 |
+| gmk03-address-restored.png | 地址已恢复原值 |
