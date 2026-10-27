@@ -240,3 +240,52 @@
 > 注：`input text` 通过讯飞输入法输入中文会被吞掉（"小满"实际未写入），最终改用 AOSP LatinIME 输入英文名，已验证成功。
 
 证据：[retest-ta-naming.png](retest-ta-naming.png)
+
+---
+
+## 十、补充验证（Key 生效后第二轮）
+
+### GMK-01 旋转屏幕 — 完整通过
+
+前一轮因无 Key 无法达到「3黑2白」前置条件。本轮 Key 生效后重新测试：
+
+| 步骤 | 结果 |
+|---|---|
+| 对局至 3黑3白 | 通过（超过前置要求） |
+| 转横屏（SurfaceOrientation=1） | 棋子 3黑3白全部保留、最后一步高亮正确、当前回合正确 |
+| 横屏布局 | 棋盘放大填满屏幕；**顶部信息栏（标题/TA名/回合文字）不可见** — 观察项 |
+| 转回竖屏 | 标题、Mira、回合、棋子、按钮全部恢复，不崩溃不丢局 |
+| 旋转后继续对局 | 正常：新落黑子 + TA 落白子，回合正确切换（4黑4白） |
+
+证据：[gmk01-full-before-rotate.png](gmk01-full-before-rotate.png)、[gmk01-full-landscape-3b3w.png](gmk01-full-landscape-3b3w.png)、[gmk01-full-portrait-restored.png](gmk01-full-portrait-restored.png)
+
+**补充说明**：旋转需先 `accelerometer_rotation=0` 再设 `user_rotation`，否则传感器会覆盖手动方向。
+
+### HTML-05 多组件状态隔离 — 部分通过
+
+**前置**：设置 → 能做的事 →「对话里的小玩意儿」（ToolGroup.Live）默认关闭，需手动开启。开启后 TA 会用 ```html 代码块在回复里输出可直接运行的小组件。
+
+| 步骤 | 结果 |
+|---|---|
+| 让 TA 生成带输入框的 HTML 小组件 | 通过：TA 正确理解并输出 ```html 组件 |
+| 小组件渲染 | 通过：聊天里直接显示输入框 +「发出去」按钮 |
+| 组件内输入 ONLY-A | 通过（需在「点开放大」弹窗内操作；聊天内联位置会被主输入框抢焦点） |
+| 点「发出去」回显 | 通过：uiautomator dump 确认回显文本 ONLY-A 出现在 center=(540,1452.5) |
+| A/B 两个组件状态隔离 | **未完成**：需再让 TA 生成第二个不同 HTML 组件并分别输入，成本较高未继续 |
+
+证据：[html05-widget-a-created.png](html05-widget-a-created.png)、[html05-widget-expand-dialog.png](html05-widget-expand-dialog.png)、[html05-widget-a-input.png](html05-widget-a-input.png)、[html05-widget-a-echo.png](html05-widget-a-echo.png)、[html05-widget-a-echo-proof.txt](html05-widget-a-echo-proof.txt)
+
+**环境已恢复**：「对话里的小玩意儿」已关回关闭状态，输入法已恢复讯飞。
+
+### 自动化限制记录（供后续参考）
+
+真机 adb 自动化在以下场景不可靠，已实际踩到：
+
+| 场景 | 现象 | 规避方式 |
+|---|---|---|
+| `input text` 长字符串 | 被截断或丢字符 | 分段输入，每段 < 15 字符 |
+| 讯飞输入法接收 ASCII | 被联想成中文（如 msg1 → Vmsg） | 切 AOSP LatinIME (`com.huawei.ohos.inputmethod/...LatinIME`) |
+| 中文 `input text` | 直接丢失 | 无法输入中文，改用英文名 |
+| Compose 输入框 `keyevent 67` 删除 | 部分残留删不掉 | 发送该条消息清空，或重开会话 |
+| HTML 小组件内联位置点击 | 焦点被聊天输入框抢走 | 打开「点开放大」弹窗后在弹窗内操作 |
+| 键盘弹出/收起 | 输入栏与发送按钮位置变化 | 每次操作前 uiautomator dump 重新定位 |
