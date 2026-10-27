@@ -1,0 +1,31 @@
+ZIP 备份内容清单 (cleos-备份-2026-10-28.zip, 7200 bytes)
+
+文件清单:
+  backup.json (唯一文件)
+
+backup.json 顶层键:
+  format: str
+  version: int
+  exportedAt: int
+  settings: dict{feedInterests, feedRssUrl, feedNewsSources, feedCover, feedBio, apiBaseUrl, apiModel, aiName}
+  conversations: list[2]
+  messages: list[37]
+  diary: list[0]
+  todos: list[0]
+  companions: list[2]
+  letters: list[0]
+  memories: list[0]
+  stickers: list[0]
+  favorites: list[0]
+  lore: list[0]
+  feedPosts: list[0]
+  groups: list[1]
+  groupMembers: list[2]
+  groupTurns: list[0]
+  groupMessages: list[0]
+  groupMemories: list[0]
+  mcpServers: list[0]
+
+棋局相关条目: 无（无 game/gomoku/tic/board 键）
+
+结论: 与 GOMOKU_P1_REPORT §4 / GAMES_P0_REPORT §5 的说法一致——棋局不进入 ZIP 备份。
