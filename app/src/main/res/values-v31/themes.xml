@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 31+: the same Theme.Cleos as values/themes.xml, plus the splash background.
+         A v31 style fully replaces the base style on 31+ devices, so every base item
+         is repeated here — none may be dropped. -->
+    <style name="Theme.Cleos" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowSplashScreenBackground">@color/window_background</item>
+    </style>
+</resources>
