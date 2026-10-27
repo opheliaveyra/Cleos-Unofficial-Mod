@@ -2,16 +2,32 @@
 
 > **非官方衍生版本**。本仓库由 [opheliaveyra](https://github.com/opheliaveyra) 维护，基于 [jqzhang921-sudo/cleos](https://github.com/jqzhang921-sudo/cleos) 修改，不代表原作者发布或背书。感谢原项目及贡献者。
 
+## 项目状态速览
+
+> **版本说明（2026-10-28）**：维护者反馈目前使用的版本为 **0.1.98**；但仓库默认分支的 `app/build.gradle.kts` 仍标记为 **0.1.92-mod（versionCode 264）**。两者尚未核对为同一构建，**请以 Releases 的实际 APK 版本、签名与对应提交为准**。不要直接将源码版本当作最新安装包版本。
+
+| 项目 | 当前情况 |
+|---|---|
+| Android 二改版 | 持续开发、真机验证中 |
+| 近期使用版本 | 0.1.98（维护者反馈，待核对发布记录） |
+| 默认分支源码版本 | 0.1.92-mod（以 Gradle 配置为准） |
+| 默认分支 | `feature/chat-file-upload-and-hold-to-talk` |
+| 自动构建 CI | 已在 `koda/ci-and-audit` 分支提交，PR #9 待检查与合并 |
+| 紫雾手账主题 | 开发中的独立 PR，尚不作为默认分支已发布功能宣传 |
+| 纸绘图标 | 开发中的独立 PR，尚不作为默认分支已发布功能宣传 |
+
+**入口**：[下载与发布记录](https://github.com/opheliaveyra/Cleos-Unofficial-Mod/releases) · [开发中的 PR](https://github.com/opheliaveyra/Cleos-Unofficial-Mod/pulls) · [问题反馈](https://github.com/opheliaveyra/Cleos-Unofficial-Mod/issues)
+
 ## 本仓库是什么
 
 这是基于 Cleos 的 Android 原生 AI 陪伴聊天应用二次开发分支，使用 Kotlin 与 Jetpack Compose。保留原项目的核心设计，同时持续进行功能扩展、交互调整与问题修复。
 
-- **当前源码版本**：`0.1.92-mod`（从 `app/build.gradle.kts` 读取；安装包版本请以实际发布的 APK 为准）。
+- **默认分支源码版本**：`0.1.92-mod`（来自 `app/build.gradle.kts`，不等同于近期安装包版本）。
 - **Android 最低版本**：Android 10（API 29）。
 - **源码分支**：`feature/chat-file-upload-and-hold-to-talk`（当前仓库默认分支）。
 - **开发状态**：持续迭代的二改版；部分功能可能仍在测试中。
 
-## 最近在做什么（0.1.66 – 0.1.92）
+## 已记录的默认分支开发历程（0.1.66 – 0.1.92）
 
 - **0.1.66 – 0.1.74**：HTML 预览/放大两种模式反复调；真机上找到「内容只剩 1/3」的根因 ——
   WebView 量出来的 CSS px 被当成物理 px 又除了一次屏幕密度（3 / 2.75），容器只有真实高度的 1/3。
