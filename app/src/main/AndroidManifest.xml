@@ -24,6 +24,9 @@
     <!-- 虚拟屏探针：Android 14 要求投屏会话跑在 mediaProjection 类型的前台服务里。 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
+    <!-- 拍照走的是系统相机，设备没有相机（比如 ChromeOS）也要能装：相机硬件声明为非必需。 -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- 虚拟屏探针要查抖音和 Shizuku 是否安装（Android 11+ 的包可见性）。 -->
     <queries>
         <package android:name="com.ss.android.ugc.aweme" />

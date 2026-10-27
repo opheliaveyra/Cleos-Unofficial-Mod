@@ -1,7 +1,7 @@
 package com.cleo.cleos.ui.settings
 
-import android.app.Activity
 import android.net.Uri
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -199,7 +198,7 @@ internal fun ModelPage(vm: SettingsViewModel, onOpen: (SettingsPage) -> Unit) {
     val palette = LocalGlassPalette.current
     // 转屏、折叠屏展开、切深浅色这些「配置变化」也会走到 onDispose，而 ViewModel 活了下来 ——
     // 于是刚粘进去的接口地址和 Key 会被清回已保存的值，人以为自己没保存上。
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     androidx.compose.runtime.DisposableEffect(vm) {
         onDispose {
             if (activity?.isChangingConfigurations != true) {
