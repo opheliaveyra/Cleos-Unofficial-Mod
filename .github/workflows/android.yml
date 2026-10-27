@@ -27,9 +27,15 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
 
-      # compileSdk 37 requires the canary channel.
+      # Android API 37 is published as android-37.0, not android-37.
+      # Older AGP versions may still resolve the legacy android-37 path.
       - name: Install compile SDK
-        run: sdkmanager --channel=3 'platforms;android-37'
+        run: |
+          sdkmanager --channel=3 'platforms;android-37.0'
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
+            ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
+          fi
 
       - uses: gradle/actions/setup-gradle@v4
 
